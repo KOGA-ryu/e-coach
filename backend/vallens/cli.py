@@ -72,6 +72,16 @@ def main() -> None:
     report_parser.add_argument("--output", default=None, help="Save to file instead of stdout")
     report_parser.add_argument("--player", default=None, help="Player PUUID focus")
 
+    # Sync Account command
+    sync_parser = subparsers.add_parser("sync-account", help="Link account and synchronize match history")
+    sync_parser.add_argument("--detect", action="store_true", help="Auto-detect account from running local Riot Client")
+    sync_parser.add_argument("--puuid", default=None, help="Player PUUID")
+    sync_parser.add_argument("--name", default=None, help="Riot Game Name")
+    sync_parser.add_argument("--tag", default=None, help="Riot Tagline")
+    sync_parser.add_argument("--region", default="na", help="Region shard (na, eu, ap, kr)")
+    sync_parser.add_argument("--api-key", default=None, help="Riot Developer Portal API Key (RGAPI-...)")
+    sync_parser.add_argument("--limit", type=int, default=5, help="Number of recent matches to sync")
+
     args = parser.parse_args()
 
     db = Database(args.db)
@@ -219,6 +229,33 @@ def main() -> None:
             print(f"Report written to {args.output}")
         else:
             print(content)
+
+    elif args.command == "sync-account":
+        from vallens.riot.account import AccountConnector
+        connector = AccountConnector(service=service, riot_api_key=args.api_key, region=args.region)
+
+        if args.detect:
+            print("Detecting account from local Riot Client / lockfile...")
+            acc = connector.detect_local_account()
+            if not acc:
+                print("No running Valorant / Riot Client found on this machine.")
+                sys.exit(1)
+            print(f"Detected Account: {acc['riot_id']} (PUUID: {acc['puuid']})")
+            if args.api_key:
+                matches = connector.sync_recent_matches(acc["puuid"], limit=args.limit, api_key=args.api_key, region=args.region)
+                print(f"Successfully synced {len(matches)} matches.")
+            else:
+                print("To fetch historical matches from Riot servers, provide --api-key RGAPI-...")
+        elif args.puuid and args.api_key:
+            print(f"Syncing recent matches for PUUID: {args.puuid}...")
+            matches = connector.sync_recent_matches(args.puuid, limit=args.limit, api_key=args.api_key, region=args.region)
+            print(f"Successfully synced {len(matches)} matches.")
+        elif args.name and args.tag:
+            print(f"Syncing recent matches for {args.name}#{args.tag} ({args.region})...")
+            matches = connector.sync_by_henrik_api(args.name, args.tag, region=args.region, limit=args.limit, api_key=args.api_key)
+            print(f"Successfully synced {len(matches)} matches.")
+        else:
+            print("Please specify --detect, or --puuid with --api-key, or --name and --tag.")
 
 
 if __name__ == "__main__":

@@ -34,6 +34,7 @@
         </div>
       </div>
 
+      <button id="btn-open-sync" class="btn-sync" title="Connect Riot Account">LINK ACCOUNT</button>
       <a id="btn-view-report" class="btn-report" target="_blank" href="#">COACHING REPORT</a>
     </div>
   </header>
@@ -287,6 +288,56 @@
     </section>
 
   </main>
+
+  <!-- Link / Sync Account Modal -->
+  <div class="modal-overlay" id="sync-modal" style="display: none;">
+    <div class="modal-card">
+      <div class="modal-header">
+        <div class="modal-title">LINK RIOT ACCOUNT & SYNC MATCHES</div>
+        <button id="btn-close-modal" class="modal-close-btn">&times;</button>
+      </div>
+      <div class="modal-body">
+        <p class="modal-desc">Connect your Riot account to import recent competitive match telemetry into ValLens.</p>
+
+        <div class="form-group">
+          <label class="form-label">RIOT ID (GameName#TagLine)</label>
+          <input type="text" id="sync-riot-id" class="form-input" placeholder="e.g. Ace#NA1" autocomplete="off">
+        </div>
+
+        <div class="form-row">
+          <div class="form-group">
+            <label class="form-label">REGION / SHARD</label>
+            <select id="sync-region" class="form-select">
+              <option value="na">North America (NA)</option>
+              <option value="eu">Europe (EU)</option>
+              <option value="ap">Asia-Pacific (AP)</option>
+              <option value="kr">Korea (KR)</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label class="form-label">MATCHES TO SYNC</label>
+            <select id="sync-limit" class="form-select">
+              <option value="3">Last 3 Matches</option>
+              <option value="5" selected>Last 5 Matches</option>
+              <option value="10">Last 10 Matches</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label class="form-label">RIOT DEV API KEY <span class="subtle">(Optional, from developer.riotgames.com)</span></label>
+          <input type="password" id="sync-api-key" class="form-input" placeholder="RGAPI-xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx">
+        </div>
+
+        <div class="modal-actions">
+          <button id="btn-auto-detect" class="ctrl-btn" type="button">AUTO-DETECT LOCAL CLIENT</button>
+          <button id="btn-do-sync" class="btn-primary" type="button">SYNC MATCHES NOW</button>
+        </div>
+
+        <div id="sync-status" class="sync-status-msg"></div>
+      </div>
+    </div>
+  </div>
 
   <script src="app.js"></script>
 </body>

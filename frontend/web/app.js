@@ -933,6 +933,106 @@ function setupEventListeners() {
       logTag(card.dataset.key);
     });
   });
+
+  // Account Sync Modal Handlers
+  const syncModal = document.getElementById('sync-modal');
+  const btnOpenSync = document.getElementById('btn-open-sync');
+  const btnCloseModal = document.getElementById('btn-close-modal');
+  const btnAutoDetect = document.getElementById('btn-auto-detect');
+  const btnDoSync = document.getElementById('btn-do-sync');
+  const syncStatus = document.getElementById('sync-status');
+  const syncRiotId = document.getElementById('sync-riot-id');
+  const syncRegion = document.getElementById('sync-region');
+  const syncLimit = document.getElementById('sync-limit');
+  const syncApiKey = document.getElementById('sync-api-key');
+
+  if (btnOpenSync) {
+    btnOpenSync.addEventListener('click', () => {
+      syncModal.style.display = 'flex';
+      syncStatus.style.display = 'none';
+    });
+  }
+
+  if (btnCloseModal) {
+    btnCloseModal.addEventListener('click', () => {
+      syncModal.style.display = 'none';
+    });
+  }
+
+  if (btnAutoDetect) {
+    btnAutoDetect.addEventListener('click', async () => {
+      syncStatus.className = 'sync-status-msg';
+      syncStatus.textContent = 'Detecting local Riot Client session...';
+      syncStatus.style.display = 'block';
+      try {
+        const res = await fetch('/api/account/detect');
+        const data = await res.json();
+        if (data.riot_id) {
+          syncRiotId.value = data.riot_id;
+          syncStatus.className = 'sync-status-msg success';
+          syncStatus.textContent = `Detected Local Account: ${data.riot_id}`;
+          syncStatus.dataset.puuid = data.puuid;
+        } else {
+          syncStatus.className = 'sync-status-msg error';
+          syncStatus.textContent = 'Valorant / Riot Client is not currently running locally.';
+        }
+      } catch (err) {
+        syncStatus.className = 'sync-status-msg error';
+        syncStatus.textContent = 'No local client detected. Run Valorant or enter your Riot ID.';
+      }
+    });
+  }
+
+  if (btnDoSync) {
+    btnDoSync.addEventListener('click', async () => {
+      const riotId = syncRiotId.value.trim();
+      const region = syncRegion.value;
+      const limit = parseInt(syncLimit.value, 10);
+      const apiKey = syncApiKey.value.trim();
+      const puuid = syncStatus.dataset.puuid;
+
+      if (!riotId && !puuid) {
+        syncStatus.className = 'sync-status-msg error';
+        syncStatus.textContent = 'Please enter your Riot ID (Name#Tag) or click Auto-Detect.';
+        syncStatus.style.display = 'block';
+        return;
+      }
+
+      syncStatus.className = 'sync-status-msg';
+      syncStatus.textContent = 'Importing match history from Riot...';
+      syncStatus.style.display = 'block';
+
+      try {
+        const res = await fetch('/api/account/sync', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            riot_id: riotId,
+            region: region,
+            limit: limit,
+            api_key: apiKey || null,
+            puuid: puuid || null,
+          }),
+        });
+
+        const result = await res.json();
+        if (res.ok) {
+          syncStatus.className = 'sync-status-msg success';
+          syncStatus.textContent = `Success! Synced ${result.synced_count} competitive matches.`;
+          await loadMatchList();
+          setTimeout(() => {
+            syncModal.style.display = 'none';
+          }, 1500);
+        } else {
+          syncStatus.className = 'sync-status-msg error';
+          syncStatus.textContent = `Sync error: ${result.error || 'Check Riot ID and region'}`;
+        }
+      } catch (err) {
+        syncStatus.className = 'sync-status-msg error';
+        syncStatus.textContent = `Connection error: ${err.message}`;
+      }
+    });
+  }
 }
 
 // Start application

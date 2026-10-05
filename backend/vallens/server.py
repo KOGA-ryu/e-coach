@@ -246,6 +246,17 @@ class ValLensRequestHandler(BaseHTTPRequestHandler):
             self._send_json(summary)
             return
 
+        # Account detection endpoint
+        if path == "/api/account/detect":
+            from vallens.riot.account import AccountConnector
+            connector = AccountConnector(service=self.service)
+            acc = connector.detect_local_account()
+            if not acc:
+                self._send_error("No local client detected", status=404)
+                return
+            self._send_json(acc)
+            return
+
         # 9. Static Map Icons
         if path.startswith("/maps/"):
             map_name = path[len("/maps/"):].lower()
@@ -301,6 +312,41 @@ class ValLensRequestHandler(BaseHTTPRequestHandler):
                 event_id=data.get("event_id"),
             )
             self._send_json({"tag_id": tag_id, "success": True}, status=201)
+            return
+
+        if path == "/api/account/sync":
+            content_length = int(self.headers.get("Content-Length", 0))
+            body = self.rfile.read(content_length).decode("utf-8")
+            data = json.loads(body)
+
+            from vallens.riot.account import AccountConnector
+            connector = AccountConnector(
+                service=self.service,
+                riot_api_key=data.get("api_key"),
+                region=data.get("region", "na"),
+            )
+
+            limit = int(data.get("limit", 3))
+            riot_id = data.get("riot_id", "").strip()
+            puuid = data.get("puuid")
+
+            try:
+                ingested = []
+                if puuid and data.get("api_key"):
+                    ingested = connector.sync_recent_matches(puuid, limit=limit, api_key=data.get("api_key"))
+                elif "#" in riot_id:
+                    name, tag = riot_id.split("#", 1)
+                    ingested = connector.sync_by_henrik_api(name, tag, region=data.get("region", "na"), limit=limit, api_key=data.get("api_key"))
+                else:
+                    self._send_error("Invalid Riot ID format (expected Name#Tag)", status=400)
+                    return
+
+                self._send_json({
+                    "synced_count": len(ingested),
+                    "matches": [m.match_id for m in ingested],
+                })
+            except Exception as e:
+                self._send_error(f"Sync failed: {e}", status=500)
             return
 
         self._send_error("Unknown POST endpoint", status=404)
