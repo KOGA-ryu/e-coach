@@ -1430,6 +1430,117 @@ video {
   padding: 1px 5px;
 }
 
+.tag-header-actions {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.clip-batch-btn {
+  background: rgba(0, 245, 212, 0.1);
+  border: 1px solid rgba(0, 245, 212, 0.3);
+  color: var(--accent-cyan);
+  font-size: 11px;
+  font-family: var(--font-tactical);
+  font-weight: 700;
+  padding: 2px 7px;
+  letter-spacing: 0.5px;
+  cursor: pointer;
+  border-radius: 3px;
+  transition: all 0.15s ease;
+}
+
+.clip-batch-btn:hover {
+  background: var(--accent-cyan);
+  color: #0b1118;
+  box-shadow: 0 0 8px rgba(0, 245, 212, 0.3);
+}
+
+.tag-item-actions {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.tag-clip-btn {
+  background: none;
+  border: 1px solid transparent;
+  color: var(--text-dim);
+  font-size: 11px;
+  font-family: var(--font-tactical);
+  font-weight: 700;
+  cursor: pointer;
+  padding: 1px 5px;
+  border-radius: 3px;
+  transition: all 0.15s ease;
+  line-height: 1;
+}
+
+.tag-clip-btn:hover {
+  color: var(--accent-cyan);
+  border-color: rgba(0, 245, 212, 0.4);
+  background: rgba(0, 245, 212, 0.1);
+}
+
+.ctrl-btn.clip-btn {
+  background: rgba(0, 245, 212, 0.1);
+  border: 1px solid rgba(0, 245, 212, 0.3);
+  color: var(--accent-cyan);
+  font-family: var(--font-tactical);
+  font-size: 12px;
+  font-weight: 700;
+  padding: 5px 12px;
+  border-radius: 4px;
+  cursor: pointer;
+  letter-spacing: 0.5px;
+  transition: all 0.15s ease;
+}
+
+.ctrl-btn.clip-btn:hover {
+  background: var(--accent-cyan);
+  color: #0b1118;
+  box-shadow: 0 0 10px rgba(0, 245, 212, 0.4);
+}
+
+.diff-clip-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  background: rgba(0, 245, 212, 0.1);
+  border: 1px solid rgba(0, 245, 212, 0.3);
+  color: var(--accent-cyan);
+  font-family: var(--font-tactical);
+  font-size: 11px;
+  font-weight: 700;
+  padding: 2px 7px;
+  border-radius: 3px;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.diff-clip-btn:hover {
+  background: var(--accent-cyan);
+  color: #0b1118;
+  box-shadow: 0 0 8px rgba(0, 245, 212, 0.3);
+}
+
+.event-clip-btn {
+  background: none;
+  border: 1px solid transparent;
+  color: var(--text-dim);
+  font-size: 11px;
+  cursor: pointer;
+  padding: 1px 4px;
+  border-radius: 3px;
+  transition: all 0.15s ease;
+}
+
+.event-clip-btn:hover {
+  color: var(--accent-cyan);
+  border-color: rgba(0, 245, 212, 0.4);
+  background: rgba(0, 245, 212, 0.1);
+}
+
 /* Habit Insights Bars */
 .insights-section {
   height: 165px;

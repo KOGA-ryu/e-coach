@@ -13,6 +13,7 @@ from vallens.db.database import Database
 from vallens.db.repository import MatchRepository
 from vallens.models import MatchEvent, MatchMetadata, MatchPlayer, VodTag
 from vallens.obs.controller import CaptureController
+from vallens.obs.trimmer import ClipTrimmer
 from vallens.riot.client import RiotApiClient
 from vallens.riot.parser import MatchParser
 
@@ -284,6 +285,52 @@ class ValLensService:
     def attach_match_video(self, match_id: str, video_filepath: str) -> bool:
         """Associate a video recording file path with a match."""
         return self.repo.update_video_path(match_id, video_filepath)
+
+    def trim_match_clip(
+        self,
+        match_id: str,
+        timestamp_seconds: float,
+        pre_roll: float = 3.0,
+        post_roll: float = 2.0,
+        label: Optional[str] = None,
+        round_number: Optional[int] = None,
+    ) -> dict[str, Any]:
+        """Cut and export an MP4 clip for a specific match event or flaw."""
+        match = self.repo.get_match(match_id)
+        if not match:
+            raise ValueError(f"Match not found: {match_id}")
+
+        trimmer = ClipTrimmer()
+        return trimmer.trim_moment(
+            match_id=match_id,
+            timestamp_seconds=timestamp_seconds,
+            video_filepath=match.video_filepath,
+            pre_roll=pre_roll,
+            post_roll=post_roll,
+            label=label,
+            round_number=round_number,
+        )
+
+    def batch_trim_flaws(
+        self,
+        match_id: str,
+        pre_roll: float = 3.0,
+        post_roll: float = 2.0,
+    ) -> list[dict[str, Any]]:
+        """Batch-export video clips for all logged flaw tags in a match."""
+        match = self.repo.get_match(match_id)
+        if not match:
+            raise ValueError(f"Match not found: {match_id}")
+
+        tags = self.repo.get_tags(match_id)
+        trimmer = ClipTrimmer()
+        return trimmer.batch_trim_tags(
+            match_id=match_id,
+            tags=tags,
+            video_filepath=match.video_filepath,
+            pre_roll=pre_roll,
+            post_roll=post_roll,
+        )
 
 
 

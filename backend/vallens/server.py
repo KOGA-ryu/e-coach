@@ -22,6 +22,7 @@ logger = logging.getLogger(__name__)
 
 STATIC_DIR = Path(__file__).parent.parent.parent / "frontend" / "web"
 DATA_MAPS_DIR = Path(__file__).parent.parent.parent / "data" / "maps"
+DATA_CLIPS_DIR = Path(__file__).parent.parent.parent / "data" / "clips"
 
 
 class ValLensRequestHandler(BaseHTTPRequestHandler):
@@ -494,6 +495,16 @@ class ValLensRequestHandler(BaseHTTPRequestHandler):
             self._send_error("Video file not found", status=404)
             return
 
+        # 10.5. Serving Trimmed Video Clips
+        if path.startswith("/api/clips/"):
+            clip_name = Path(path[len("/api/clips/"):]).name
+            target_clip = DATA_CLIPS_DIR / clip_name
+            if target_clip.exists() and target_clip.is_file():
+                self._serve_video_range(target_clip)
+                return
+            self._send_error("Clip file not found", status=404)
+            return
+
         # 11. Web Frontend Static Files
         clean_path = path.lstrip("/")
         if not clean_path:
@@ -610,6 +621,75 @@ class ValLensRequestHandler(BaseHTTPRequestHandler):
                 "match_id": match_id,
                 "video_filepath": video_filepath,
             })
+            return
+
+        # Single Moment Trimming API
+        if path.startswith("/api/matches/") and path.endswith("/trim"):
+            match_id = path.split("/")[3]
+            match = self.service.repo.get_match(match_id)
+            if not match:
+                self._send_error("Match not found", status=404)
+                return
+
+            content_length = int(self.headers.get("Content-Length", 0))
+            body = self.rfile.read(content_length).decode("utf-8") if content_length > 0 else "{}"
+            try:
+                data = json.loads(body) if body else {}
+            except Exception:
+                data = {}
+
+            ts = float(data.get("timestamp_seconds", 0.0))
+            pre = float(data.get("pre_roll", 3.0))
+            post = float(data.get("post_roll", 2.0))
+            label = data.get("label", "flaw")
+            round_num = data.get("round_number")
+            if round_num is not None:
+                try:
+                    round_num = int(round_num)
+                except ValueError:
+                    round_num = None
+
+            try:
+                clip_meta = self.service.trim_match_clip(
+                    match_id=match_id,
+                    timestamp_seconds=ts,
+                    pre_roll=pre,
+                    post_roll=post,
+                    label=label,
+                    round_number=round_num,
+                )
+                self._send_json({"success": True, "clip": clip_meta})
+            except ValueError as e:
+                self._send_error(str(e), status=404)
+            except Exception as e:
+                self._send_error(f"Clip trimming failed: {e}", status=500)
+            return
+
+        # Batch Flaws Trimming API
+        if path.startswith("/api/matches/") and path.endswith("/trim-all-flaws"):
+            match_id = path.split("/")[3]
+            match = self.service.repo.get_match(match_id)
+            if not match:
+                self._send_error("Match not found", status=404)
+                return
+
+            content_length = int(self.headers.get("Content-Length", 0))
+            body = self.rfile.read(content_length).decode("utf-8") if content_length > 0 else "{}"
+            try:
+                data = json.loads(body) if body else {}
+            except Exception:
+                data = {}
+
+            pre = float(data.get("pre_roll", 3.0))
+            post = float(data.get("post_roll", 2.0))
+
+            try:
+                clips = self.service.batch_trim_flaws(match_id=match_id, pre_roll=pre, post_roll=post)
+                self._send_json({"success": True, "count": len(clips), "clips": clips})
+            except ValueError as e:
+                self._send_error(str(e), status=404)
+            except Exception as e:
+                self._send_error(f"Batch trimming failed: {e}", status=500)
             return
 
         self._send_error("Unknown POST endpoint", status=404)

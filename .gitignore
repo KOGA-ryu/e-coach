@@ -58,6 +58,7 @@ ui_*.h
 *.mov
 records/
 recordings/
+data/clips/
 
 # IDE / Editor
 .vscode/

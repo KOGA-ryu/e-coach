@@ -200,6 +200,40 @@ class TestValLensServer(unittest.TestCase):
         overview = json.loads(body.decode("utf-8"))
         self.assertEqual(overview["metadata"]["video_filepath"], vid_path)
 
+    def test_clip_trimmer_endpoints(self):
+        # 1. Trim single moment
+        payload = {
+            "timestamp_seconds": 45.0,
+            "pre_roll": 2.0,
+            "post_roll": 1.0,
+            "label": "whiffed_spray",
+            "round_number": 1,
+        }
+        status, res = self._post_json(f"/api/matches/{self.match.match_id}/trim", payload)
+        self.assertEqual(status, 200)
+        self.assertTrue(res["success"])
+        clip = res["clip"]
+        self.assertIn("whiffed_spray", clip["filename"])
+        self.assertEqual(clip["round_number"], 1)
+        self.assertGreater(clip["duration_seconds"], 0)
+
+        # 2. Fetch/stream the trimmed clip file
+        status, body, headers = self._get(clip["download_url"])
+        self.assertEqual(status, 200)
+        self.assertEqual(headers.get("Content-Type"), "video/mp4")
+        self.assertGreater(len(body), 1000)
+
+        # 3. Batch trim all flaw tags
+        self.service.add_vod_tag(self.match.match_id, 45000, "Mechanics", "whiffed_spray", "solo")
+        status, batch_res = self._post_json(
+            f"/api/matches/{self.match.match_id}/trim-all-flaws",
+            {"pre_roll": 1.5, "post_roll": 1.0},
+        )
+        self.assertEqual(status, 200)
+        self.assertTrue(batch_res["success"])
+        self.assertGreaterEqual(batch_res["count"], 1)
+        self.assertTrue(len(batch_res["clips"]) >= 1)
+
 
 if __name__ == "__main__":
     unittest.main()

@@ -545,8 +545,19 @@ function renderRoundEventsFeed(events, roundNum) {
       <div class="feed-time-group">
         <span class="feed-rel-time">${item.relTime}</span>
         <span class="feed-abs-time">${formatTime(item.timeMs / 1000)}</span>
+        <button class="event-clip-btn" title="Trim & Download MP4 Clip">✂</button>
       </div>
     `;
+
+    const clipBtn = el.querySelector('.event-clip-btn');
+    if (clipBtn) {
+      clipBtn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        const lbl = (item.badgeText || 'event').toLowerCase();
+        trimAndDownloadClip(item.timeMs / 1000, lbl, state.activeRound + 1);
+      });
+    }
+
     el.addEventListener('click', () => {
       seekToEventWithPreRoll(item.timeMs);
     });
@@ -1091,7 +1102,10 @@ function renderTagHistory() {
         <span class="tag-name" title="${cleanName}">${cleanName}</span>
         <span class="feed-time">${formatTime(t.timestamp_ms / 1000)}</span>
       </div>
-      <button class="tag-delete-btn" data-id="${t.tag_id}" title="Click to Delete">×</button>
+      <div class="tag-item-actions">
+        <button class="tag-clip-btn" data-time="${t.timestamp_ms / 1000}" data-name="${cleanName}" title="Trim & Download MP4 Clip (-3s/+2s)">✂ CLIP</button>
+        <button class="tag-delete-btn" data-id="${t.tag_id}" title="Click to Delete">×</button>
+      </div>
     `;
 
     tagHistoryList.appendChild(item);
@@ -1411,6 +1425,14 @@ function setupEventListeners() {
       return;
     }
 
+    // Clip Hotkey: 'C'
+    if (e.key.toLowerCase() === 'c' && !e.ctrlKey && !e.metaKey) {
+      e.preventDefault();
+      const curTime = videoPlayer && !isNaN(videoPlayer.currentTime) ? videoPlayer.currentTime : 0;
+      trimAndDownloadClip(curTime, 'manual_moment', state.activeRound + 1);
+      return;
+    }
+
     // 1-9 Hotkey Review Tags
     if (TAG_MAP[e.key]) {
       e.preventDefault();
@@ -1442,6 +1464,15 @@ function setupEventListeners() {
 
   // Tag History List: Delegation for safe 2-step deletion and timestamp seeking
   tagHistoryList.addEventListener('click', async (e) => {
+    const clipBtn = e.target.closest('.tag-clip-btn');
+    if (clipBtn) {
+      e.stopPropagation();
+      const timeSec = parseFloat(clipBtn.dataset.time);
+      const name = clipBtn.dataset.name || 'flaw';
+      trimAndDownloadClip(timeSec, name, state.activeRound + 1);
+      return;
+    }
+
     const deleteBtn = e.target.closest('.tag-delete-btn');
     if (deleteBtn) {
       e.stopPropagation();
@@ -1543,6 +1574,21 @@ function setupEventListeners() {
       videoPlayer.playbackRate = parseFloat(btn.dataset.speed);
     });
   });
+
+  // Quick Clip Moment Button
+  const btnQuickClip = document.getElementById('btn-quick-clip');
+  if (btnQuickClip) {
+    btnQuickClip.addEventListener('click', () => {
+      const curTime = videoPlayer && !isNaN(videoPlayer.currentTime) ? videoPlayer.currentTime : 0;
+      trimAndDownloadClip(curTime, 'manual_moment', state.activeRound + 1);
+    });
+  }
+
+  // Batch Export Flaws Button
+  const btnBatchClip = document.getElementById('btn-batch-clip');
+  if (btnBatchClip) {
+    btnBatchClip.addEventListener('click', batchTrimFlaws);
+  }
 
   // Local Video File Upload
   videoFileInput.addEventListener('change', async (e) => {
@@ -2219,6 +2265,7 @@ function renderDiffCards() {
           <span class="diff-cat-pill">${item.cat}</span>
         </div>
         <div class="diff-meta-group">
+          <button class="diff-clip-btn" title="Trim & Download MP4 Clip (-3s/+2s)">✂ CLIP</button>
           <span class="diff-round-pill">R${item.roundNum}</span>
           <span class="diff-time-pill">${item.formattedTime} ${item.relTime ? `(${item.relTime})` : ''}</span>
           <span class="diff-scrub-hint">▶ JUMP (-3s)</span>
@@ -2227,6 +2274,14 @@ function renderDiffCards() {
       <div class="diff-card-msg">${item.message}</div>
       ${item.related ? `<div class="diff-related-event">Telemetry context: ${item.related}</div>` : ''}
     `;
+
+    const clipBtn = card.querySelector('.diff-clip-btn');
+    if (clipBtn) {
+      clipBtn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        trimAndDownloadClip(item.timeMs / 1000, item.tag, item.roundNum);
+      });
+    }
 
     card.addEventListener('click', () => {
       diffModal.style.display = 'none';
@@ -2377,6 +2432,105 @@ function renderTrainingRoutineModal() {
 
       drillsListContainer.appendChild(card);
     });
+  }
+}
+
+// -------------------------------------------------------------
+// Video Moment Clip Trimming Engine (FFmpeg)
+// -------------------------------------------------------------
+/**
+ * Trim a match moment using the backend FFmpeg engine and trigger browser download.
+ */
+async function trimAndDownloadClip(timestampSeconds, label = 'moment', roundNumber = null, preRoll = 3.0, postRoll = 2.0) {
+  if (!state.currentMatchId) {
+    showToast('No match currently selected');
+    return;
+  }
+
+  const cleanLabel = (label || 'moment').replace(/_/g, ' ');
+  showToast(`Trimming clip: ${cleanLabel}...`);
+
+  try {
+    const res = await fetch(`/api/matches/${state.currentMatchId}/trim`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        timestamp_seconds: timestampSeconds,
+        pre_roll: preRoll,
+        post_roll: postRoll,
+        label: label,
+        round_number: roundNumber,
+      }),
+    });
+
+    if (!res.ok) {
+      const err = await res.json();
+      showToast(`Clip error: ${err.error || 'Failed'}`);
+      return;
+    }
+
+    const data = await res.json();
+    const clip = data.clip;
+
+    // Trigger instant browser download
+    const dlLink = document.createElement('a');
+    dlLink.href = clip.download_url;
+    dlLink.download = clip.filename;
+    document.body.appendChild(dlLink);
+    dlLink.click();
+    document.body.removeChild(dlLink);
+
+    showToast(`Clip exported: ${clip.filename}`);
+  } catch (err) {
+    console.error('Trimming error:', err);
+    showToast('Failed to export clip');
+  }
+}
+
+/**
+ * Batch export clips for all logged flaw tags in the match.
+ */
+async function batchTrimFlaws() {
+  if (!state.currentMatchId) {
+    showToast('No match currently selected');
+    return;
+  }
+
+  if (state.tags.length === 0) {
+    showToast('No tags to export. Tag flaws first [1-9].');
+    return;
+  }
+
+  showToast(`Batch trimming ${state.tags.length} flaw clips...`);
+
+  try {
+    const res = await fetch(`/api/matches/${state.currentMatchId}/trim-all-flaws`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ pre_roll: 3.0, post_roll: 2.0 }),
+    });
+
+    if (!res.ok) {
+      const err = await res.json();
+      showToast(`Batch error: ${err.error || 'Failed'}`);
+      return;
+    }
+
+    const data = await res.json();
+    showToast(`Exported ${data.count} clips to data/clips!`);
+
+    // Automatically trigger download for first clip
+    if (data.clips && data.clips.length > 0) {
+      const dlLink = document.createElement('a');
+      dlLink.href = data.clips[0].download_url;
+      dlLink.download = data.clips[0].filename;
+      document.body.appendChild(dlLink);
+      dlLink.click();
+      document.body.removeChild(dlLink);
+    }
+  } catch (err) {
+    console.error('Batch trimming error:', err);
+    showToast('Failed to batch trim clips');
   }
 }
 

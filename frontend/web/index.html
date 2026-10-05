@@ -141,6 +141,7 @@
           </div>
 
           <div class="right-controls">
+            <button id="btn-quick-clip" class="ctrl-btn clip-btn" title="Quick Trim: Export MP4 clip of current moment (-3s to +2s) [C]">✂ CLIP [C]</button>
             <button id="btn-prev-round" class="ctrl-btn nav-btn" title="Previous Round">◀ PREV RND</button>
             <button id="btn-next-round" class="ctrl-btn nav-btn" title="Next Round">NEXT RND ▶</button>
           </div>
@@ -350,7 +351,10 @@
       <div class="tag-history-section">
         <div class="sub-header tag-history-header">
           <span>LOGGED VOD TAGS (<span id="tag-count">0</span>)</span>
-          <button id="btn-undo-tag-inline" class="mini-btn undo-btn inline-undo" title="Undo Last Tag (Ctrl+Z)">UNDO [^Z]</button>
+          <div class="tag-header-actions">
+            <button id="btn-batch-clip" class="mini-btn clip-batch-btn" title="Batch Trim & Export All Flaws as MP4 Clips">EXPORT CLIPS</button>
+            <button id="btn-undo-tag-inline" class="mini-btn undo-btn inline-undo" title="Undo Last Tag (Ctrl+Z)">UNDO [^Z]</button>
+          </div>
         </div>
         <div class="tag-history-list" id="tag-history-list">
           <div class="empty-tags">No tags applied yet. Use numeric keys [1-9] while reviewing.</div>
