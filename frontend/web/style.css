@@ -705,6 +705,13 @@ body {
   color: #fff;
 }
 
+.tool-btn.snapshot-btn:hover {
+  background: var(--accent-cyan);
+  color: #0b1118;
+  border-color: var(--accent-cyan);
+  box-shadow: 0 0 8px rgba(0, 245, 212, 0.4);
+}
+
 .timecode-display {
   font-family: 'Courier New', Courier, monospace;
   font-size: 16px;

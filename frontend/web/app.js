@@ -1221,10 +1221,12 @@ function setupTelestrator() {
   document.querySelectorAll('.tool-btn').forEach((btn) => {
     if (btn.id === 'btn-tool-clear') {
       btn.addEventListener('click', clearTelestrator);
+    } else if (btn.id === 'btn-tool-snapshot') {
+      btn.addEventListener('click', exportTelestratorSnapshot);
     } else {
       btn.addEventListener('click', () => {
         document.querySelectorAll('.tool-btn').forEach((b) => {
-          if (b.id !== 'btn-tool-clear') b.classList.remove('active');
+          if (b.id !== 'btn-tool-clear' && b.id !== 'btn-tool-snapshot') b.classList.remove('active');
         });
         btn.classList.add('active');
         state.teleTool = btn.dataset.tool;
@@ -1394,6 +1396,120 @@ function drawVisionCone(fromx, fromy, tox, toy, color) {
   teleCtx.restore();
 }
 
+function exportTelestratorSnapshot() {
+  const width = teleCanvas.width || (videoWrapper ? videoWrapper.clientWidth : 1280) || 1280;
+  const height = teleCanvas.height || (videoWrapper ? videoWrapper.clientHeight : 720) || 720;
+
+  const offscreen = document.createElement('canvas');
+  offscreen.width = width;
+  offscreen.height = height;
+  const octx = offscreen.getContext('2d');
+
+  // 1. Draw base video frame or tactical placeholder grid
+  let hasVideoFrame = false;
+  if (videoPlayer && videoPlayer.readyState >= 2 && videoPlayer.videoWidth > 0) {
+    try {
+      octx.drawImage(videoPlayer, 0, 0, width, height);
+      hasVideoFrame = true;
+    } catch (e) {
+      hasVideoFrame = false;
+    }
+  }
+
+  if (!hasVideoFrame) {
+    octx.fillStyle = '#0f141c';
+    octx.fillRect(0, 0, width, height);
+
+    // Subtle tactical background grid
+    octx.strokeStyle = 'rgba(255, 255, 255, 0.05)';
+    octx.lineWidth = 1;
+    for (let x = 0; x < width; x += 40) {
+      octx.beginPath();
+      octx.moveTo(x, 0);
+      octx.lineTo(x, height);
+      octx.stroke();
+    }
+    for (let y = 0; y < height; y += 40) {
+      octx.beginPath();
+      octx.moveTo(0, y);
+      octx.lineTo(width, y);
+      octx.stroke();
+    }
+
+    // Centered placeholder label
+    octx.fillStyle = 'rgba(255, 255, 255, 0.2)';
+    octx.font = '700 15px "DIN Next LT Pro", Inter, sans-serif';
+    octx.textAlign = 'center';
+    octx.fillText('NO VIDEO LOADED // TACTICAL BOARD SNAPSHOT', width / 2, height / 2);
+  }
+
+  // 2. Overlay Telestrator Drawing Layer
+  octx.drawImage(teleCanvas, 0, 0, width, height);
+
+  // 3. Render Tactical HUD Watermark Banner
+  const curTimeSec = videoPlayer && !isNaN(videoPlayer.currentTime) ? videoPlayer.currentTime : 0;
+  const timeStr = formatTime(curTimeSec);
+  const roundStr = `ROUND ${(state.activeRound || 0) + 1}`;
+  const mapStr = (state.matchMetadata && state.matchMetadata.map_name) || 'ASCENT';
+  const roleStr = (state.authorType || 'solo').toUpperCase();
+
+  const badgeW = 340;
+  const badgeH = 54;
+  const badgeX = 20;
+  const badgeY = height - badgeH - 20;
+
+  octx.save();
+  // Translucent backdrop
+  octx.fillStyle = 'rgba(15, 23, 42, 0.88)';
+  octx.fillRect(badgeX, badgeY, badgeW, badgeH);
+
+  // Accent border & role accent stripe
+  octx.strokeStyle = 'rgba(0, 245, 212, 0.4)';
+  octx.lineWidth = 1;
+  octx.strokeRect(badgeX, badgeY, badgeW, badgeH);
+
+  octx.fillStyle = roleStr === 'COACH' ? '#ffd166' : '#00f5d4';
+  octx.fillRect(badgeX, badgeY, 3, badgeH);
+
+  // Text details
+  octx.textAlign = 'left';
+  octx.fillStyle = '#00f5d4';
+  octx.font = '700 11px "DIN Next LT Pro", Inter, sans-serif';
+  octx.fillText('VALLENS // TACTICAL REVIEW SNAPSHOT', badgeX + 12, badgeY + 18);
+
+  octx.fillStyle = '#ece8e1';
+  octx.font = '700 13px "DIN Next LT Pro", Inter, sans-serif';
+  octx.fillText(`${mapStr} · ${roundStr} · ${timeStr}`, badgeX + 12, badgeY + 38);
+
+  octx.fillStyle = roleStr === 'COACH' ? '#ffd166' : '#94a3b8';
+  octx.font = '700 10px "DIN Next LT Pro", Inter, sans-serif';
+  octx.textAlign = 'right';
+  octx.fillText(`PERSPECTIVE: ${roleStr}`, badgeX + badgeW - 12, badgeY + 38);
+  octx.restore();
+
+  // 4. Trigger Instant PNG Download
+  try {
+    offscreen.toBlob((blob) => {
+      if (!blob) {
+        showToast('Failed to generate snapshot blob');
+        return;
+      }
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      const timecodeClean = timeStr.replace(':', 'm') + 's';
+      a.download = `ValLens_${mapStr}_R${(state.activeRound || 0) + 1}_${timecodeClean}.png`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      setTimeout(() => URL.revokeObjectURL(url), 1500);
+      showToast('Tactical Snapshot Downloaded (PNG)');
+    }, 'image/png');
+  } catch (err) {
+    console.error('Snapshot export error:', err);
+    showToast('Failed to export snapshot');
+  }
+}
+
 // -------------------------------------------------------------
 // Video Player Controls & Timecode
 // -------------------------------------------------------------
@@ -1507,6 +1623,13 @@ function setupEventListeners() {
       e.preventDefault();
       const curTime = videoPlayer && !isNaN(videoPlayer.currentTime) ? videoPlayer.currentTime : 0;
       trimAndDownloadClip(curTime, 'manual_moment', state.activeRound + 1);
+      return;
+    }
+
+    // Tactical Snapshot Hotkey: 'S'
+    if (e.key.toLowerCase() === 's' && !e.ctrlKey && !e.metaKey && !e.altKey) {
+      e.preventDefault();
+      exportTelestratorSnapshot();
       return;
     }
 
