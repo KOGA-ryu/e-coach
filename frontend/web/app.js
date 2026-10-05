@@ -33,7 +33,7 @@ const state = {
 
   // Telestrator State
   telestratorActive: false,
-  teleTool: 'pen', // 'pen', 'arrow', 'circle'
+  teleTool: 'pen', // 'pen', 'arrow', 'circle', 'cone'
   teleColor: '#ff4655',
   isDrawing: false,
   drawStartX: 0,
@@ -1271,6 +1271,9 @@ function setupTelestrator() {
       teleCtx.strokeStyle = state.teleColor;
       teleCtx.lineWidth = 3;
       teleCtx.stroke();
+    } else if (state.teleTool === 'cone') {
+      teleCtx.putImageData(state.savedCanvasImage, 0, 0);
+      drawVisionCone(state.drawStartX, state.drawStartY, currX, currY, state.teleColor);
     }
   });
 
@@ -1330,6 +1333,64 @@ function drawArrow(fromx, fromy, tox, toy, color) {
   teleCtx.lineTo(tox - headlen * Math.cos(angle + Math.PI / 6), toy - headlen * Math.sin(angle + Math.PI / 6));
   teleCtx.closePath();
   teleCtx.fill();
+  teleCtx.restore();
+}
+
+function drawVisionCone(fromx, fromy, tox, toy, color) {
+  const dx = tox - fromx;
+  const dy = toy - fromy;
+  const dist = Math.sqrt(dx * dx + dy * dy);
+  if (dist < 5) return;
+
+  const centerAngle = Math.atan2(dy, dx);
+  // Tactical vision angle: 45-degree sector coverage (±22.5 deg)
+  const halfFov = (22.5 * Math.PI) / 180;
+  const startAngle = centerAngle - halfFov;
+  const endAngle = centerAngle + halfFov;
+
+  teleCtx.save();
+
+  // 1. Semi-translucent field-of-view sector fill
+  teleCtx.beginPath();
+  teleCtx.moveTo(fromx, fromy);
+  teleCtx.arc(fromx, fromy, dist, startAngle, endAngle);
+  teleCtx.closePath();
+
+  teleCtx.globalAlpha = 0.22;
+  teleCtx.fillStyle = color;
+  teleCtx.fill();
+
+  // 2. Solid boundary sightline rays & outer perimeter arc
+  teleCtx.globalAlpha = 0.9;
+  teleCtx.strokeStyle = color;
+  teleCtx.lineWidth = 2.5;
+  teleCtx.lineCap = 'round';
+  teleCtx.stroke();
+
+  // 3. Dashed centerline representing crosshair direction / primary focal vector
+  teleCtx.beginPath();
+  teleCtx.setLineDash([5, 4]);
+  teleCtx.lineWidth = 1.5;
+  teleCtx.moveTo(fromx, fromy);
+  teleCtx.lineTo(tox, toy);
+  teleCtx.stroke();
+
+  // 4. Reticle tick mark at aimpoint
+  teleCtx.setLineDash([]);
+  teleCtx.lineWidth = 2;
+  const tickLen = 6;
+  const perp = centerAngle + Math.PI / 2;
+  teleCtx.beginPath();
+  teleCtx.moveTo(tox - tickLen * Math.cos(perp), toy - tickLen * Math.sin(perp));
+  teleCtx.lineTo(tox + tickLen * Math.cos(perp), toy + tickLen * Math.sin(perp));
+  teleCtx.stroke();
+
+  // 5. Player position anchor dot at cone apex
+  teleCtx.beginPath();
+  teleCtx.arc(fromx, fromy, 4, 0, Math.PI * 2);
+  teleCtx.fillStyle = color;
+  teleCtx.fill();
+
   teleCtx.restore();
 }
 
@@ -1978,6 +2039,9 @@ function setupEventListeners() {
       }
       if (syncModal && syncModal.style.display === 'flex') {
         syncModal.style.display = 'none';
+      }
+      if (obsModal && obsModal.style.display === 'flex') {
+        obsModal.style.display = 'none';
       }
     }
   });
