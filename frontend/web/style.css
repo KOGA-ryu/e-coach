@@ -2330,4 +2330,278 @@ video {
   font-size: 13px;
 }
 
+/* ------------------------------------------------------------- */
+/* PRACTICE ROUTINES & AIM PROTOCOLS MODAL */
+/* ------------------------------------------------------------- */
+.btn-drills {
+  background: rgba(6, 214, 160, 0.12);
+  border: 1px solid #06d6a0;
+  color: #06d6a0;
+  font-family: var(--font-tactical);
+  font-size: 13px;
+  font-weight: 700;
+  letter-spacing: 0.5px;
+  padding: 5px 12px;
+  cursor: pointer;
+  border-radius: 4px;
+  transition: all 0.2s ease;
+}
+
+.btn-drills:hover {
+  background: #06d6a0;
+  color: #0f1923;
+  box-shadow: 0 0 10px rgba(6, 214, 160, 0.4);
+}
+
+.modal-actions-right {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.drills-modal-card {
+  width: 95vw;
+  max-width: 1080px;
+  max-height: 92vh;
+  display: flex;
+  flex-direction: column;
+}
+
+.drills-modal-body {
+  padding: 20px;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+}
+
+.drills-summary-banner {
+  background: linear-gradient(135deg, rgba(6, 214, 160, 0.09) 0%, rgba(15, 25, 35, 0.85) 100%);
+  border: 1px solid rgba(6, 214, 160, 0.35);
+  border-radius: 6px;
+  padding: 16px 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.drills-banner-top {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.drills-banner-title {
+  font-family: var(--font-tactical);
+  font-size: 18px;
+  font-weight: 700;
+  color: #06d6a0;
+  letter-spacing: 0.5px;
+}
+
+.drills-duration-badge {
+  background: rgba(6, 214, 160, 0.2);
+  border: 1px solid #06d6a0;
+  color: #fff;
+  font-family: var(--font-tactical);
+  font-size: 13px;
+  font-weight: 700;
+  padding: 3px 10px;
+  border-radius: 4px;
+}
+
+.drills-banner-text {
+  font-size: 13px;
+  color: #ece8e1;
+  line-height: 1.45;
+}
+
+.drills-list-container {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.drill-prescribed-card {
+  background: var(--bg-secondary);
+  border: 1px solid var(--border-color);
+  border-radius: 6px;
+  padding: 16px 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  border-left: 4px solid var(--border-color);
+}
+
+.drill-prescribed-card.high {
+  border-left-color: #ff4655;
+}
+
+.drill-prescribed-card.medium {
+  border-left-color: #ffb703;
+}
+
+.drill-prescribed-card.low {
+  border-left-color: #06d6a0;
+}
+
+.drill-card-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.drill-title-group {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.drill-prio-badge {
+  font-family: var(--font-tactical);
+  font-size: 11px;
+  font-weight: 700;
+  padding: 2px 7px;
+  border-radius: 3px;
+  letter-spacing: 0.5px;
+}
+
+.drill-prio-badge.high {
+  background: rgba(255, 70, 85, 0.2);
+  color: #ff4655;
+  border: 1px solid #ff4655;
+}
+
+.drill-prio-badge.medium {
+  background: rgba(255, 183, 3, 0.2);
+  color: #ffb703;
+  border: 1px solid #ffb703;
+}
+
+.drill-prio-badge.low {
+  background: rgba(6, 214, 160, 0.2);
+  color: #06d6a0;
+  border: 1px solid #06d6a0;
+}
+
+.drill-flaw-name {
+  font-family: var(--font-tactical);
+  font-size: 16px;
+  font-weight: 700;
+  color: #fff;
+  letter-spacing: 0.5px;
+}
+
+.drill-time-est {
+  font-family: var(--font-tactical);
+  font-size: 12px;
+  color: var(--text-muted);
+}
+
+/* Exercise Sub-boxes */
+.drill-section-box {
+  background: var(--bg-tertiary);
+  border: 1px solid var(--border-color);
+  border-radius: 5px;
+  padding: 12px 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.drill-section-title {
+  font-family: var(--font-tactical);
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.5px;
+  color: var(--accent-cyan);
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.drill-range-details {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  font-size: 11.5px;
+  color: var(--text-muted);
+}
+
+.drill-instructions-list {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding-left: 18px;
+  margin: 4px 0;
+}
+
+.drill-instructions-list li {
+  font-size: 12px;
+  color: #ece8e1;
+  line-height: 1.4;
+}
+
+.drill-cue-box {
+  background: rgba(255, 183, 3, 0.08);
+  border-left: 3px solid #ffb703;
+  padding: 6px 10px;
+  border-radius: 3px;
+  font-size: 11.5px;
+  color: #ffd166;
+  font-style: italic;
+}
+
+/* Aim Lab Scenarios Grid */
+.aimlab-scenarios-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+  gap: 8px;
+}
+
+.aimlab-scenario-pill {
+  background: var(--bg-card);
+  border: 1px solid var(--border-color);
+  border-radius: 4px;
+  padding: 8px 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.aimlab-scenario-top {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.aimlab-scenario-name {
+  font-family: var(--font-tactical);
+  font-size: 13px;
+  font-weight: 700;
+  color: #fff;
+}
+
+.aimlab-plays-badge {
+  font-family: var(--font-tactical);
+  font-size: 11px;
+  background: rgba(0, 245, 212, 0.15);
+  color: var(--accent-cyan);
+  padding: 1px 6px;
+  border-radius: 3px;
+}
+
+.aimlab-scenario-meta {
+  font-size: 11px;
+  color: var(--text-muted);
+  display: flex;
+  justify-content: space-between;
+}
+
+.aimlab-notes {
+  font-size: 11px;
+  color: #c5d1de;
+  font-style: italic;
+}
+
 

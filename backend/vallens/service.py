@@ -5,6 +5,7 @@ from pathlib import Path
 from typing import Any, Optional
 
 from vallens.analytics.agent_profile import AgentMatrixResult, AgentProfilingEngine
+from vallens.analytics.drills import TrainingRoutineEngine, TrainingRoutineResult
 from vallens.analytics.heatmap import HeatmapAggregationEngine, HeatmapAggregationResult
 from vallens.analytics.perspective import PerspectiveDiffEngine, PerspectiveDiffResult
 from vallens.analytics.projection import CoordinateProjector
@@ -201,6 +202,20 @@ class ValLensService:
         engine = PerspectiveDiffEngine(default_tolerance_ms=tolerance_ms)
         return engine.analyze_perspectives(
             match_id=match_id, events=events, tags=tags, tolerance_ms=tolerance_ms
+        )
+
+    def get_training_routine(
+        self, match_id: str, player_puuid: Optional[str] = None
+    ) -> Optional[TrainingRoutineResult]:
+        """Generate structured practice routine and Aim Lab playlist tailored to match flaws."""
+        match = self.repo.get_match(match_id)
+        if not match:
+            return None
+        events = self.repo.get_events(match_id)
+        tags = self.repo.get_tags(match_id)
+        engine = TrainingRoutineEngine()
+        return engine.generate_routine(
+            metadata=match, events=events, tags=tags, player_puuid=player_puuid
         )
 
 

@@ -24,6 +24,14 @@ from .perspective import (
     PerspectiveDiffResult,
     PerspectiveSelfCriticism,
 )
+from .drills import (
+    AimTrainerScenario,
+    MapSpecificDrill,
+    PrescribedFlawDrill,
+    RangeExercise,
+    TrainingRoutineEngine,
+    TrainingRoutineResult,
+)
 from .projection import CoordinateProjector, MapCalibration
 from .report import CoachingReportGenerator
 
@@ -48,6 +56,12 @@ __all__ = [
     "PerspectiveSelfCriticism",
     "PerspectiveAgreedTag",
     "CategoryDivergence",
+    "TrainingRoutineEngine",
+    "TrainingRoutineResult",
+    "PrescribedFlawDrill",
+    "RangeExercise",
+    "AimTrainerScenario",
+    "MapSpecificDrill",
 ]
 
 

@@ -37,6 +37,7 @@
       <button id="btn-open-sync" class="btn-sync" title="Connect Riot Account">LINK ACCOUNT</button>
       <button id="btn-open-diff" class="btn-diff" title="Coach vs Solo Perspective Diff & Blindspots">PERSPECTIVE DIFF</button>
       <button id="btn-open-matrix" class="btn-matrix" title="Agent Profiling Matrix">AGENT MATRIX</button>
+      <button id="btn-open-drills" class="btn-drills" title="Custom Practice Routines & Aim Trainer Exporter">PRACTICE DRILLS</button>
       <a id="btn-view-report" class="btn-report" target="_blank" href="#">COACHING REPORT</a>
     </div>
   </header>
@@ -502,6 +503,31 @@
           <div class="diff-takeaways-list" id="diff-takeaways-list">
             <!-- Populated dynamically -->
           </div>
+        </div>
+      </div>
+  <!-- Practice Routines & Aim Trainer Protocols Modal -->
+  <div class="modal-overlay" id="drills-modal" style="display: none;">
+    <div class="modal-card drills-modal-card">
+      <div class="modal-header">
+        <div class="modal-title-group">
+          <div class="modal-title">ACTIONABLE PRACTICE ROUTINES & AIM PROTOCOLS</div>
+          <div class="modal-subtitle">Personalized 3-tier training regimen (The Range, Aim Lab, Map Dry-Runs) generated from review flaws</div>
+        </div>
+        <div class="modal-actions-right">
+          <button id="btn-copy-drills" class="ctrl-btn" title="Copy markdown training routine">COPY ROUTINE [MD]</button>
+          <a id="btn-download-aimlab" class="btn-primary" href="#" target="_blank">EXPORT AIM LAB (.JSON)</a>
+          <button id="btn-close-drills" class="modal-close-btn">&times;</button>
+        </div>
+      </div>
+      <div class="modal-body drills-modal-body">
+        <!-- Top Protocol Summary Banner -->
+        <div class="drills-summary-banner" id="drills-summary-banner">
+          <!-- Populated dynamically -->
+        </div>
+
+        <!-- Prescribed Drills List -->
+        <div class="drills-list-container" id="drills-list-container">
+          <!-- Populated dynamically -->
         </div>
       </div>
     </div>

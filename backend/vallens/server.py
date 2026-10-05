@@ -301,6 +301,101 @@ class ValLensRequestHandler(BaseHTTPRequestHandler):
             })
             return
 
+        # 7.6. Aim Lab Playlist Export
+        if path.startswith("/api/matches/") and path.endswith("/drills/aimlab-playlist"):
+            parts = path.split("/")
+            match_id = parts[3]
+            player_puuid = query.get("player", [None])[0]
+            routine = self.service.get_training_routine(match_id, player_puuid=player_puuid)
+            if not routine:
+                self._send_error("Match not found", status=404)
+                return
+
+            payload = json.dumps(routine.aimlab_playlist, indent=2).encode("utf-8")
+            filename = f"vallens_{routine.map_name.lower()}_aimlab.json"
+            self.send_response(200)
+            self.send_header("Content-Type", "application/json; charset=utf-8")
+            self.send_header("Content-Disposition", f'attachment; filename="{filename}"')
+            self.send_header("Content-Length", str(len(payload)))
+            self.end_headers()
+            self.wfile.write(payload)
+            return
+
+        # 7.7. Practice Routines & Aim Drills API
+        if path.startswith("/api/matches/") and path.endswith("/drills"):
+            parts = path.split("/")
+            match_id = parts[3]
+            player_puuid = query.get("player", [None])[0]
+            fmt = query.get("format", ["json"])[0]
+
+            routine = self.service.get_training_routine(match_id, player_puuid=player_puuid)
+            if not routine:
+                self._send_error("Match not found", status=404)
+                return
+
+            if fmt == "markdown":
+                payload = routine.markdown_routine.encode("utf-8")
+                self.send_response(200)
+                self.send_header("Content-Type", "text/markdown; charset=utf-8")
+                self.send_header("Content-Length", str(len(payload)))
+                self.end_headers()
+                self.wfile.write(payload)
+                return
+
+            self._send_json({
+                "match_id": routine.match_id,
+                "map_name": routine.map_name,
+                "total_routine_duration_min": routine.total_routine_duration_min,
+                "primary_focus": routine.primary_focus,
+                "summary": routine.summary,
+                "prescriptions": [
+                    {
+                        "tag_name": p.tag_name,
+                        "category": p.category,
+                        "correlated_flaw_count": p.correlated_flaw_count,
+                        "untraded_deaths_correlated": p.untraded_deaths_correlated,
+                        "first_deaths_correlated": p.first_deaths_correlated,
+                        "priority": p.priority,
+                        "estimated_time_min": p.estimated_time_min,
+                        "range_exercise": {
+                            "exercise_name": p.range_exercise.exercise_name,
+                            "weapon": p.range_exercise.weapon,
+                            "target_mode": p.range_exercise.target_mode,
+                            "armor_setting": p.range_exercise.armor_setting,
+                            "duration_minutes": p.range_exercise.duration_minutes,
+                            "instructions": p.range_exercise.instructions,
+                            "coaching_cue": p.range_exercise.coaching_cue,
+                        },
+                        "aim_trainer_scenarios": [
+                            {
+                                "scenario_name": sc.scenario_name,
+                                "platform": sc.platform,
+                                "task_type": sc.task_type,
+                                "recommended_plays": sc.recommended_plays,
+                                "target_score": sc.target_score,
+                                "notes": sc.notes,
+                            }
+                            for sc in p.aim_trainer_scenarios
+                        ],
+                        "map_drill": (
+                            {
+                                "map_name": p.map_drill.map_name,
+                                "callout": p.map_drill.callout,
+                                "objective": p.map_drill.objective,
+                                "setup": p.map_drill.setup,
+                                "drills": p.map_drill.drills,
+                            }
+                            if p.map_drill
+                            else None
+                        ),
+                    }
+                    for p in routine.prescriptions
+                ],
+                "aimlab_playlist": routine.aimlab_playlist,
+                "markdown_routine": routine.markdown_routine,
+            })
+            return
+
         # 8. Match Overview
         if path.startswith("/api/matches/"):
             match_id = path.split("/")[3]

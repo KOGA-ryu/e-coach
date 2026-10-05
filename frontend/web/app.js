@@ -43,6 +43,9 @@ const state = {
   // Perspective Diff & Cognitive Blindspots State
   perspectiveDiff: null,
   diffFilter: 'blindspots',
+
+  // Practice Drills State
+  trainingRoutine: null,
 };
 
 // DOM Elements
@@ -108,6 +111,15 @@ const diffKpiGrid = document.getElementById('diff-kpi-grid');
 const diffCategoryGrid = document.getElementById('diff-category-grid');
 const diffCardsContainer = document.getElementById('diff-cards-container');
 const diffTakeawaysList = document.getElementById('diff-takeaways-list');
+
+// Practice Drills DOM Elements
+const btnOpenDrills = document.getElementById('btn-open-drills');
+const drillsModal = document.getElementById('drills-modal');
+const btnCloseDrills = document.getElementById('btn-close-drills');
+const btnCopyDrills = document.getElementById('btn-copy-drills');
+const btnDownloadAimlab = document.getElementById('btn-download-aimlab');
+const drillsSummaryBanner = document.getElementById('drills-summary-banner');
+const drillsListContainer = document.getElementById('drills-list-container');
 
 // Tag Mapping for 1-9 Hotkeys
 const TAG_MAP = {
@@ -180,8 +192,10 @@ async function loadMatch(matchId) {
     const chaptersRes = await fetch(`/api/matches/${matchId}/chapters`);
     state.chapters = await chaptersRes.json();
 
-    // 4. Fetch tags
+    // 4. Fetch tags, perspective diff & practice drills
     await loadTags();
+    loadPerspectiveDiff(matchId);
+    loadTrainingRoutine(matchId);
 
     // 5. Setup map background
     const mapName = getMapNameFromPath(state.matchMetadata.map_id);
@@ -1033,6 +1047,7 @@ async function loadTags() {
     renderTagHistory();
     renderHabitInsights();
     loadPerspectiveDiff(state.currentMatchId);
+    loadTrainingRoutine(state.currentMatchId);
   } catch (err) {
     console.error('Failed to load tags:', err);
   }
@@ -1818,8 +1833,49 @@ function setupEventListeners() {
     });
   });
 
+  // Practice Drills Modal Handlers
+  if (btnOpenDrills) {
+    btnOpenDrills.addEventListener('click', () => {
+      drillsModal.style.display = 'flex';
+      if (!state.trainingRoutine && state.currentMatchId) {
+        loadTrainingRoutine(state.currentMatchId);
+      } else {
+        renderTrainingRoutineModal();
+      }
+    });
+  }
+
+  if (btnCloseDrills) {
+    btnCloseDrills.addEventListener('click', () => {
+      drillsModal.style.display = 'none';
+    });
+  }
+
+  if (drillsModal) {
+    drillsModal.addEventListener('click', (e) => {
+      if (e.target === drillsModal) {
+        drillsModal.style.display = 'none';
+      }
+    });
+  }
+
+  if (btnCopyDrills) {
+    btnCopyDrills.addEventListener('click', () => {
+      if (state.trainingRoutine && state.trainingRoutine.markdown_routine) {
+        navigator.clipboard.writeText(state.trainingRoutine.markdown_routine).then(() => {
+          showToast('Copied Practice Routine Markdown to Clipboard!');
+        }).catch(() => {
+          showToast('Failed to copy to clipboard.');
+        });
+      }
+    });
+  }
+
   window.addEventListener('keydown', (e) => {
     if (e.key === 'Escape') {
+      if (drillsModal && drillsModal.style.display === 'flex') {
+        drillsModal.style.display = 'none';
+      }
       if (diffModal && diffModal.style.display === 'flex') {
         diffModal.style.display = 'none';
       }
@@ -2158,6 +2214,148 @@ function renderDiffCards() {
 
     diffCardsContainer.appendChild(card);
   });
+}
+
+/**
+ * Fetch and render Actionable Training Routines and Aim Lab Playlist.
+ */
+async function loadTrainingRoutine(matchId) {
+  if (!matchId) return;
+  try {
+    const res = await fetch(`/api/matches/${matchId}/drills`);
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    const data = await res.json();
+    state.trainingRoutine = data;
+    if (btnDownloadAimlab) {
+      btnDownloadAimlab.href = `/api/matches/${matchId}/drills/aimlab-playlist`;
+    }
+    renderTrainingRoutineModal();
+  } catch (err) {
+    console.error('Failed to load training routine:', err);
+  }
+}
+
+function renderTrainingRoutineModal() {
+  if (!state.trainingRoutine) return;
+  const r = state.trainingRoutine;
+
+  // 1. Render Summary Banner
+  if (drillsSummaryBanner) {
+    drillsSummaryBanner.innerHTML = `
+      <div class="drills-banner-top">
+        <span class="drills-banner-title">PRIORITY PROTOCOL: ${r.primary_focus.toUpperCase()}</span>
+        <span class="drills-duration-badge">~${r.total_routine_duration_min} MIN TOTAL WORKOUT</span>
+      </div>
+      <div class="drills-banner-text">${r.summary}</div>
+    `;
+  }
+
+  // 2. Render Prescribed Flaw Drill Cards
+  if (drillsListContainer) {
+    drillsListContainer.innerHTML = '';
+    const prescriptions = r.prescriptions || [];
+
+    if (prescriptions.length === 0) {
+      drillsListContainer.innerHTML = '<div class="diff-empty-msg">No flaw-specific drills required. Basic fundamentals active.</div>';
+      return;
+    }
+
+    prescriptions.forEach((p, idx) => {
+      const card = document.createElement('div');
+      const prioClass = (p.priority || 'medium').toLowerCase();
+      card.className = `drill-prescribed-card ${prioClass}`;
+
+      const instructionsHtml = (p.range_exercise.instructions || [])
+        .map((inst) => `<li>${inst}</li>`)
+        .join('');
+
+      let aimlabHtml = '';
+      if (p.aim_trainer_scenarios && p.aim_trainer_scenarios.length > 0) {
+        aimlabHtml = `
+          <div class="drill-section-box">
+            <div class="drill-section-title">
+              <span>🎯</span> AIM TRAINER BENCHMARKS (AIM LAB / KOVAAKS)
+            </div>
+            <div class="aimlab-scenarios-grid">
+              ${p.aim_trainer_scenarios
+                .map(
+                  (sc) => `
+                <div class="aimlab-scenario-pill">
+                  <div class="aimlab-scenario-top">
+                    <span class="aimlab-scenario-name">${sc.scenario_name}</span>
+                    <span class="aimlab-plays-badge">${sc.recommended_plays}x Plays</span>
+                  </div>
+                  <div class="aimlab-scenario-meta">
+                    <span>Task: ${sc.task_type} (${sc.platform})</span>
+                    <strong style="color: #06d6a0;">Target: ${sc.target_score}</strong>
+                  </div>
+                  <div class="aimlab-notes">${sc.notes}</div>
+                </div>
+              `
+                )
+                .join('')}
+            </div>
+          </div>
+        `;
+      }
+
+      let mapDrillHtml = '';
+      if (p.map_drill) {
+        mapDrillHtml = `
+          <div class="drill-section-box">
+            <div class="drill-section-title">
+              <span>🗺️</span> MAP-SPECIFIC DRY-RUN (${p.map_drill.map_name.toUpperCase()} — ${p.map_drill.callout.toUpperCase()})
+            </div>
+            <div class="drill-range-details">
+              <span><strong>Setup:</strong> ${p.map_drill.setup}</span>
+              <span><strong>Objective:</strong> ${p.map_drill.objective}</span>
+            </div>
+            <ul class="drill-instructions-list">
+              ${(p.map_drill.drills || []).map((d) => `<li>${d}</li>`).join('')}
+            </ul>
+          </div>
+        `;
+      }
+
+      card.innerHTML = `
+        <div class="drill-card-header">
+          <div class="drill-title-group">
+            <span class="drill-prio-badge ${prioClass}">${p.priority} PRIORITY</span>
+            <span class="drill-flaw-name">#${idx + 1}. ${p.tag_name.replace(/_/g, ' ').toUpperCase()} PROTOCOL</span>
+            <span class="diff-cat-pill">${p.category}</span>
+          </div>
+          <span class="drill-time-est">⏱️ ~${p.estimated_time_min} Minutes</span>
+        </div>
+
+        <!-- Tier 1: The Range Protocol -->
+        <div class="drill-section-box">
+          <div class="drill-section-title">
+            <span>⚡</span> TIER 1: THE RANGE (${p.range_exercise.exercise_name.toUpperCase()})
+          </div>
+          <div class="drill-range-details">
+            <span><strong>Weapon:</strong> ${p.range_exercise.weapon}</span>
+            <span><strong>Mode:</strong> ${p.range_exercise.target_mode}</span>
+            <span><strong>Armor:</strong> ${p.range_exercise.armor_setting}</span>
+            <span><strong>Duration:</strong> ${p.range_exercise.duration_minutes} min</span>
+          </div>
+          <ul class="drill-instructions-list">
+            ${instructionsHtml}
+          </ul>
+          <div class="drill-cue-box">
+            <strong>Coaching Cue:</strong> "${p.range_exercise.coaching_cue}"
+          </div>
+        </div>
+
+        <!-- Tier 2: Aim Trainer Scenarios -->
+        ${aimlabHtml}
+
+        <!-- Tier 3: Map Specific Dry Run -->
+        ${mapDrillHtml}
+      `;
+
+      drillsListContainer.appendChild(card);
+    });
+  }
 }
 
 // Start application

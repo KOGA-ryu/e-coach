@@ -135,6 +135,28 @@ class TestValLensServer(unittest.TestCase):
         self.assertTrue(len(data["category_divergence"]) >= 4)
         self.assertTrue(len(data["executive_takeaways"]) >= 1)
 
+    def test_drills_endpoints(self):
+        # 1. JSON endpoint
+        status, body, _ = self._get(f"/api/matches/{self.match.match_id}/drills")
+        self.assertEqual(status, 200)
+        data = json.loads(body.decode("utf-8"))
+        self.assertIn("prescriptions", data)
+        self.assertIn("aimlab_playlist", data)
+        self.assertTrue(len(data["prescriptions"]) >= 1)
+
+        # 2. Markdown endpoint
+        status, md_body, headers = self._get(f"/api/matches/{self.match.match_id}/drills?format=markdown")
+        self.assertEqual(status, 200)
+        self.assertIn("text/markdown", headers.get("Content-Type", ""))
+        self.assertIn(b"ValLens Practice Routine", md_body)
+
+        # 3. Aim Lab Playlist attachment endpoint
+        status, playlist_body, headers = self._get(f"/api/matches/{self.match.match_id}/drills/aimlab-playlist")
+        self.assertEqual(status, 200)
+        self.assertIn("attachment", headers.get("Content-Disposition", ""))
+        pl_data = json.loads(playlist_body.decode("utf-8"))
+        self.assertIn("tasks", pl_data)
+
 
 if __name__ == "__main__":
     unittest.main()
