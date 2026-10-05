@@ -402,6 +402,31 @@ class TestValLensServer(unittest.TestCase):
         self.assertEqual(res["state"], "POSTGAME")
         self.assertFalse(res["recording"])
 
+    def test_voice_transcription_endpoints(self):
+        # 1. Test /api/notes/suggest-tags
+        status, res = self._post_json(
+            "/api/notes/suggest-tags",
+            {"text": "Ace repeeked mid without info and had lazy floor aim."},
+        )
+        self.assertEqual(status, 200)
+        self.assertIn("suggested_tags", res)
+        tags = [t["tag"] for t in res["suggested_tags"]]
+        self.assertIn("crosshair_placement", tags)
+        self.assertIn("over_peeking", tags)
+
+        # 2. Test /api/notes/transcribe with simulated audio + text hint
+        fake_b64 = "data:audio/webm;base64,AAAA"
+        status, res = self._post_json(
+            "/api/notes/transcribe",
+            {"audio_data": fake_b64, "text_hint": "Late flash and poor spacing led to un-tradeable death"},
+        )
+        self.assertEqual(status, 200)
+        self.assertIn("transcript", res)
+        self.assertIn("suggested_tags", res)
+        tags = [t["tag"] for t in res["suggested_tags"]]
+        self.assertIn("late_flash", tags)
+        self.assertIn("poor_spacing", tags)
+
 
 if __name__ == "__main__":
     unittest.main()

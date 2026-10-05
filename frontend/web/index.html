@@ -741,9 +741,20 @@
         </div>
 
         <!-- Text Note Input -->
-        <div class="form-group" style="margin-bottom: 14px;">
+        <div class="form-group" style="margin-bottom: 12px;">
           <label class="form-label" for="note-text-input">COACH OBSERVATION & FEEDBACK</label>
           <textarea id="note-text-input" class="form-input note-textarea" rows="3" placeholder="Enter tactical coaching feedback, pre-aim advice, rotate critique..."></textarea>
+        </div>
+
+        <!-- AI Tactical Flaw Suggestions & Auto-Tags -->
+        <div class="note-flaw-tagger" id="note-flaw-tagger">
+          <div class="note-flaw-header">
+            <span class="note-flaw-title">⚡ AI DETECTED TACTICAL FLAWS & TAGS</span>
+            <span class="note-flaw-badge" id="note-transcribe-engine-badge">ENGINE READY</span>
+          </div>
+          <div class="note-tags-container" id="note-tags-container">
+            <div class="note-tags-empty" id="note-tags-empty">Speak or type your observation to detect tactical flaws automatically (e.g. "repeeked mid with lazy crosshair")</div>
+          </div>
         </div>
 
         <!-- Voice Memo Dictation -->

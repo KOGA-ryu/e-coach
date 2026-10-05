@@ -63,9 +63,14 @@ const state = {
   noteModalTargetRound: 0,
   noteModalTargetMs: 0,
   activeMediaRecorder: null,
+  activeSpeechRecognition: null,
   activeAudioChunks: [],
   audioRecordTimerInterval: null,
   recordedAudioBase64: null,
+  speechTranscript: '',
+  suggestedTacticalTags: [],
+  appliedTagNames: new Set(),
+  suggestDebounceTimer: null,
 
   // Economy Correlation State
   economyAnalysis: null,
@@ -106,6 +111,9 @@ const voiceRecordTimer = document.getElementById('voice-record-timer');
 const voicePreviewWrapper = document.getElementById('voice-preview-wrapper');
 const noteAudioPlayer = document.getElementById('note-audio-player');
 const btnDiscardAudio = document.getElementById('btn-discard-audio');
+const noteTranscribeEngineBadge = document.getElementById('note-transcribe-engine-badge');
+const noteTagsContainer = document.getElementById('note-tags-container');
+const noteTagsEmpty = document.getElementById('note-tags-empty');
 const videoPlaceholder = document.getElementById('video-placeholder');
 const videoFileInput = document.getElementById('video-file-input');
 const obsHudPill = document.getElementById('obs-hud-pill');
@@ -2537,6 +2545,7 @@ function setupEventListeners() {
         saveCoachNote();
       }
     });
+    noteTextInput.addEventListener('input', onNoteTextInputChanged);
   }
 }
 
@@ -3821,6 +3830,8 @@ function openNoteModal(timestampSec = null, roundNum = null) {
 
   state.noteModalTargetRound = rnd;
   state.noteModalTargetMs = Math.round(sec * 1000);
+  state.speechTranscript = '';
+  state.appliedTagNames.clear();
 
   if (noteTimeBadge) {
     noteTimeBadge.textContent = `ROUND ${rnd + 1} · ${formatTime(sec)}`;
@@ -3831,7 +3842,14 @@ function openNoteModal(timestampSec = null, roundNum = null) {
   }
   if (noteTextInput) {
     noteTextInput.value = '';
+    delete noteTextInput.dataset.autoDictated;
   }
+
+  const hasSpeech = !!(window.SpeechRecognition || window.webkitSpeechRecognition);
+  if (noteTranscribeEngineBadge) {
+    noteTranscribeEngineBadge.textContent = hasSpeech ? 'SPEECH AI READY' : 'NLP TAGGER READY';
+  }
+  renderSuggestedTacticalTags([]);
 
   discardAudioRecording();
   noteModal.style.display = 'flex';
@@ -3849,6 +3867,7 @@ function discardAudioRecording() {
   stopAudioRecordingSafe();
   state.recordedAudioBase64 = null;
   state.activeAudioChunks = [];
+  state.speechTranscript = '';
   if (noteAudioPlayer) {
     noteAudioPlayer.pause();
     noteAudioPlayer.src = '';
@@ -3868,11 +3887,121 @@ function stopAudioRecordingSafe() {
       state.activeMediaRecorder.stop();
     } catch (e) {}
   }
+  if (state.activeSpeechRecognition) {
+    try {
+      state.activeSpeechRecognition.stop();
+    } catch (e) {}
+    state.activeSpeechRecognition = null;
+  }
   if (state.audioRecordTimerInterval) {
     clearInterval(state.audioRecordTimerInterval);
     state.audioRecordTimerInterval = null;
   }
   state.activeMediaRecorder = null;
+}
+
+function onNoteTextInputChanged() {
+  if (state.suggestDebounceTimer) {
+    clearTimeout(state.suggestDebounceTimer);
+  }
+  state.suggestDebounceTimer = setTimeout(() => {
+    const text = noteTextInput ? noteTextInput.value.trim() : '';
+    detectTacticalTags(text);
+  }, 250);
+}
+
+async function detectTacticalTags(text) {
+  if (!text || text.trim().length === 0) {
+    renderSuggestedTacticalTags([]);
+    return;
+  }
+  try {
+    const res = await fetch('/api/notes/suggest-tags', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ text }),
+    });
+    if (res.ok) {
+      const data = await res.json();
+      renderSuggestedTacticalTags(data.suggested_tags || []);
+    }
+  } catch (err) {
+    console.error('Tactical tag extraction error:', err);
+  }
+}
+
+function renderSuggestedTacticalTags(tags) {
+  if (!noteTagsContainer) return;
+  noteTagsContainer.innerHTML = '';
+
+  if (!tags || tags.length === 0) {
+    const emptySpan = document.createElement('div');
+    emptySpan.className = 'note-tags-empty';
+    emptySpan.id = 'note-tags-empty';
+    emptySpan.textContent = 'Speak or type your observation to detect tactical flaws automatically (e.g. "repeeked mid with lazy crosshair")';
+    noteTagsContainer.appendChild(emptySpan);
+    return;
+  }
+
+  tags.forEach((t) => {
+    const isApplied = state.appliedTagNames.has(t.tag);
+    const chip = document.createElement('button');
+    chip.className = `tag-chip ${(t.category || 'mechanics').toLowerCase()} ${isApplied ? 'applied' : ''}`;
+    chip.innerHTML = `${isApplied ? '✓' : '+'} ${t.display_name} <span class="chip-conf">${Math.round(t.confidence * 100)}%</span>`;
+    chip.title = `Click to log '${t.display_name}' (${t.category}) flaw tag at current timestamp`;
+
+    chip.addEventListener('click', (e) => {
+      e.preventDefault();
+      applySuggestedTag(t, chip);
+    });
+
+    noteTagsContainer.appendChild(chip);
+  });
+}
+
+async function applySuggestedTag(tag, chipElement) {
+  if (!state.currentMatchId) {
+    showToast('No active match loaded to attach tag');
+    return;
+  }
+  if (state.appliedTagNames.has(tag.tag)) {
+    showToast(`Tag "${tag.display_name}" is already applied`);
+    return;
+  }
+
+  try {
+    const payload = {
+      timestamp_ms: state.noteModalTargetMs,
+      category: tag.category,
+      name: tag.tag,
+      author: state.authorType || 'coach',
+    };
+
+    const res = await fetch(`/api/matches/${state.currentMatchId}/tags`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload),
+    });
+
+    if (res.ok) {
+      state.appliedTagNames.add(tag.tag);
+      if (chipElement) {
+        chipElement.classList.add('applied');
+        chipElement.innerHTML = `✓ ${tag.display_name} <span class="chip-conf">${Math.round(tag.confidence * 100)}%</span>`;
+      }
+      showToast(`Flaw Tag "${tag.display_name}" added to Round ${state.noteModalTargetRound + 1}`);
+
+      // Refresh match tags and timeline
+      await loadMatchTags(state.currentMatchId);
+      const roundEvents = state.events.filter((e) => e.round_number === state.activeRound);
+      renderRoundEventsFeed(roundEvents, state.activeRound);
+    } else {
+      showToast('Failed to apply tactical flaw tag');
+    }
+  } catch (err) {
+    console.error('Error applying flaw tag:', err);
+    showToast('Error applying flaw tag');
+  }
 }
 
 async function toggleAudioRecording() {
@@ -3881,11 +4010,16 @@ async function toggleAudioRecording() {
     try {
       state.activeMediaRecorder.stop();
     } catch (e) {}
+    if (state.activeSpeechRecognition) {
+      try {
+        state.activeSpeechRecognition.stop();
+      } catch (e) {}
+    }
     if (btnRecordAudio) {
       btnRecordAudio.classList.remove('recording');
       btnRecordAudio.textContent = '🎙️ RECORD AUDIO';
     }
-    if (voiceRecordStatus) voiceRecordStatus.textContent = 'PROCESSING AUDIO...';
+    if (voiceRecordStatus) voiceRecordStatus.textContent = 'TRANSCRIBING AUDIO...';
     return;
   }
 
@@ -3901,24 +4035,90 @@ async function toggleAudioRecording() {
     const mediaRecorder = new MediaRecorder(stream);
     state.activeMediaRecorder = mediaRecorder;
 
+    // Concurrently initialize browser SpeechRecognition if available
+    const SpeechRec = window.SpeechRecognition || window.webkitSpeechRecognition;
+    if (SpeechRec) {
+      try {
+        const recognition = new SpeechRec();
+        recognition.continuous = true;
+        recognition.interimResults = true;
+        recognition.lang = 'en-US';
+
+        recognition.onresult = (event) => {
+          let fullTranscript = '';
+          for (let i = 0; i < event.results.length; ++i) {
+            fullTranscript += event.results[i][0].transcript + ' ';
+          }
+          fullTranscript = fullTranscript.trim();
+          state.speechTranscript = fullTranscript;
+
+          if (noteTextInput && (!noteTextInput.value || noteTextInput.dataset.autoDictated === 'true')) {
+            noteTextInput.value = fullTranscript;
+            noteTextInput.dataset.autoDictated = 'true';
+          }
+          detectTacticalTags(fullTranscript);
+        };
+
+        recognition.onerror = (e) => {
+          console.warn('SpeechRecognition warning:', e.error);
+        };
+
+        recognition.start();
+        state.activeSpeechRecognition = recognition;
+        if (noteTranscribeEngineBadge) {
+          noteTranscribeEngineBadge.textContent = 'LISTENING LIVE...';
+        }
+      } catch (srErr) {
+        console.warn('Could not start live SpeechRecognition:', srErr);
+      }
+    }
+
     mediaRecorder.ondataavailable = (e) => {
       if (e.data && e.data.size > 0) {
         state.activeAudioChunks.push(e.data);
       }
     };
 
-    mediaRecorder.onstop = () => {
+    mediaRecorder.onstop = async () => {
       stream.getTracks().forEach((track) => track.stop());
 
       const blob = new Blob(state.activeAudioChunks, { type: 'audio/webm' });
       const reader = new FileReader();
-      reader.onloadend = () => {
+      reader.onloadend = async () => {
         state.recordedAudioBase64 = reader.result;
         if (noteAudioPlayer) {
           noteAudioPlayer.src = URL.createObjectURL(blob);
         }
         if (voicePreviewWrapper) voicePreviewWrapper.style.display = 'flex';
         if (voiceRecordStatus) voiceRecordStatus.textContent = 'RECORDED MEMO READY';
+
+        // Auto-transcribe via backend NLP + acoustic endpoint
+        try {
+          const transPayload = {
+            audio_data: state.recordedAudioBase64,
+            text_hint: (noteTextInput ? noteTextInput.value : '') || state.speechTranscript,
+          };
+          const transRes = await fetch('/api/notes/transcribe', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(transPayload),
+          });
+          if (transRes.ok) {
+            const data = await transRes.json();
+            if (noteTranscribeEngineBadge) {
+              noteTranscribeEngineBadge.textContent = (data.engine || 'AI TRANSCRIBED').toUpperCase();
+            }
+            if (data.transcript && noteTextInput && (!noteTextInput.value || noteTextInput.dataset.autoDictated === 'true')) {
+              noteTextInput.value = data.transcript;
+            }
+            if (data.suggested_tags && data.suggested_tags.length > 0) {
+              renderSuggestedTacticalTags(data.suggested_tags);
+              showToast(`Detected ${data.suggested_tags.length} tactical flaw tags from voice note`);
+            }
+          }
+        } catch (transErr) {
+          console.error('Auto-transcription error:', transErr);
+        }
       };
       reader.readAsDataURL(blob);
 

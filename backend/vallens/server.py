@@ -620,6 +620,34 @@ class ValLensRequestHandler(BaseHTTPRequestHandler):
             self._send_json(created, status=201)
             return
 
+        # Voice Transcription & Speech-to-Text Flaw Extraction API
+        if path == "/api/notes/transcribe":
+            content_length = int(self.headers.get("Content-Length", 0))
+            body = self.rfile.read(content_length).decode("utf-8") if content_length > 0 else "{}"
+            try:
+                data = json.loads(body) if body else {}
+            except Exception:
+                data = {}
+
+            audio_data = data.get("audio_data")
+            text_hint = data.get("text_hint") or data.get("text")
+            result = self.service.transcribe_voice_memo(audio_data=audio_data, text_hint=text_hint)
+            self._send_json(result)
+            return
+
+        if path == "/api/notes/suggest-tags":
+            content_length = int(self.headers.get("Content-Length", 0))
+            body = self.rfile.read(content_length).decode("utf-8") if content_length > 0 else "{}"
+            try:
+                data = json.loads(body) if body else {}
+            except Exception:
+                data = {}
+
+            text = str(data.get("text", "")).strip()
+            tags = self.service.suggest_tactical_tags(text)
+            self._send_json({"suggested_tags": tags, "tag_count": len(tags)})
+            return
+
         if path == "/api/account/sync":
             content_length = int(self.headers.get("Content-Length", 0))
             body = self.rfile.read(content_length).decode("utf-8")

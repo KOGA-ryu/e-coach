@@ -3172,6 +3172,130 @@ video {
   cursor: pointer;
 }
 
+/* AI Tactical Flaw Tagger in Note Modal */
+.note-flaw-tagger {
+  background: rgba(255, 209, 102, 0.03);
+  border: 1px solid rgba(255, 209, 102, 0.25);
+  border-radius: 6px;
+  padding: 10px 12px;
+  margin-bottom: 14px;
+}
+
+.note-flaw-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 8px;
+}
+
+.note-flaw-title {
+  font-family: var(--font-tactical);
+  font-size: 11px;
+  font-weight: 700;
+  color: #ffd166;
+  letter-spacing: 0.5px;
+}
+
+.note-flaw-badge {
+  font-family: 'Courier New', Courier, monospace;
+  font-size: 9.5px;
+  font-weight: 700;
+  padding: 2px 6px;
+  border-radius: 3px;
+  background: rgba(0, 245, 212, 0.1);
+  color: var(--accent-cyan);
+  border: 1px solid rgba(0, 245, 212, 0.25);
+  text-transform: uppercase;
+}
+
+.note-tags-container {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  min-height: 28px;
+  align-items: center;
+}
+
+.note-tags-empty {
+  font-size: 11px;
+  color: var(--text-muted);
+  font-style: italic;
+  padding: 2px 0;
+}
+
+.tag-chip {
+  font-family: var(--font-tactical);
+  font-size: 10.5px;
+  font-weight: 700;
+  padding: 4px 8px;
+  border-radius: 4px;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid var(--border-color);
+  color: #ece8e1;
+  transition: all 0.15s ease;
+  user-select: none;
+}
+
+.tag-chip:not(.applied):hover {
+  transform: translateY(-1px);
+  filter: brightness(1.25);
+}
+
+.tag-chip.applied {
+  opacity: 0.45;
+  border-style: dashed;
+  cursor: default;
+}
+
+.tag-chip.mechanics {
+  border-color: rgba(255, 70, 85, 0.5);
+  background: rgba(255, 70, 85, 0.12);
+  color: #ff4655;
+}
+
+.tag-chip.positioning {
+  border-color: rgba(255, 209, 102, 0.5);
+  background: rgba(255, 209, 102, 0.12);
+  color: #ffd166;
+}
+
+.tag-chip.utility {
+  border-color: rgba(0, 245, 212, 0.5);
+  background: rgba(0, 245, 212, 0.12);
+  color: #00f5d4;
+}
+
+.tag-chip.decision {
+  border-color: rgba(160, 106, 255, 0.5);
+  background: rgba(160, 106, 255, 0.12);
+  color: #c094fc;
+}
+
+.tag-chip.economy {
+  border-color: rgba(6, 214, 160, 0.5);
+  background: rgba(6, 214, 160, 0.12);
+  color: #06d6a0;
+}
+
+.tag-chip.strength {
+  border-color: rgba(78, 205, 196, 0.5);
+  background: rgba(78, 205, 196, 0.12);
+  color: #4ecdc4;
+}
+
+.tag-chip .chip-conf {
+  font-family: 'Courier New', Courier, monospace;
+  font-size: 9px;
+  opacity: 0.8;
+  padding: 1px 3px;
+  background: rgba(0, 0, 0, 0.25);
+  border-radius: 2px;
+}
+
 /* Timeline Note item */
 .timeline-event.note {
   border-left-color: #ffd166 !important;

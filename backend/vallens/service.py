@@ -10,6 +10,7 @@ from vallens.analytics.economy import EconomyAnalysisResult, EconomyCorrelationE
 from vallens.analytics.heatmap import HeatmapAggregationEngine, HeatmapAggregationResult
 from vallens.analytics.perspective import PerspectiveDiffEngine, PerspectiveDiffResult
 from vallens.analytics.projection import CoordinateProjector
+from vallens.analytics.transcription import CoachVoiceTranscriber
 from vallens.db.database import Database
 from vallens.db.repository import MatchRepository
 from vallens.models import CoachNote, MatchEvent, MatchMetadata, MatchPlayer, VodTag
@@ -37,6 +38,7 @@ class ValLensService:
         self.client = RiotApiClient(api_key=riot_api_key)
         self.heatmap_engine = HeatmapAggregationEngine(maps_file=maps_file)
         self.economy_engine = EconomyCorrelationEngine()
+        self.transcriber = CoachVoiceTranscriber()
         self.capture_controller = capture_controller or CaptureController(service=self)
 
     def ingest_match_payload(
@@ -498,6 +500,7 @@ class ValLensService:
             created_at=created_at,
         )
         note_id = self.repo.create_note(note)
+        suggested_tags = self.transcriber.extract_tactical_tags(text_note)
         return {
             "note_id": note_id,
             "match_id": match_id,
@@ -508,7 +511,20 @@ class ValLensService:
             "audio_filepath": audio_filepath,
             "audio_url": f"/api/notes/{audio_filepath}" if audio_filepath else None,
             "created_at": created_at,
+            "suggested_tags": suggested_tags,
         }
+
+    def transcribe_voice_memo(
+        self,
+        audio_data: Optional[str] = None,
+        text_hint: Optional[str] = None,
+    ) -> dict[str, Any]:
+        """Transcribe voice dictation and identify tactical flaw tags."""
+        return self.transcriber.transcribe_audio_data(audio_data=audio_data, text_hint=text_hint)
+
+    def suggest_tactical_tags(self, text: str) -> list[dict[str, Any]]:
+        """Extract tactical tags and confidence scores from a coaching text observation."""
+        return self.transcriber.extract_tactical_tags(text)
 
     def get_coach_notes(
         self, match_id: str, round_number: Optional[int] = None
