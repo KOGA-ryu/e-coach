@@ -1,10 +1,15 @@
-"""Command-line interface for ValLens backend operations."""
+"""Command-line interface for ValLens backend operations and OBS automation."""
 
 import argparse
 import json
-import sys
 from pathlib import Path
+import sys
+import time
+
 from vallens.db.database import Database
+from vallens.obs.client import MockObsClient, ObsWebSocketClient
+from vallens.obs.controller import CaptureController
+from vallens.obs.local_client import GameState, LocalClient, MockLocalClient
 from vallens.service import ValLensService
 
 
@@ -40,6 +45,19 @@ def main() -> None:
     # Tags summary command
     tags_sum_parser = subparsers.add_parser("tags-summary", help="Aggregate tag counts")
     tags_sum_parser.add_argument("--match-id", default=None, help="Optional match UUID filter")
+
+    # Export EDL command
+    edl_parser = subparsers.add_parser("export-edl", help="Export CMX 3600 EDL, YouTube chapters, and FFmpeg metadata")
+    edl_parser.add_argument("match_id", help="Match UUID")
+    edl_parser.add_argument("--video", required=True, help="Video recording filepath")
+    edl_parser.add_argument("--offset-ms", type=int, default=0, help="Offset between video start and Round 0 in ms")
+
+    # OBS Poll / Automate command
+    poll_parser = subparsers.add_parser("obs-poll", help="Run local client poller and OBS capture automation")
+    poll_parser.add_argument("--obs-host", default="127.0.0.1", help="OBS WebSocket host")
+    poll_parser.add_argument("--obs-port", type=int, default=4455, help="OBS WebSocket port")
+    poll_parser.add_argument("--obs-password", default=None, help="OBS WebSocket password")
+    poll_parser.add_argument("--mock", action="store_true", help="Run with simulated clients for testing")
 
     args = parser.parse_args()
 
@@ -93,6 +111,60 @@ def main() -> None:
     elif args.command == "tags-summary":
         summary = service.repo.get_tag_aggregations(match_id=args.match_id)
         print(json.dumps(summary, indent=2))
+
+    elif args.command == "export-edl":
+        controller = CaptureController(service=service)
+        exported = controller.process_match_sync_and_edl(
+            args.match_id, args.video, video_anchor_offset_ms=args.offset_ms
+        )
+        print(f"Exported {len(exported)} timeline files:")
+        for p in exported:
+            print(f" - {p}")
+
+    elif args.command == "obs-poll":
+        if args.mock:
+            print("Starting capture automation in MOCK simulation mode...")
+            local_client = MockLocalClient(initial_state=GameState.MENUS)
+            obs_client = MockObsClient()
+            controller = CaptureController(
+                local_client=local_client,
+                obs_client=obs_client,
+                service=service,
+            )
+            print("Simulating PREGAME (Agent Select)...")
+            local_client.set_state(GameState.PREGAME)
+            controller.poll_once()
+
+            print("Simulating INGAME (Match Start) -> OBS StartRecording...")
+            local_client.set_state(GameState.INGAME)
+            controller.poll_once()
+            print(f"OBS is recording: {obs_client.is_recording}")
+
+            time.sleep(1.0)
+            print("Simulating POSTGAME (Match End) -> OBS StopRecording...")
+            local_client.set_state(GameState.POSTGAME)
+            controller.poll_once()
+            print(f"OBS stopped recording: file saved to {controller.last_recorded_file}")
+            print("Simulation complete.")
+        else:
+            print(f"Connecting to OBS WebSocket at {args.obs_host}:{args.obs_port}...")
+            obs_client = ObsWebSocketClient(
+                host=args.obs_host, port=args.obs_port, password=args.obs_password
+            )
+            obs_client.connect()
+            local_client = LocalClient()
+            controller = CaptureController(
+                local_client=local_client, obs_client=obs_client, service=service
+            )
+            print("Listening for Valorant match events... Press Ctrl+C to stop.")
+            try:
+                controller.start_polling()
+                while True:
+                    time.sleep(1)
+            except KeyboardInterrupt:
+                controller.stop_polling()
+                obs_client.close()
+                print("\nStopped.")
 
 
 if __name__ == "__main__":
