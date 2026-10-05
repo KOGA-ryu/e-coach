@@ -257,7 +257,10 @@ async function loadMatch(matchId) {
     state.matchMetadata = overview.metadata;
 
     updateMatchHeader(overview);
-    document.getElementById('btn-view-report').href = `/api/matches/${matchId}/report`;
+    const reportBtn = document.getElementById('btn-view-report');
+    if (reportBtn) reportBtn.href = `/api/matches/${matchId}/report`;
+    const dossierBtn = document.getElementById('btn-export-dossier');
+    if (dossierBtn) dossierBtn.href = `/api/matches/${matchId}/export-dossier`;
 
     // 2. Fetch telemetry events
     const eventsRes = await fetch(`/api/matches/${matchId}/events`);

@@ -187,8 +187,8 @@ class ValLensRequestHandler(BaseHTTPRequestHandler):
             })
             return
 
-        # 7. Rendered Coaching Report Card (HTML or Markdown)
-        if path.startswith("/api/matches/") and path.endswith("/report"):
+        # 7. Rendered Coaching Report Card & Standalone Dossier (HTML, Markdown, or Download)
+        if path.startswith("/api/matches/") and (path.endswith("/report") or path.endswith("/export-dossier")):
             parts = path.split("/")
             match_id = parts[3]
             match = self.service.repo.get_match(match_id)
@@ -198,22 +198,29 @@ class ValLensRequestHandler(BaseHTTPRequestHandler):
 
             events = self.service.repo.get_events(match_id)
             tags = self.service.repo.get_tags(match_id)
+            notes = self.service.repo.get_notes(match_id)
             fmt = query.get("format", ["html"])[0]
+            download = path.endswith("/export-dossier") or query.get("download", ["0"])[0] == "1"
 
             if fmt == "markdown":
-                md_text = self.report_gen.generate_markdown(match, events, tags)
+                md_text = self.report_gen.generate_markdown(match, events, tags, notes=notes)
                 payload = md_text.encode("utf-8")
                 self.send_response(200)
                 self.send_header("Content-Type", "text/markdown; charset=utf-8")
+                if download:
+                    self.send_header("Content-Disposition", f'attachment; filename="vallens-report-{match.match_id[:8]}.md"')
                 self.send_header("Content-Length", str(len(payload)))
                 self.end_headers()
                 self.wfile.write(payload)
                 return
             else:
-                html_text = self.report_gen.generate_html(match, events, tags)
+                html_text = self.report_gen.generate_html(match, events, tags, notes=notes)
                 payload = html_text.encode("utf-8")
                 self.send_response(200)
                 self.send_header("Content-Type", "text/html; charset=utf-8")
+                if download:
+                    map_slug = match.map_id.split("/")[-1].lower()
+                    self.send_header("Content-Disposition", f'attachment; filename="vallens-dossier-{map_slug}-{match.match_id[:8]}.html"')
                 self.send_header("Content-Length", str(len(payload)))
                 self.end_headers()
                 self.wfile.write(payload)

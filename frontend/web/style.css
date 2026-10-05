@@ -176,6 +176,29 @@ body {
   box-shadow: 0 0 10px rgba(0, 245, 212, 0.4);
 }
 
+.btn-dossier {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background: rgba(255, 70, 85, 0.12);
+  border: 1px solid var(--accent-red);
+  color: var(--accent-red);
+  font-family: var(--font-tactical);
+  font-size: 13px;
+  font-weight: 700;
+  text-decoration: none;
+  padding: 6px 14px;
+  border-radius: 4px;
+  letter-spacing: 1px;
+  transition: all 0.15s ease;
+}
+
+.btn-dossier:hover {
+  background: var(--accent-red);
+  color: #fff;
+  box-shadow: 0 0 10px rgba(255, 70, 85, 0.4);
+}
+
 .btn-sync {
   background: var(--bg-tertiary);
   border: 1px solid var(--border-color);

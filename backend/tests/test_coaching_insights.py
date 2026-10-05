@@ -98,19 +98,47 @@ class TestCoachingInsights(unittest.TestCase):
             ),
         ]
 
+        # Test report with coach notes
+        notes = [
+            {
+                "round_number": 0,
+                "timestamp_ms": 45000,
+                "formatted_time": "00:45",
+                "author_type": "coach",
+                "text_note": "Great trigger discipline on Ascent B main",
+                "has_audio": False,
+                "audio_url": None,
+            },
+            {
+                "round_number": 1,
+                "timestamp_ms": 172000,
+                "formatted_time": "02:52",
+                "author_type": "coach",
+                "text_note": "Audio memo recorded regarding repeek",
+                "has_audio": True,
+                "audio_url": "/api/notes/memo_test.webm",
+            },
+        ]
+
         # Markdown Report
-        md = self.report_gen.generate_markdown(self.match, self.events, tags, player_puuid="player-ace-001")
+        md = self.report_gen.generate_markdown(self.match, self.events, tags, player_puuid="player-ace-001", notes=notes)
         self.assertIn("# ValLens Coaching Report Card", md)
         self.assertIn("ASCENT", md)
         self.assertIn("Opening Duels:", md)
         self.assertIn("crosshair_placement", md)
         self.assertIn("Angle Isolation:", md)
+        self.assertIn("Great trigger discipline", md)
+        self.assertIn("Economy vs. Flaw Correlation Matrix", md)
 
         # HTML Report
-        html = self.report_gen.generate_html(self.match, self.events, tags, player_puuid="player-ace-001")
+        html = self.report_gen.generate_html(self.match, self.events, tags, player_puuid="player-ace-001", notes=notes)
         self.assertIn("<!DOCTYPE html>", html)
         self.assertIn("COACHING REPORT CARD", html)
         self.assertIn("trade efficiency", html.lower())
+        self.assertIn("VALLENS COACHING REVIEW DOSSIER", html)
+        self.assertIn("Great trigger discipline", html)
+        self.assertIn("memo_test.webm", html)
+        self.assertIn("window.print()", html)
 
 
 if __name__ == "__main__":

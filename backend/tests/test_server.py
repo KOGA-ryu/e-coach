@@ -333,6 +333,35 @@ class TestValLensServer(unittest.TestCase):
         self.assertIn("kpis", res)
         self.assertIn("coaching_insights", res)
 
+    def test_export_dossier_endpoint(self):
+        # 1. Standard HTML report view
+        status, body, headers = self._get(f"/api/matches/{self.match.match_id}/report")
+        self.assertEqual(status, 200)
+        self.assertIn("text/html", headers.get("Content-Type", ""))
+        html_str = body.decode("utf-8")
+        self.assertIn("VALLENS COACHING REVIEW DOSSIER", html_str)
+        self.assertIn("ECONOMY VS. FLAW CORRELATION MATRIX", html_str)
+
+        # 2. Markdown export format
+        status, body, headers = self._get(f"/api/matches/{self.match.match_id}/report?format=markdown")
+        self.assertEqual(status, 200)
+        self.assertIn("text/markdown", headers.get("Content-Type", ""))
+        md_str = body.decode("utf-8")
+        self.assertIn("# ValLens Coaching Report Card", md_str)
+        self.assertIn("Executive Telemetry Overview", md_str)
+
+        # 3. Direct standalone dossier download endpoint
+        status, body, headers = self._get(f"/api/matches/{self.match.match_id}/export-dossier")
+        self.assertEqual(status, 200)
+        self.assertIn("text/html", headers.get("Content-Type", ""))
+        self.assertIn("attachment; filename=", headers.get("Content-Disposition", ""))
+        self.assertIn("vallens-dossier-ascent", headers.get("Content-Disposition", ""))
+
+        # 4. Report with download=1 parameter
+        status, body, headers = self._get(f"/api/matches/{self.match.match_id}/report?download=1")
+        self.assertEqual(status, 200)
+        self.assertIn("attachment; filename=", headers.get("Content-Disposition", ""))
+
 
 if __name__ == "__main__":
     unittest.main()
