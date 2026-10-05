@@ -1161,6 +1161,12 @@ video {
   color: #0b1118;
 }
 
+.mini-btn.trail-btn.active {
+  background: rgba(0, 245, 212, 0.22);
+  color: var(--accent-cyan);
+  border-color: var(--accent-cyan);
+}
+
 .mini-btn.kill-btn.active {
   background: var(--accent-green);
   color: #0b1118;

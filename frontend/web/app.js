@@ -14,6 +14,7 @@ const state = {
   activeRound: 0,
   minimapFilter: 'all', // 'all', 'kill', 'death'
   radarMode: true, // true: dynamic temporal playback; false: static round
+  showTrails: true, // true: render movement trajectories & rotation paths
   mapImage: new Image(),
   mapLoaded: false,
   hoveredEvent: null,
@@ -95,6 +96,7 @@ const minimapCanvas = document.getElementById('minimap-canvas');
 const ctx = minimapCanvas.getContext('2d');
 const mapTooltip = document.getElementById('map-tooltip');
 const btnRadarMode = document.getElementById('btn-radar-mode');
+const btnToggleTrails = document.getElementById('btn-toggle-trails');
 
 // Multi-Match Aggregate DOM Elements
 const btnViewMatch = document.getElementById('btn-view-match');
@@ -625,6 +627,9 @@ function renderMinimap() {
     return true;
   });
 
+  // 2.5 Draw Movement & Rotation Trajectories
+  drawMovementTrajectories(w, h, currentVideoMs);
+
   // 3. Draw Telemetry Points
   currentEvents.forEach((e) => {
     const coords = getEventNormCoords(e);
@@ -705,6 +710,153 @@ function renderMinimap() {
     }
     ctx.restore();
   });
+}
+
+function drawMovementTrajectories(w, h, currentVideoMs) {
+  if (!state.showTrails) return;
+
+  // 1. Gather all events for active round with valid coordinates
+  const roundEvents = state.events
+    .filter((e) => e.round_number === state.activeRound && e.pos_x !== null && e.pos_y !== null)
+    .sort((a, b) => a.event_time_ms - b.event_time_ms);
+
+  if (roundEvents.length < 2) return;
+
+  const points = roundEvents.map((ev) => {
+    const coords = getEventNormCoords(ev);
+    return {
+      x: coords.x * w,
+      y: coords.y * h,
+      timeMs: ev.event_time_ms,
+      type: ev.event_type,
+      metadata: ev.metadata || {},
+    };
+  });
+
+  const isLive = state.radarMode && (videoPlayer.duration || videoPlayer.currentTime > 0);
+
+  ctx.save();
+
+  // 2. In Live mode, draw upcoming/future rotation path with faint dashed line
+  if (isLive) {
+    ctx.beginPath();
+    ctx.setLineDash([4, 6]);
+    ctx.lineWidth = 1.5;
+    ctx.strokeStyle = 'rgba(255, 255, 255, 0.16)';
+    ctx.lineCap = 'round';
+    ctx.lineJoin = 'round';
+
+    let started = false;
+    for (let i = 0; i < points.length; i++) {
+      if (points[i].timeMs >= currentVideoMs || i === 0) {
+        if (!started) {
+          ctx.moveTo(points[i].x, points[i].y);
+          started = true;
+        } else {
+          ctx.lineTo(points[i].x, points[i].y);
+        }
+      }
+    }
+    if (started) {
+      ctx.stroke();
+    }
+    ctx.setLineDash([]);
+  }
+
+  // 3. Draw active/traversed trajectory up to current time (or full if not live)
+  const traversed = isLive ? points.filter((p) => p.timeMs <= currentVideoMs) : points;
+
+  if (traversed.length >= 2) {
+    for (let i = 0; i < traversed.length - 1; i++) {
+      const p1 = traversed[i];
+      const p2 = traversed[i + 1];
+
+      const grad = ctx.createLinearGradient(p1.x, p1.y, p2.x, p2.y);
+      const isLatest = i === traversed.length - 2;
+      const alphaStart = 0.35 + (i / traversed.length) * 0.45;
+      const alphaEnd = 0.5 + ((i + 1) / traversed.length) * 0.5;
+
+      grad.addColorStop(0, `rgba(0, 245, 212, ${alphaStart})`);
+      grad.addColorStop(1, p2.type === 'death' ? `rgba(255, 70, 85, ${alphaEnd})` : `rgba(0, 245, 212, ${alphaEnd})`);
+
+      ctx.beginPath();
+      ctx.moveTo(p1.x, p1.y);
+      ctx.lineTo(p2.x, p2.y);
+      ctx.strokeStyle = grad;
+      ctx.lineWidth = isLatest ? 3.5 : 2.5;
+      ctx.lineCap = 'round';
+      ctx.lineJoin = 'round';
+      ctx.shadowColor = 'rgba(0, 245, 212, 0.45)';
+      ctx.shadowBlur = 6;
+      ctx.stroke();
+      ctx.shadowBlur = 0;
+
+      // Draw direction chevron arrow midway along segment
+      const dx = p2.x - p1.x;
+      const dy = p2.y - p1.y;
+      const dist = Math.sqrt(dx * dx + dy * dy);
+      if (dist > 18) {
+        const midX = (p1.x + p2.x) / 2;
+        const midY = (p1.y + p2.y) / 2;
+        const angle = Math.atan2(dy, dx);
+        const arrowLen = 5;
+
+        ctx.save();
+        ctx.fillStyle = `rgba(0, 245, 212, ${alphaEnd})`;
+        ctx.beginPath();
+        ctx.moveTo(midX + arrowLen * Math.cos(angle), midY + arrowLen * Math.sin(angle));
+        ctx.lineTo(midX - arrowLen * Math.cos(angle - Math.PI / 4), midY - arrowLen * Math.sin(angle - Math.PI / 4));
+        ctx.lineTo(midX - arrowLen * Math.cos(angle + Math.PI / 4), midY - arrowLen * Math.sin(angle + Math.PI / 4));
+        ctx.closePath();
+        ctx.fill();
+        ctx.restore();
+      }
+    }
+  }
+
+  // 4. Draw Waypoint Nodes
+  const nodesToDraw = isLive ? traversed : points;
+  nodesToDraw.forEach((pt, idx) => {
+    ctx.beginPath();
+    ctx.arc(pt.x, pt.y, 3.5, 0, Math.PI * 2);
+    if (pt.type === 'kill') {
+      ctx.fillStyle = '#06d6a0';
+    } else if (pt.type === 'death') {
+      ctx.fillStyle = '#ff4655';
+    } else if (pt.type === 'plant' || pt.type === 'defuse') {
+      ctx.fillStyle = '#ffd166';
+    } else {
+      ctx.fillStyle = idx === 0 ? '#38bdf8' : '#00f5d4';
+    }
+    ctx.fill();
+    ctx.strokeStyle = '#0b1118';
+    ctx.lineWidth = 1;
+    ctx.stroke();
+  });
+
+  // 5. Active Scrubber Player Puck Indicator (Current Position)
+  if (isLive && traversed.length > 0) {
+    const head = traversed[traversed.length - 1];
+    const roleColor = state.authorType === 'coach' ? '#ffd166' : '#00f5d4';
+
+    // Outer radar ring
+    ctx.beginPath();
+    ctx.arc(head.x, head.y, 9, 0, Math.PI * 2);
+    ctx.strokeStyle = roleColor;
+    ctx.lineWidth = 2;
+    ctx.shadowColor = roleColor;
+    ctx.shadowBlur = 8;
+    ctx.stroke();
+    ctx.shadowBlur = 0;
+
+    // Inner core
+    ctx.beginPath();
+    ctx.arc(head.x, head.y, 4, 0, Math.PI * 2);
+    ctx.fillStyle = '#ffffff';
+    ctx.fill();
+  }
+
+  ctx.restore();
 }
 
 // -------------------------------------------------------------
@@ -1831,6 +1983,16 @@ function setupEventListeners() {
     btnRadarMode.textContent = state.radarMode ? 'LIVE RADAR' : 'STATIC ROUND';
     renderMinimap();
   });
+
+  // Movement & Rotation Trails Toggle
+  if (btnToggleTrails) {
+    btnToggleTrails.addEventListener('click', () => {
+      state.showTrails = !state.showTrails;
+      btnToggleTrails.classList.toggle('active', state.showTrails);
+      renderMinimap();
+      showToast(`Rotation Trails: ${state.showTrails ? 'ON' : 'OFF'}`);
+    });
+  }
 
   // Minimap Event Filters
   document.querySelectorAll('.mini-btn[data-filter]').forEach((btn) => {
