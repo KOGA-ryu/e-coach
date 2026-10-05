@@ -470,6 +470,9 @@ class MatchRepository:
                 for r in rows
             ]
 
+    # Alias for coach notes
+    get_coach_notes = get_notes
+
     def get_note(self, note_id: int) -> Optional[CoachNote]:
         """Fetch a single note by ID."""
         sql = "SELECT note_id, match_id, round_number, timestamp_ms, author_type, text_note, audio_filepath, created_at FROM coach_notes WHERE note_id = ?;"

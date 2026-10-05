@@ -108,6 +108,12 @@ const state = {
   utilityReport: null,
   utilityEvents: [],
   careerProfile: null,
+
+  // Post-Match Trade Matrix, Win Probability & Scouting Report State
+  showTradeLinks: true,
+  tradesReport: null,
+  winProbReport: null,
+  scoutingDossier: null,
 };
 
 // DOM Elements
@@ -329,6 +335,45 @@ const careerFocusList = document.getElementById('career-focus-list');
 const careerFlawTrendsList = document.getElementById('career-flaw-trends-list');
 const careerMatchesTbody = document.getElementById('career-matches-tbody');
 
+// Post-Match Trade Matrix DOM Elements
+const btnOpenTrades = document.getElementById('btn-open-trades');
+const tradesModal = document.getElementById('trades-modal');
+const btnCloseTrades = document.getElementById('btn-close-trades');
+const btnCloseTradesFooter = document.getElementById('btn-close-trades-footer');
+const tradesKpiConversion = document.getElementById('trades-kpi-conversion');
+const tradesKpiFirstDeath = document.getElementById('trades-kpi-first-death');
+const tradesKpiSpacingErrors = document.getElementById('trades-kpi-spacing-errors');
+const tradesKpiTotalDeaths = document.getElementById('trades-kpi-total-deaths');
+const tradesKpiTradedSubtext = document.getElementById('trades-kpi-traded-subtext');
+const tradesPlayerTbody = document.getElementById('trades-player-tbody');
+const tradesLedgerTbody = document.getElementById('trades-ledger-tbody');
+const btnToggleTrades = document.getElementById('btn-toggle-trades');
+
+// Post-Match Win Probability DOM Elements
+const btnOpenWinprob = document.getElementById('btn-open-winprob');
+const winprobModal = document.getElementById('winprob-modal');
+const btnCloseWinprob = document.getElementById('btn-close-winprob');
+const btnCloseWinprobFooter = document.getElementById('btn-close-winprob-footer');
+const winprobKpiSwings = document.getElementById('winprob-kpi-swings');
+const winprobKpiClutches = document.getElementById('winprob-kpi-clutches');
+const winprobKpiConv = document.getElementById('winprob-kpi-conv');
+const winprobKpiRounds = document.getElementById('winprob-kpi-rounds');
+const winprobMainSvg = document.getElementById('winprob-main-svg');
+const winprobChartTooltip = document.getElementById('winprob-chart-tooltip');
+const clutchCardsContainer = document.getElementById('clutch-cards-container');
+const winprobSparklineCanvas = document.getElementById('winprob-sparkline-canvas');
+const winprobStripVal = document.getElementById('winprob-strip-val');
+const winprobStripLead = document.getElementById('winprob-strip-lead');
+const winprobScrubberStrip = document.getElementById('winprob-scrubber-strip');
+
+// Pro Scouting Dossier DOM Elements
+const btnOpenScouting = document.getElementById('btn-open-scouting');
+const scoutingModal = document.getElementById('scouting-modal');
+const btnCloseScouting = document.getElementById('btn-close-scouting');
+const btnCloseScoutingFooter = document.getElementById('btn-close-scouting-footer');
+const btnOpenScoutingTab = document.getElementById('btn-open-scouting-tab');
+const btnDownloadScoutingHtml = document.getElementById('btn-download-scouting-html');
+
 // Tag Mapping for 1-9 Hotkeys
 const TAG_MAP = {
   '1': { category: 'Mechanics', name: 'crosshair_placement' },
@@ -354,6 +399,9 @@ async function init() {
   setupFrameSyncControls();
   setupUtilityRoiControls();
   setupCareerRadarControls();
+  setupTradeMatrixControls();
+  setupWinProbabilityControls();
+  setupScoutingDossierControls();
   await loadAvailableMaps();
   await loadMatchList();
   await loadProReferenceCatalog();
@@ -424,6 +472,8 @@ async function loadMatch(matchId) {
     loadTrainingRoutine(matchId);
     loadEconomyAnalysis(matchId);
     loadMatchUtilityRoi(matchId);
+    loadMatchTrades(matchId);
+    loadMatchWinProbability(matchId);
 
     // 5. Setup map background
     const mapName = getMapNameFromPath(state.matchMetadata.map_id);
@@ -620,6 +670,9 @@ function selectRound(roundNum, shouldSeek = true) {
 
   // Redraw minimap for active round
   renderMinimap();
+
+  // Render win probability sparkline for active round
+  renderWinProbSparkline();
 }
 
 function renderRoundEventsFeed(events, roundNum) {
@@ -960,6 +1013,9 @@ function renderMinimap() {
 
   // 4. Draw Tactical Ability & Utility Overlays (Smokes, Flashes, Recon, Mollies)
   drawUtilityOverlays(w, h, currentTelemetryMs);
+
+  // 5. Draw Tactical Trade Frag Links & Spacing Vectors
+  drawTradeLinks(w, h, currentTelemetryMs);
 }
 
 function drawMovementTrajectories(w, h, currentTelemetryMs) {
@@ -1961,6 +2017,9 @@ function updateScrubber() {
     const curMs = Math.round((videoPlayer.currentTime || 0) * 1000);
     syncCurrentFrameBadge.textContent = `${formatTimecode(videoPlayer.currentTime || 0)} (${curMs} ms)`;
   }
+
+  // Update live round win probability indicator
+  updateWinProbLiveIndicator(telemetryMs);
 }
 
 function togglePlay() {
@@ -5525,5 +5584,504 @@ function setupCareerRadarControls() {
   }
 }
 
+// -------------------------------------------------------------
+// 1. Post-Match Trade Frag Efficiency & Spacing Matrix
+// -------------------------------------------------------------
+async function loadMatchTrades(matchId) {
+  try {
+    const res = await fetch(`/api/matches/${matchId}/trades`);
+    if (!res.ok) return;
+    state.tradesReport = await res.json();
+    if (tradesModal && tradesModal.style.display !== 'none') {
+      renderTradesModal();
+    }
+  } catch (err) {
+    console.error('Failed to load trade matrix:', err);
+  }
+}
+
+function openTradesModal() {
+  if (tradesModal) {
+    tradesModal.style.display = 'flex';
+    renderTradesModal();
+  }
+}
+
+function closeTradesModal() {
+  if (tradesModal) {
+    tradesModal.style.display = 'none';
+  }
+}
+
+function renderTradesModal() {
+  const rep = state.tradesReport;
+  if (!rep) return;
+
+  if (tradesKpiConversion) tradesKpiConversion.textContent = `${rep.match_trade_conversion_pct}%`;
+  if (tradesKpiFirstDeath) tradesKpiFirstDeath.textContent = `${rep.first_death_trade_pct}%`;
+  if (tradesKpiSpacingErrors) tradesKpiSpacingErrors.textContent = `${rep.total_spacing_flaws}`;
+  if (tradesKpiTotalDeaths) tradesKpiTotalDeaths.textContent = `${rep.total_deaths}`;
+  if (tradesKpiTradedSubtext) {
+    const untraded = rep.total_deaths - rep.total_traded_deaths;
+    tradesKpiTradedSubtext.textContent = `${rep.total_traded_deaths} traded / ${untraded} untraded`;
+  }
+
+  // Populate Roster Table
+  if (tradesPlayerTbody) {
+    tradesPlayerTbody.innerHTML = '';
+    const stats = rep.player_stats || [];
+    if (stats.length === 0) {
+      tradesPlayerTbody.innerHTML = '<tr><td colspan="7" class="empty-cell">No player data available.</td></tr>';
+    } else {
+      stats.forEach((p) => {
+        const tr = document.createElement('tr');
+        const teamColor = p.team_id === 'Blue' ? '#00f5d4' : '#ff4655';
+        tr.innerHTML = `
+          <td><strong>${p.player_name}</strong></td>
+          <td><span style="color: ${teamColor}; font-weight: 700;">${p.team_id}</span></td>
+          <td>${p.total_deaths}</td>
+          <td>${p.deaths_traded} (${p.trade_received_pct}%)</td>
+          <td style="color: #06d6a0; font-weight: 700;">+${p.trades_given}</td>
+          <td style="color: ${p.isolated_deaths > 0 ? '#ff4655' : 'inherit'};">${p.isolated_deaths}</td>
+          <td><span class="trade-quality-pill ${p.trade_rating >= 75 ? 'instant' : (p.trade_rating >= 55 ? 'clean' : 'delayed')}">${p.trade_rating}</span></td>
+        `;
+        tradesPlayerTbody.appendChild(tr);
+      });
+    }
+  }
+
+  // Populate Chronological Ledger Table
+  if (tradesLedgerTbody) {
+    tradesLedgerTbody.innerHTML = '';
+    const events = rep.all_trade_events || [];
+    if (events.length === 0) {
+      tradesLedgerTbody.innerHTML = '<tr><td colspan="9" class="empty-cell">No combat duels found.</td></tr>';
+    } else {
+      events.forEach((ev) => {
+        const tr = document.createElement('tr');
+        const timeSec = (ev.death_time_ms / 1000).toFixed(1);
+        const qualityClass = ev.is_traded ? ev.trade_quality : 'untraded';
+        const qualityLabel = ev.is_traded ? `${ev.trade_quality.toUpperCase()} TRADE` : (ev.spacing_flaw ? ev.spacing_flaw.replace('_', ' ').toUpperCase() : 'UNTRADED');
+
+        tr.innerHTML = `
+          <td><strong>Round ${ev.round_number + 1}</strong></td>
+          <td>${formatTimecode(timeSec)}</td>
+          <td style="color: ${ev.victim_team === 'Blue' ? '#00f5d4' : '#ff4655'};">${ev.victim_name}</td>
+          <td style="color: ${ev.killer_team === 'Blue' ? '#00f5d4' : '#ff4655'};">${ev.killer_name}</td>
+          <td>${ev.weapon}</td>
+          <td><span class="trade-quality-pill ${qualityClass}">${qualityLabel}</span></td>
+          <td>${ev.trader_name || '—'}</td>
+          <td>${ev.trade_delay_ms ? `${ev.trade_delay_ms} ms` : '—'}</td>
+          <td><button class="mini-btn seek-btn" data-ms="${ev.death_time_ms}" data-round="${ev.round_number}">SEEK</button></td>
+        `;
+
+        const seekBtn = tr.querySelector('.seek-btn');
+        if (seekBtn) {
+          seekBtn.addEventListener('click', () => {
+            selectRound(ev.round_number, false);
+            if (videoPlayer.duration) {
+              videoPlayer.currentTime = Math.max(0, (ev.death_time_ms + (state.videoOffsetMs || 0)) / 1000);
+            }
+            closeTradesModal();
+            renderMinimap();
+          });
+        }
+
+        tradesLedgerTbody.appendChild(tr);
+      });
+    }
+  }
+}
+
+function drawTradeLinks(w, h, currentTelemetryMs) {
+  if (!state.showTradeLinks || !state.tradesReport) return;
+
+  const roundTrades = (state.tradesReport.all_trade_events || []).filter(
+    (t) => t.round_number === state.activeRound
+  );
+  if (roundTrades.length === 0) return;
+
+  const isLive = state.radarMode && (videoPlayer.duration || videoPlayer.currentTime > 0);
+
+  roundTrades.forEach((t) => {
+    if (isLive) {
+      const endTime = (t.trade_time_ms || t.death_time_ms) + 6000;
+      if (currentTelemetryMs < t.death_time_ms || currentTelemetryMs > endTime) {
+        return;
+      }
+    }
+
+    const vx = t.victim_pos_x !== null ? t.victim_pos_x * w : null;
+    const vy = t.victim_pos_y !== null ? t.victim_pos_y * h : null;
+    if (vx === null || vy === null) return;
+
+    ctx.save();
+
+    if (t.is_traded) {
+      const tx = t.trader_pos_x !== null ? t.trader_pos_x * w : null;
+      const ty = t.trader_pos_y !== null ? t.trader_pos_y * h : null;
+
+      if (tx !== null && ty !== null) {
+        ctx.strokeStyle = 'rgba(0, 245, 212, 0.85)';
+        ctx.lineWidth = 2;
+        ctx.shadowColor = 'rgba(0, 245, 212, 0.6)';
+        ctx.shadowBlur = 8;
+        ctx.beginPath();
+        ctx.moveTo(vx, vy);
+        ctx.lineTo(tx, ty);
+        ctx.stroke();
+
+        ctx.fillStyle = '#00f5d4';
+        ctx.beginPath();
+        ctx.arc(tx, ty, 4, 0, Math.PI * 2);
+        ctx.fill();
+
+        const mx = (vx + tx) / 2;
+        const my = (vy + ty) / 2;
+        const delaySec = ((t.trade_delay_ms || 0) / 1000).toFixed(1);
+        const label = `+${delaySec}s TRADE`;
+
+        ctx.font = 'bold 9px Rajdhani, sans-serif';
+        const tw = ctx.measureText(label).width;
+        ctx.fillStyle = 'rgba(15, 25, 35, 0.9)';
+        ctx.fillRect(mx - tw / 2 - 4, my - 7, tw + 8, 14);
+        ctx.strokeStyle = '#00f5d4';
+        ctx.lineWidth = 1;
+        ctx.strokeRect(mx - tw / 2 - 4, my - 7, tw + 8, 14);
+        ctx.fillStyle = '#00f5d4';
+        ctx.textAlign = 'center';
+        ctx.fillText(label, mx, my + 4);
+      }
+    } else if (t.spacing_flaw === 'isolated_death') {
+      ctx.strokeStyle = 'rgba(255, 70, 85, 0.9)';
+      ctx.lineWidth = 1.8;
+      ctx.setLineDash([4, 4]);
+      ctx.beginPath();
+      ctx.arc(vx, vy, 16, 0, Math.PI * 2);
+      ctx.stroke();
+      ctx.setLineDash([]);
+
+      const label = 'ISOLATED';
+      ctx.font = 'bold 8.5px Rajdhani, sans-serif';
+      const tw = ctx.measureText(label).width;
+      ctx.fillStyle = 'rgba(255, 70, 85, 0.9)';
+      ctx.fillRect(vx - tw / 2 - 3, vy + 10, tw + 6, 12);
+      ctx.fillStyle = '#ffffff';
+      ctx.textAlign = 'center';
+      ctx.fillText(label, vx, vy + 19);
+    }
+
+    ctx.restore();
+  });
+}
+
+function setupTradeMatrixControls() {
+  if (btnOpenTrades) btnOpenTrades.addEventListener('click', openTradesModal);
+  if (btnCloseTrades) btnCloseTrades.addEventListener('click', closeTradesModal);
+  if (btnCloseTradesFooter) btnCloseTradesFooter.addEventListener('click', closeTradesModal);
+  if (tradesModal) {
+    tradesModal.addEventListener('click', (e) => {
+      if (e.target === tradesModal) closeTradesModal();
+    });
+  }
+  if (btnToggleTrades) {
+    btnToggleTrades.addEventListener('click', () => {
+      state.showTradeLinks = !state.showTradeLinks;
+      btnToggleTrades.classList.toggle('active', state.showTradeLinks);
+      renderMinimap();
+      showToast(state.showTradeLinks ? 'Minimap Trade Links Enabled' : 'Minimap Trade Links Hidden');
+    });
+  }
+}
+
+// -------------------------------------------------------------
+// 2. Post-Match Win Probability & Clutch Decision Tree
+// -------------------------------------------------------------
+async function loadMatchWinProbability(matchId) {
+  try {
+    const res = await fetch(`/api/matches/${matchId}/win-probability`);
+    if (!res.ok) return;
+    state.winProbReport = await res.json();
+    renderWinProbSparkline();
+    if (winprobModal && winprobModal.style.display !== 'none') {
+      renderWinprobModal();
+    }
+  } catch (err) {
+    console.error('Failed to load win probability:', err);
+  }
+}
+
+function openWinprobModal() {
+  if (winprobModal) {
+    winprobModal.style.display = 'flex';
+    renderWinprobModal();
+  }
+}
+
+function closeWinprobModal() {
+  if (winprobModal) {
+    winprobModal.style.display = 'none';
+  }
+}
+
+function renderWinprobModal() {
+  const rep = state.winProbReport;
+  if (!rep) return;
+
+  if (winprobKpiSwings) winprobKpiSwings.textContent = `${rep.critical_swings_count}`;
+  if (winprobKpiClutches) winprobKpiClutches.textContent = `${rep.clutches_won} / ${rep.clutches_attempted}`;
+  if (winprobKpiConv) winprobKpiConv.textContent = `${rep.clutch_conversion_pct}%`;
+  if (winprobKpiRounds) winprobKpiRounds.textContent = `${rep.total_rounds}`;
+
+  // Render Large SVG Timeline
+  if (winprobMainSvg) {
+    const timeline = rep.match_timeline || [];
+    if (timeline.length === 0) {
+      winprobMainSvg.innerHTML = '<text x="400" y="100" fill="#a0aab8" text-anchor="middle">No probability telemetry available</text>';
+    } else {
+      const W = 800;
+      const H = 200;
+      const step = W / Math.max(1, timeline.length - 1);
+      const points = timeline.map((pt, idx) => {
+        const x = idx * step;
+        const y = H - pt.team_a_prob * H;
+        return { x, y, pt };
+      });
+
+      const pathStr = 'M ' + points.map((p) => `${p.x.toFixed(1)},${p.y.toFixed(1)}`).join(' L ');
+
+      let swingsSvg = '';
+      points.forEach((p) => {
+        if (p.pt.is_swing) {
+          swingsSvg += `
+            <circle cx="${p.x.toFixed(1)}" cy="${p.y.toFixed(1)}" r="5.5" fill="#ffd166" stroke="#0f1923" stroke-width="2" class="swing-circle">
+              <title>SWING (${(p.pt.swing_delta * 100).toFixed(0)}%): ${p.pt.description}</title>
+            </circle>
+          `;
+        }
+      });
+
+      winprobMainSvg.innerHTML = `
+        <defs>
+          <linearGradient id="main-prob-grad" x1="0%" y1="0%" x2="0%" y2="100%">
+            <stop offset="0%" stop-color="#00f5d4" stop-opacity="0.25" />
+            <stop offset="100%" stop-color="#ff4655" stop-opacity="0.05" />
+          </linearGradient>
+        </defs>
+        <!-- 50% Baseline -->
+        <line x1="0" y1="100" x2="${W}" y2="100" stroke="rgba(255, 255, 255, 0.15)" stroke-dasharray="4,4" />
+        <!-- Area & Stroke -->
+        <path d="${pathStr} L ${W},${H} L 0,${H} Z" fill="url(#main-prob-grad)" />
+        <path d="${pathStr}" fill="none" stroke="#00f5d4" stroke-width="2.5" />
+        ${swingsSvg}
+      `;
+    }
+  }
+
+  // Populate Clutch Cards
+  if (clutchCardsContainer) {
+    clutchCardsContainer.innerHTML = '';
+    const clutches = rep.clutch_scenarios || [];
+    if (clutches.length === 0) {
+      clutchCardsContainer.innerHTML = '<div class="empty-cell">No 1vX combat clutches detected.</div>';
+    } else {
+      clutches.forEach((c) => {
+        const card = document.createElement('div');
+        card.className = `clutch-card ${c.won ? 'won' : 'lost'}`;
+        card.innerHTML = `
+          <div class="clutch-header">
+            <strong>Round ${c.round_number + 1} • ${c.scenario_type}</strong>
+            <span class="clutch-badge ${c.won ? 'won' : 'lost'}">${c.won ? 'CLUTCH SECURED' : 'FELL SHORT'}</span>
+          </div>
+          <div style="font-size: 11px; color: var(--text-muted); margin-bottom: 6px;">
+            Clutcher: <strong style="color: #fff;">${c.clutcher_name}</strong> (${c.clutcher_team})
+          </div>
+          <div style="display: flex; justify-content: space-between; font-size: 10.5px; margin-bottom: 6px;">
+            <span>Difficulty: <strong style="color: #ffd166;">${c.difficulty_score}</strong></span>
+            <span>Duel Isolation: <strong style="color: #00f5d4;">${c.duel_isolation_score}/100</strong></span>
+            <span class="clutch-rating-pill">Rating: ${c.clutch_rating}</span>
+          </div>
+          <p style="font-size: 11px; color: var(--text-muted); line-height: 1.4; margin: 4px 0 8px 0;">${c.tactical_summary}</p>
+          <button class="mini-btn seek-clutch-btn" data-round="${c.round_number}" data-ms="${c.start_time_ms}">SEEK CLUTCH</button>
+        `;
+
+        const seekBtn = card.querySelector('.seek-clutch-btn');
+        if (seekBtn) {
+          seekBtn.addEventListener('click', () => {
+            selectRound(c.round_number, false);
+            if (videoPlayer.duration) {
+              videoPlayer.currentTime = Math.max(0, (c.start_time_ms + (state.videoOffsetMs || 0)) / 1000);
+            }
+            closeWinprobModal();
+            renderMinimap();
+          });
+        }
+
+        clutchCardsContainer.appendChild(card);
+      });
+    }
+  }
+}
+
+function renderWinProbSparkline() {
+  if (!winprobSparklineCanvas) return;
+  const ctx2 = winprobSparklineCanvas.getContext('2d');
+  const w = winprobSparklineCanvas.width;
+  const h = winprobSparklineCanvas.height;
+  ctx2.clearRect(0, 0, w, h);
+
+  const rep = state.winProbReport;
+  if (!rep || !rep.round_curves) {
+    ctx2.fillStyle = 'rgba(255, 255, 255, 0.05)';
+    ctx2.fillRect(0, 0, w, h);
+    return;
+  }
+
+  const roundPts = rep.round_curves[String(state.activeRound)] || rep.round_curves[state.activeRound] || [];
+  if (roundPts.length < 2) {
+    ctx2.strokeStyle = 'rgba(255, 255, 255, 0.2)';
+    ctx2.setLineDash([3, 3]);
+    ctx2.beginPath();
+    ctx2.moveTo(0, h / 2);
+    ctx2.lineTo(w, h / 2);
+    ctx2.stroke();
+    ctx2.setLineDash([]);
+    return;
+  }
+
+  // 50% baseline
+  ctx2.strokeStyle = 'rgba(255, 255, 255, 0.12)';
+  ctx2.lineWidth = 1;
+  ctx2.setLineDash([3, 3]);
+  ctx2.beginPath();
+  ctx2.moveTo(0, h / 2);
+  ctx2.lineTo(w, h / 2);
+  ctx2.stroke();
+  ctx2.setLineDash([]);
+
+  // Plot Curve
+  const step = w / (roundPts.length - 1);
+  ctx2.beginPath();
+  roundPts.forEach((pt, i) => {
+    const x = i * step;
+    const y = h - (pt.team_a_prob * h);
+    if (i === 0) ctx2.moveTo(x, y);
+    else ctx2.lineTo(x, y);
+  });
+
+  ctx2.strokeStyle = '#00f5d4';
+  ctx2.lineWidth = 1.8;
+  ctx2.stroke();
+
+  // Highlight Swings
+  roundPts.forEach((pt, i) => {
+    if (pt.is_swing) {
+      const x = i * step;
+      const y = h - (pt.team_a_prob * h);
+      ctx2.fillStyle = '#ffd166';
+      ctx2.beginPath();
+      ctx2.arc(x, y, 3.5, 0, Math.PI * 2);
+      ctx2.fill();
+    }
+  });
+}
+
+function updateWinProbLiveIndicator(currentTelemetryMs) {
+  if (!state.winProbReport || !winprobSparklineCanvas) return;
+  const rep = state.winProbReport;
+  const roundPts = rep.round_curves[String(state.activeRound)] || rep.round_curves[state.activeRound] || [];
+  if (roundPts.length === 0) return;
+
+  let curProb = 0.50;
+  for (let i = roundPts.length - 1; i >= 0; i--) {
+    if (currentTelemetryMs >= roundPts[i].timestamp_ms) {
+      curProb = roundPts[i].team_a_prob;
+      break;
+    }
+  }
+
+  const pct = Math.round(curProb * 100);
+  if (winprobStripVal) {
+    winprobStripVal.textContent = `${pct}%`;
+  }
+  if (winprobStripLead) {
+    if (curProb >= 0.56) {
+      winprobStripLead.textContent = `${rep.team_a_name.toUpperCase()} ADVANTAGE`;
+      winprobStripLead.style.color = '#00f5d4';
+    } else if (curProb <= 0.44) {
+      winprobStripLead.textContent = `${rep.team_b_name.toUpperCase()} ADVANTAGE`;
+      winprobStripLead.style.color = '#ff4655';
+    } else {
+      winprobStripLead.textContent = 'EVEN / CONTESTED';
+      winprobStripLead.style.color = '#ffd166';
+    }
+  }
+}
+
+function setupWinProbabilityControls() {
+  if (btnOpenWinprob) btnOpenWinprob.addEventListener('click', openWinprobModal);
+  if (btnCloseWinprob) btnCloseWinprob.addEventListener('click', closeWinprobModal);
+  if (btnCloseWinprobFooter) btnCloseWinprobFooter.addEventListener('click', closeWinprobModal);
+  if (winprobModal) {
+    winprobModal.addEventListener('click', (e) => {
+      if (e.target === winprobModal) closeWinprobModal();
+    });
+  }
+
+  // Click on Scrubber Sparkline to Jump/Seek
+  if (winprobScrubberStrip) {
+    winprobScrubberStrip.addEventListener('click', (e) => {
+      const rect = winprobScrubberStrip.getBoundingClientRect();
+      const clickRatio = Math.max(0, Math.min(1, (e.clientX - rect.left) / rect.width));
+      const rep = state.winProbReport;
+      if (!rep) return;
+      const roundPts = rep.round_curves[String(state.activeRound)] || rep.round_curves[state.activeRound] || [];
+      if (roundPts.length >= 2) {
+        const startMs = roundPts[0].timestamp_ms;
+        const endMs = roundPts[roundPts.length - 1].timestamp_ms;
+        const targetMs = startMs + clickRatio * (endMs - startMs);
+        if (videoPlayer.duration) {
+          videoPlayer.currentTime = Math.max(0, (targetMs + (state.videoOffsetMs || 0)) / 1000);
+        }
+      }
+    });
+  }
+}
+
+// -------------------------------------------------------------
+// 3. Pro Scouting Dossier & Export
+// -------------------------------------------------------------
+function openScoutingModal() {
+  if (scoutingModal) {
+    scoutingModal.style.display = 'flex';
+    if (state.currentMatchId) {
+      if (btnOpenScoutingTab) {
+        btnOpenScoutingTab.href = `/api/matches/${state.currentMatchId}/scouting-report?format=html`;
+      }
+      if (btnDownloadScoutingHtml) {
+        btnDownloadScoutingHtml.href = `/api/matches/${state.currentMatchId}/scouting-report?format=html&download=1`;
+      }
+    }
+  }
+}
+
+function closeScoutingModal() {
+  if (scoutingModal) {
+    scoutingModal.style.display = 'none';
+  }
+}
+
+function setupScoutingDossierControls() {
+  if (btnOpenScouting) btnOpenScouting.addEventListener('click', openScoutingModal);
+  if (btnCloseScouting) btnCloseScouting.addEventListener('click', closeScoutingModal);
+  if (btnCloseScoutingFooter) btnCloseScoutingFooter.addEventListener('click', closeScoutingModal);
+  if (scoutingModal) {
+    scoutingModal.addEventListener('click', (e) => {
+      if (e.target === scoutingModal) closeScoutingModal();
+    });
+  }
+}
+
 // Start application
 window.addEventListener('DOMContentLoaded', init);
+

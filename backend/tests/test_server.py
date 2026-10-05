@@ -520,6 +520,46 @@ class TestValLensServer(unittest.TestCase):
         self.assertIn("flaw_trends", res)
         self.assertIn("match_history", res)
 
+    def test_trades_endpoint(self):
+        status, body, _ = self._get(f"/api/matches/{self.match.match_id}/trades")
+        self.assertEqual(status, 200)
+        res = json.loads(body.decode("utf-8"))
+        self.assertEqual(res["match_id"], self.match.match_id)
+        self.assertIn("match_trade_conversion_pct", res)
+        self.assertIn("player_stats", res)
+        self.assertIn("round_summaries", res)
+        self.assertIn("all_trade_events", res)
+
+    def test_win_probability_endpoint(self):
+        status, body, _ = self._get(f"/api/matches/{self.match.match_id}/win-probability")
+        self.assertEqual(status, 200)
+        res = json.loads(body.decode("utf-8"))
+        self.assertEqual(res["match_id"], self.match.match_id)
+        self.assertIn("round_curves", res)
+        self.assertIn("match_timeline", res)
+        self.assertIn("clutch_scenarios", res)
+        self.assertIn("critical_swings_count", res)
+
+    def test_scouting_report_endpoints(self):
+        # 1. JSON endpoint
+        status, body, _ = self._get(f"/api/matches/{self.match.match_id}/scouting-report?format=json")
+        self.assertEqual(status, 200)
+        res = json.loads(body.decode("utf-8"))
+        self.assertEqual(res["match_id"], self.match.match_id)
+        self.assertIn("career_radar", res)
+        self.assertIn("trade_matrix", res)
+        self.assertIn("win_probability", res)
+        self.assertIn("drills", res)
+
+        # 2. HTML standalone printable endpoint
+        status, body, headers = self._get(f"/api/matches/{self.match.match_id}/scouting-report?format=html")
+        self.assertEqual(status, 200)
+        self.assertIn("text/html", headers.get("Content-Type", ""))
+        html = body.decode("utf-8")
+        self.assertIn("<!DOCTYPE html>", html)
+        self.assertIn("PRO SCOUTING DOSSIER", html)
+
 
 if __name__ == "__main__":
     unittest.main()
+

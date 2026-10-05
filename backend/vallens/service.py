@@ -13,8 +13,11 @@ from vallens.analytics.heatmap import HeatmapAggregationEngine, HeatmapAggregati
 from vallens.analytics.perspective import PerspectiveDiffEngine, PerspectiveDiffResult
 from vallens.analytics.projection import CoordinateProjector
 from vallens.analytics.reference_vods import ProReferenceCatalog
+from vallens.analytics.scouting_report import ScoutingReportGenerator
+from vallens.analytics.trade_matrix import MatchTradeReport, TradeMatrixEngine
 from vallens.analytics.transcription import CoachVoiceTranscriber
 from vallens.analytics.utility_roi import UtilityRoiEngine, UtilityRoiReport
+from vallens.analytics.win_probability import MatchWinProbabilityReport, WinProbabilityEngine
 from vallens.db.database import Database
 from vallens.db.repository import MatchRepository
 from vallens.models import CoachNote, MatchEvent, MatchMetadata, MatchPlayer, VodTag
@@ -50,6 +53,17 @@ class ValLensService:
             self.repo,
             economy_engine=self.economy_engine,
             utility_roi_engine=self.utility_roi_engine,
+        )
+        self.trade_engine = TradeMatrixEngine(self.repo)
+        self.win_prob_engine = WinProbabilityEngine(self.repo)
+        self.scouting_generator = ScoutingReportGenerator(
+            repo=self.repo,
+            trade_engine=self.trade_engine,
+            win_prob_engine=self.win_prob_engine,
+            career_radar_engine=self.career_radar_engine,
+            utility_roi_engine=self.utility_roi_engine,
+            economy_engine=self.economy_engine,
+            drills_engine=TrainingRoutineEngine(),
         )
         self.capture_controller = capture_controller or CaptureController(service=self)
 
@@ -732,6 +746,53 @@ class ValLensService:
             map_id=map_id,
         )
         return profile.to_dict()
+
+    # ------------------------------------------------------------------
+    # Post-Match Trade Frag Efficiency & Spacing Matrix
+    # ------------------------------------------------------------------
+    def get_match_trades(self, match_id: str) -> Optional[dict[str, Any]]:
+        """Calculate trade frag conversion, 3.0s trade windows, and spacing errors."""
+        match = self.repo.get_match(match_id)
+        if not match:
+            return None
+
+        report = self.trade_engine.analyze_match_trades(match_id=match_id)
+        return report.to_dict()
+
+    # ------------------------------------------------------------------
+    # Post-Match Win Probability Timeline & Clutch Evaluator
+    # ------------------------------------------------------------------
+    def get_match_win_probability(self, match_id: str) -> Optional[dict[str, Any]]:
+        """Calculate round-by-round win expectancy timeline W(t) and 1vX clutch ratings."""
+        match = self.repo.get_match(match_id)
+        if not match:
+            return None
+
+        report = self.win_prob_engine.calculate_match_probability(match_id=match_id)
+        return report.to_dict()
+
+    # ------------------------------------------------------------------
+    # Pro Scouting Dossier & Offline Report Export
+    # ------------------------------------------------------------------
+    def get_match_scouting_report(
+        self,
+        match_id: str,
+        player_puuid: Optional[str] = None,
+        format: str = "json",
+    ) -> Optional[dict[str, Any] | str]:
+        """Generate structured JSON or standalone printable HTML scouting dossier."""
+        match = self.repo.get_match(match_id)
+        if not match:
+            return None
+
+        if format.lower() == "html":
+            return self.scouting_generator.generate_standalone_html(
+                match_id=match_id, player_puuid=player_puuid
+            )
+        return self.scouting_generator.generate_dossier_data(
+            match_id=match_id, player_puuid=player_puuid
+        )
+
 
 
 

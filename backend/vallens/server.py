@@ -448,6 +448,62 @@ class ValLensRequestHandler(BaseHTTPRequestHandler):
             self._send_json(report)
             return
 
+        # Post-Match Trade Frag Efficiency & Spacing Matrix API
+        if path.startswith("/api/matches/") and path.endswith("/trades"):
+            match_id = path.split("/")[3]
+            report = self.service.get_match_trades(match_id)
+            if not report:
+                self._send_error("Match not found", status=404)
+                return
+            self._send_json(report)
+            return
+
+        # Post-Match Win Probability Timeline & Clutch Evaluator API
+        if path.startswith("/api/matches/") and path.endswith("/win-probability"):
+            match_id = path.split("/")[3]
+            report = self.service.get_match_win_probability(match_id)
+            if not report:
+                self._send_error("Match not found", status=404)
+                return
+            self._send_json(report)
+            return
+
+        # Pro Scouting Dossier & Offline Export API
+        if path.startswith("/api/matches/") and path.endswith("/scouting-report"):
+            match_id = path.split("/")[3]
+            fmt = query.get("format", ["json"])[0]
+            player_puuid = query.get("player", [None])[0]
+            download = query.get("download", ["0"])[0] == "1"
+
+            if fmt.lower() == "html":
+                html_content = self.service.get_match_scouting_report(
+                    match_id, player_puuid=player_puuid, format="html"
+                )
+                if not html_content:
+                    self._send_error("Match not found", status=404)
+                    return
+                payload = html_content.encode("utf-8")
+                self.send_response(200)
+                self.send_header("Content-Type", "text/html; charset=utf-8")
+                if download:
+                    self.send_header(
+                        "Content-Disposition",
+                        f'attachment; filename="scouting-dossier-{match_id[:8]}.html"',
+                    )
+                self.send_header("Content-Length", str(len(payload)))
+                self.end_headers()
+                self.wfile.write(payload)
+                return
+            else:
+                data = self.service.get_match_scouting_report(
+                    match_id, player_puuid=player_puuid, format="json"
+                )
+                if not data:
+                    self._send_error("Match not found", status=404)
+                    return
+                self._send_json(data)
+                return
+
         # 8. Match Overview
         if path.startswith("/api/matches/"):
             match_id = path.split("/")[3]
