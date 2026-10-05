@@ -77,3 +77,33 @@ CREATE TABLE IF NOT EXISTS coach_notes (
 CREATE INDEX IF NOT EXISTS idx_coach_notes_match_id ON coach_notes(match_id);
 CREATE INDEX IF NOT EXISTS idx_coach_notes_round ON coach_notes(match_id, round_number);
 
+-- Tactical utility deployments and ability telemetry
+CREATE TABLE IF NOT EXISTS utility_events (
+    utility_id INTEGER PRIMARY KEY AUTOINCREMENT,
+    match_id TEXT NOT NULL,
+    round_number INTEGER NOT NULL,
+    timestamp_ms INTEGER NOT NULL,
+    player_puuid TEXT,
+    player_name TEXT,
+    agent_name TEXT,
+    ability_name TEXT NOT NULL,
+    ability_slot TEXT,
+    category TEXT NOT NULL, -- 'flash', 'smoke', 'recon', 'molly', 'stun', 'wall', 'mobility', 'ultimate'
+    pos_x REAL,
+    pos_y REAL,
+    target_x REAL,
+    target_y REAL,
+    duration_ms INTEGER DEFAULT 5000,
+    targets_affected INTEGER DEFAULT 0,
+    damage_dealt REAL DEFAULT 0.0,
+    assisted_kill INTEGER DEFAULT 0,
+    team_inflicted INTEGER DEFAULT 0,
+    wasted INTEGER DEFAULT 0,
+    roi_score REAL DEFAULT 50.0,
+    details TEXT,
+    FOREIGN KEY(match_id) REFERENCES matches(match_id) ON DELETE CASCADE
+);
+
+CREATE INDEX IF NOT EXISTS idx_utility_events_match ON utility_events(match_id, round_number);
+
+

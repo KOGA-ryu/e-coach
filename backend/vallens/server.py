@@ -437,6 +437,17 @@ class ValLensRequestHandler(BaseHTTPRequestHandler):
             self._send_json(status_data)
             return
 
+        # Post-Match Tactical Utility ROI API
+        if path.startswith("/api/matches/") and path.endswith("/utility-roi"):
+            match_id = path.split("/")[3]
+            force_recompute = query.get("force", ["false"])[0].lower() == "true"
+            report = self.service.get_match_utility_roi(match_id, force_recompute=force_recompute)
+            if not report:
+                self._send_error("Match not found", status=404)
+                return
+            self._send_json(report)
+            return
+
         # 8. Match Overview
         if path.startswith("/api/matches/"):
             match_id = path.split("/")[3]
@@ -496,6 +507,19 @@ class ValLensRequestHandler(BaseHTTPRequestHandler):
             puuid = query.get("player", [None])[0]
             matrix = self.service.get_agent_matrix(player_puuid=puuid)
             self._send_json(matrix.to_dict())
+            return
+
+        # Longitudinal Career Profile & 6-Axis Skill Radar API
+        if path == "/api/career/profile":
+            limit_val = int(query.get("limit", [20])[0])
+            player_val = query.get("player", [None])[0]
+            map_val = query.get("map", [None])[0]
+            profile = self.service.get_career_profile(
+                player_puuid=player_val,
+                limit=limit_val,
+                map_id=map_val,
+            )
+            self._send_json(profile)
             return
 
 

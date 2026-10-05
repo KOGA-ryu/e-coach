@@ -102,6 +102,12 @@ const state = {
   // Automated VOD-to-API Frame Alignment State
   videoOffsetMs: 0,
   syncStatus: null,
+
+  // Post-Match Ability ROI & Career Radar State
+  showUtilityOverlays: true,
+  utilityReport: null,
+  utilityEvents: [],
+  careerProfile: null,
 };
 
 // DOM Elements
@@ -284,6 +290,45 @@ const syncSlider = document.getElementById('sync-slider');
 const btnResetSyncZero = document.getElementById('btn-reset-sync-zero');
 const syncDiagnosticLog = document.getElementById('sync-diagnostic-log');
 
+// Post-Match Ability ROI DOM Elements
+const btnOpenUtility = document.getElementById('btn-open-utility');
+const utilityModal = document.getElementById('utility-modal');
+const btnCloseUtility = document.getElementById('btn-close-utility');
+const btnCloseUtilityFooter = document.getElementById('btn-close-utility-footer');
+const utilKpiRating = document.getElementById('util-kpi-rating');
+const utilKpiTier = document.getElementById('util-kpi-tier');
+const utilKpiFlash = document.getElementById('util-kpi-flash');
+const utilKpiFlashSub = document.getElementById('util-kpi-flash-sub');
+const utilKpiSmoke = document.getElementById('util-kpi-smoke');
+const utilKpiSmokeSub = document.getElementById('util-kpi-smoke-sub');
+const utilKpiRecon = document.getElementById('util-kpi-recon');
+const utilKpiReconSub = document.getElementById('util-kpi-recon-sub');
+const utilKpiCredits = document.getElementById('util-kpi-credits');
+const utilKpiCasts = document.getElementById('util-kpi-casts');
+const utilityAgentGrid = document.getElementById('utility-agent-grid');
+const utilityEventsTbody = document.getElementById('utility-events-tbody');
+const btnToggleUtility = document.getElementById('btn-toggle-utility');
+
+// Longitudinal Career Profile & 6-Axis Tactical Radar DOM Elements
+const btnOpenCareer = document.getElementById('btn-open-career');
+const careerModal = document.getElementById('career-modal');
+const btnCloseCareer = document.getElementById('btn-close-career');
+const btnCloseCareerFooter = document.getElementById('btn-close-career-footer');
+const careerLimitSelect = document.getElementById('career-limit-select');
+const careerKpiMatches = document.getElementById('career-kpi-matches');
+const careerKpiRounds = document.getElementById('career-kpi-rounds');
+const careerKpiWinrate = document.getElementById('career-kpi-winrate');
+const careerKpiWinSub = document.getElementById('career-kpi-win-sub');
+const careerKpiKd = document.getElementById('career-kpi-kd');
+const careerKpiAcs = document.getElementById('career-kpi-acs');
+const careerKpiReadiness = document.getElementById('career-kpi-readiness');
+const careerKpiRank = document.getElementById('career-kpi-rank');
+const careerRadarContainer = document.getElementById('career-radar-container');
+const careerStrengthsList = document.getElementById('career-strengths-list');
+const careerFocusList = document.getElementById('career-focus-list');
+const careerFlawTrendsList = document.getElementById('career-flaw-trends-list');
+const careerMatchesTbody = document.getElementById('career-matches-tbody');
+
 // Tag Mapping for 1-9 Hotkeys
 const TAG_MAP = {
   '1': { category: 'Mechanics', name: 'crosshair_placement' },
@@ -307,6 +352,8 @@ async function init() {
   setupObsControls();
   setupRiotControls();
   setupFrameSyncControls();
+  setupUtilityRoiControls();
+  setupCareerRadarControls();
   await loadAvailableMaps();
   await loadMatchList();
   await loadProReferenceCatalog();
@@ -376,6 +423,7 @@ async function loadMatch(matchId) {
     loadPerspectiveDiff(matchId);
     loadTrainingRoutine(matchId);
     loadEconomyAnalysis(matchId);
+    loadMatchUtilityRoi(matchId);
 
     // 5. Setup map background
     const mapName = getMapNameFromPath(state.matchMetadata.map_id);
@@ -909,6 +957,9 @@ function renderMinimap() {
     }
     ctx.restore();
   });
+
+  // 4. Draw Tactical Ability & Utility Overlays (Smokes, Flashes, Recon, Mollies)
+  drawUtilityOverlays(w, h, currentTelemetryMs);
 }
 
 function drawMovementTrajectories(w, h, currentTelemetryMs) {
@@ -4934,6 +4985,542 @@ function setupFrameSyncControls() {
       if (e.target === frameSyncModal) {
         closeFrameSyncModal();
       }
+    });
+  }
+}
+
+// -------------------------------------------------------------
+// Minimap 2D Tactical Utility Overlays
+// -------------------------------------------------------------
+function drawUtilityOverlays(w, h, currentTelemetryMs) {
+  if (!state.showUtilityOverlays || !state.utilityEvents || state.utilityEvents.length === 0) return;
+
+  const roundUtils = state.utilityEvents.filter((u) => u.round_number === state.activeRound);
+  if (roundUtils.length === 0) return;
+
+  const isLive = state.radarMode && (videoPlayer.duration || videoPlayer.currentTime > 0);
+
+  roundUtils.forEach((u) => {
+    // If live radar, only render utility during its active duration window
+    if (isLive) {
+      if (currentTelemetryMs < u.timestamp_ms || currentTelemetryMs > u.timestamp_ms + u.duration_ms) {
+        return;
+      }
+    }
+
+    const coords = getEventNormCoords(u);
+    const px = coords.x * w;
+    const py = coords.y * h;
+    const elapsed = Math.max(0, currentTelemetryMs - u.timestamp_ms);
+    const lifeRatio = Math.min(1.0, elapsed / u.duration_ms);
+    const fadeAlpha = isLive ? Math.max(0.2, 1.0 - lifeRatio * 0.7) : 0.75;
+
+    ctx.save();
+
+    if (u.category === 'smoke' || u.category === 'wall') {
+      // 2D Smoke Dome with Radial Gradient
+      const baseRadius = (u.category === 'wall' ? 45 : 32);
+      const rad = ctx.createRadialGradient(px, py, 4, px, py, baseRadius);
+      if (u.agent_name.toLowerCase().includes('omen')) {
+        rad.addColorStop(0, `rgba(88, 101, 242, ${0.7 * fadeAlpha})`);
+        rad.addColorStop(0.7, `rgba(45, 20, 80, ${0.45 * fadeAlpha})`);
+        rad.addColorStop(1, `rgba(0, 245, 212, ${0.1 * fadeAlpha})`);
+      } else {
+        rad.addColorStop(0, `rgba(235, 100, 52, ${0.65 * fadeAlpha})`);
+        rad.addColorStop(0.7, `rgba(80, 40, 20, ${0.4 * fadeAlpha})`);
+        rad.addColorStop(1, `rgba(255, 159, 28, ${0.1 * fadeAlpha})`);
+      }
+
+      ctx.fillStyle = rad;
+      ctx.beginPath();
+      ctx.arc(px, py, baseRadius, 0, Math.PI * 2);
+      ctx.fill();
+
+      ctx.strokeStyle = `rgba(138, 43, 226, ${0.8 * fadeAlpha})`;
+      ctx.lineWidth = 1.5;
+      ctx.setLineDash([3, 3]);
+      ctx.stroke();
+      ctx.setLineDash([]);
+
+      // Label
+      ctx.font = 'bold 9px Rajdhani';
+      ctx.fillStyle = '#ffffff';
+      ctx.textAlign = 'center';
+      ctx.fillText(u.ability_name.toUpperCase(), px, py + 3);
+
+    } else if (u.category === 'flash') {
+      // Flash Detonation Pulse & Rays
+      const flashRadius = 14 + (lifeRatio * 20);
+      ctx.strokeStyle = `rgba(255, 230, 100, ${fadeAlpha})`;
+      ctx.lineWidth = 2.5;
+      ctx.beginPath();
+      ctx.arc(px, py, flashRadius, 0, Math.PI * 2);
+      ctx.stroke();
+
+      ctx.fillStyle = `rgba(255, 255, 200, ${fadeAlpha * 0.6})`;
+      ctx.beginPath();
+      ctx.arc(px, py, 6, 0, Math.PI * 2);
+      ctx.fill();
+
+    } else if (u.category === 'recon') {
+      // Recon Sonar Wave Ping
+      const scanRad = 15 + ((elapsed % 1800) / 1800) * 40;
+      ctx.strokeStyle = `rgba(0, 245, 212, ${fadeAlpha * 0.8})`;
+      ctx.lineWidth = 1.5;
+      ctx.beginPath();
+      ctx.arc(px, py, scanRad, 0, Math.PI * 2);
+      ctx.stroke();
+
+      ctx.fillStyle = '#00f5d4';
+      ctx.beginPath();
+      ctx.arc(px, py, 4, 0, Math.PI * 2);
+      ctx.fill();
+
+    } else if (u.category === 'molly') {
+      // Molly Hazard Zone
+      const mRad = 26;
+      ctx.fillStyle = `rgba(255, 70, 85, ${0.35 * fadeAlpha})`;
+      ctx.beginPath();
+      ctx.arc(px, py, mRad, 0, Math.PI * 2);
+      ctx.fill();
+
+      ctx.strokeStyle = `rgba(255, 70, 85, ${0.8 * fadeAlpha})`;
+      ctx.lineWidth = 1.5;
+      ctx.setLineDash([4, 4]);
+      ctx.beginPath();
+      ctx.arc(px, py, mRad, 0, Math.PI * 2);
+      ctx.stroke();
+      ctx.setLineDash([]);
+    }
+
+    ctx.restore();
+  });
+}
+
+// -------------------------------------------------------------
+// Post-Match Ability ROI & Tactical Utility Telemetry
+// -------------------------------------------------------------
+async function loadMatchUtilityRoi(matchId) {
+  if (!matchId) return;
+  try {
+    const res = await fetch(`/api/matches/${matchId}/utility-roi`);
+    if (!res.ok) return;
+    const data = await res.json();
+    state.utilityReport = data;
+    state.utilityEvents = data.events || [];
+    renderUtilityModal();
+    if (state.radarMode) {
+      renderMinimap();
+    }
+  } catch (err) {
+    console.error('Failed to load utility ROI telemetry:', err);
+  }
+}
+
+function openUtilityModal() {
+  if (utilityModal) {
+    utilityModal.style.display = 'flex';
+    renderUtilityModal();
+  }
+}
+
+function closeUtilityModal() {
+  if (utilityModal) {
+    utilityModal.style.display = 'none';
+  }
+}
+
+function renderUtilityModal() {
+  const rep = state.utilityReport;
+  if (!rep) return;
+
+  // KPIs
+  if (utilKpiRating) {
+    utilKpiRating.textContent = `${rep.overall_utility_rating || 0}`;
+    const score = rep.overall_utility_rating || 0;
+    if (score >= 80) {
+      utilKpiRating.className = 'sync-kpi-val success';
+      if (utilKpiTier) utilKpiTier.textContent = 'A-TIER EFFICIENCY';
+    } else if (score >= 65) {
+      utilKpiRating.className = 'sync-kpi-val highlight';
+      if (utilKpiTier) utilKpiTier.textContent = 'B-TIER COMPETENT';
+    } else {
+      utilKpiRating.className = 'sync-kpi-val warning';
+      if (utilKpiTier) utilKpiTier.textContent = 'NEEDS REFINEMENT';
+    }
+  }
+
+  if (utilKpiFlash) {
+    const fl = rep.flash_stats || {};
+    utilKpiFlash.textContent = `${fl.conversion_rate || 0}%`;
+    if (utilKpiFlashSub) {
+      utilKpiFlashSub.textContent = `${fl.effective_flashes || 0} assisted frags (${fl.teamflashes || 0} teamflashes)`;
+    }
+  }
+
+  if (utilKpiSmoke) {
+    const sm = rep.smoke_stats || {};
+    utilKpiSmoke.textContent = `${sm.efficiency_rate || 0}%`;
+    if (utilKpiSmokeSub) {
+      utilKpiSmokeSub.textContent = `${sm.effective_smokes || 0} active coverage (${sm.wasted_smokes || 0} wasted)`;
+    }
+  }
+
+  if (utilKpiRecon) {
+    const rc = rep.recon_stats || {};
+    utilKpiRecon.textContent = `${rc.intel_rate || 0}%`;
+    if (utilKpiReconSub) {
+      utilKpiReconSub.textContent = `${rc.enemies_revealed || 0} scanned (${rc.assists_converted || 0} frags)`;
+    }
+  }
+
+  if (utilKpiCredits) {
+    utilKpiCredits.textContent = `${(rep.total_credits_spent || 0).toLocaleString()} ¤`;
+    if (utilKpiCasts) {
+      utilKpiCasts.textContent = `${rep.total_casts || 0} total casts`;
+    }
+  }
+
+  // Agent Breakdown Grid
+  if (utilityAgentGrid) {
+    utilityAgentGrid.innerHTML = '';
+    const breakdown = rep.agent_breakdown || [];
+    if (breakdown.length === 0) {
+      utilityAgentGrid.innerHTML = '<div style="color: var(--text-muted); font-size: 12px;">No agent utility casts recorded for this match.</div>';
+    } else {
+      breakdown.forEach((ag) => {
+        const card = document.createElement('div');
+        card.className = 'utility-agent-card';
+        card.innerHTML = `
+          <div class="utility-agent-header">
+            <span class="utility-agent-name">${ag.agent_name}</span>
+            <span class="utility-agent-roi">${ag.roi_score} ROI</span>
+          </div>
+          <div class="utility-agent-stats">
+            <span>Player: ${ag.player_name || 'Roster'}</span>
+            <span>${ag.casts} casts</span>
+          </div>
+          <div class="utility-agent-stats">
+            <span>Assists Generated:</span>
+            <strong style="color: #06d6a0;">${ag.assists_generated}</strong>
+          </div>
+        `;
+        utilityAgentGrid.appendChild(card);
+      });
+    }
+  }
+
+  // Chronological Table
+  if (utilityEventsTbody) {
+    utilityEventsTbody.innerHTML = '';
+    const events = rep.events || state.utilityEvents || [];
+    if (events.length === 0) {
+      utilityEventsTbody.innerHTML = '<tr><td colspan="8" class="empty-cell">No utility deployments found for this match.</td></tr>';
+      return;
+    }
+
+    events.forEach((ev) => {
+      const tr = document.createElement('tr');
+      const timecode = formatTime(ev.timestamp_ms / 1000);
+      const catClass = ev.category || 'flash';
+      tr.innerHTML = `
+        <td style="font-family: 'Courier New', monospace; font-weight: bold; color: var(--accent-cyan);">${timecode}</td>
+        <td>RND ${ev.round_number + 1}</td>
+        <td><strong>${ev.agent_name}</strong> <span style="font-size: 10px; color: var(--text-muted);">(${ev.player_name})</span></td>
+        <td>${ev.ability_name}</td>
+        <td><span class="utility-cat-badge ${catClass}">${ev.category}</span></td>
+        <td style="font-size: 11px;">${ev.details || (ev.assisted_kill ? 'Assisted Frag' : 'Zone Control')}</td>
+        <td style="font-family: 'Courier New', monospace; font-weight: bold; color: ${ev.roi_score >= 80 ? '#06d6a0' : '#ffd166'};">${ev.roi_score}</td>
+        <td><button class="mini-btn seek-btn" data-time="${ev.timestamp_ms}">▶ SEEK</button></td>
+      `;
+
+      const seekBtn = tr.querySelector('.seek-btn');
+      if (seekBtn) {
+        seekBtn.addEventListener('click', (e) => {
+          e.stopPropagation();
+          const t = parseInt(seekBtn.dataset.time, 10);
+          seekToEventWithPreRoll(t, 2.0);
+          closeUtilityModal();
+        });
+      }
+
+      utilityEventsTbody.appendChild(tr);
+    });
+  }
+}
+
+function setupUtilityRoiControls() {
+  if (btnOpenUtility) {
+    btnOpenUtility.addEventListener('click', openUtilityModal);
+  }
+  if (btnCloseUtility) {
+    btnCloseUtility.addEventListener('click', closeUtilityModal);
+  }
+  if (btnCloseUtilityFooter) {
+    btnCloseUtilityFooter.addEventListener('click', closeUtilityModal);
+  }
+  if (utilityModal) {
+    utilityModal.addEventListener('click', (e) => {
+      if (e.target === utilityModal) closeUtilityModal();
+    });
+  }
+
+  // Toggle utility rendering on minimap
+  if (btnToggleUtility) {
+    btnToggleUtility.addEventListener('click', () => {
+      state.showUtilityOverlays = !state.showUtilityOverlays;
+      btnToggleUtility.classList.toggle('active', state.showUtilityOverlays);
+      renderMinimap();
+      showToast(state.showUtilityOverlays ? 'Utility Overlays: ENABLED' : 'Utility Overlays: DISABLED');
+    });
+  }
+}
+
+// -------------------------------------------------------------
+// Longitudinal Career Profile & 6-Axis Tactical Skill Radar
+// -------------------------------------------------------------
+async function loadCareerProfile(limit = 20) {
+  try {
+    const res = await fetch(`/api/career/profile?limit=${limit}`);
+    if (!res.ok) return;
+    const data = await res.json();
+    state.careerProfile = data;
+    renderCareerProfile();
+  } catch (err) {
+    console.error('Failed to load career profile:', err);
+  }
+}
+
+async function openCareerModal() {
+  if (careerModal) {
+    careerModal.style.display = 'flex';
+    const limit = careerLimitSelect ? parseInt(careerLimitSelect.value, 10) : 20;
+    await loadCareerProfile(limit);
+  }
+}
+
+function closeCareerModal() {
+  if (careerModal) {
+    careerModal.style.display = 'none';
+  }
+}
+
+function renderCareerProfile() {
+  const prof = state.careerProfile;
+  if (!prof) return;
+
+  // KPIs
+  if (careerKpiMatches) careerKpiMatches.textContent = prof.matches_reviewed || 0;
+  if (careerKpiRounds) careerKpiRounds.textContent = `${prof.total_rounds || 0} rounds analyzed`;
+  if (careerKpiWinrate) careerKpiWinrate.textContent = `${prof.win_rate || 0}%`;
+  if (careerKpiKd) careerKpiKd.textContent = `${prof.career_kd || 0}`;
+  if (careerKpiAcs) careerKpiAcs.textContent = `${Math.round(prof.career_acs || 0)} ACS Avg`;
+  if (careerKpiReadiness) careerKpiReadiness.textContent = `${prof.rank_readiness_score || 0} / 100`;
+  if (careerKpiRank) careerKpiRank.textContent = (prof.projected_rank || 'IMMORTAL').toUpperCase();
+
+  // Radar SVG
+  if (careerRadarContainer) {
+    careerRadarContainer.innerHTML = generateHexagonalRadarSvg(
+      prof.radar_axes || {},
+      prof.pro_benchmarks || {}
+    );
+  }
+
+  // Strengths
+  if (careerStrengthsList) {
+    careerStrengthsList.innerHTML = '';
+    (prof.top_strengths || []).forEach((s) => {
+      const li = document.createElement('li');
+      li.textContent = s;
+      careerStrengthsList.appendChild(li);
+    });
+  }
+
+  // Focus areas
+  if (careerFocusList) {
+    careerFocusList.innerHTML = '';
+    (prof.focus_areas || []).forEach((f) => {
+      const li = document.createElement('li');
+      li.textContent = f;
+      careerFocusList.appendChild(li);
+    });
+  }
+
+  // Flaw trends
+  if (careerFlawTrendsList) {
+    careerFlawTrendsList.innerHTML = '';
+    (prof.flaw_trends || []).forEach((t) => {
+      const div = document.createElement('div');
+      div.className = 'flaw-trend-item';
+      const isImproving = t.delta_percentage < 0;
+      const isNeutral = t.delta_percentage === 0;
+      const deltaClass = isImproving ? 'improving' : (isNeutral ? 'neutral' : 'elevated');
+      const deltaSign = t.delta_percentage > 0 ? '+' : '';
+      div.innerHTML = `
+        <div>
+          <div class="flaw-trend-name">${t.tag_name.replace(/_/g, ' ')}</div>
+          <div class="flaw-trend-sub">${t.total_occurrences} total (${t.rate_per_round}/rnd)</div>
+        </div>
+        <div class="flaw-trend-delta ${deltaClass}">${deltaSign}${t.delta_percentage}% ${isImproving ? '↓' : (t.delta_percentage > 0 ? '↑' : '')}</div>
+      `;
+      careerFlawTrendsList.appendChild(div);
+    });
+  }
+
+  // Career Matches Table
+  if (careerMatchesTbody) {
+    careerMatchesTbody.innerHTML = '';
+    const history = prof.match_history || [];
+    if (history.length === 0) {
+      careerMatchesTbody.innerHTML = '<tr><td colspan="9" class="empty-cell">No match history found.</td></tr>';
+      return;
+    }
+
+    history.forEach((m) => {
+      const tr = document.createElement('tr');
+      const isWin = m.result === 'WIN';
+      tr.innerHTML = `
+        <td style="font-family: 'Courier New', monospace; font-size: 11px;">${m.match_id.substring(0, 16)}...</td>
+        <td><strong>${m.map}</strong></td>
+        <td><span class="career-result-pill ${isWin ? 'win' : 'loss'}">${m.result}</span></td>
+        <td>${m.kills} / ${m.deaths} <strong style="color: ${m.kd >= 1.0 ? '#06d6a0' : '#ff4655'};">(${m.kd})</strong></td>
+        <td>${m.score}</td>
+        <td>${m.rounds}</td>
+        <td style="color: #ffd166;">${m.econ_score}</td>
+        <td style="color: #bf8eff;">${m.utility_score}</td>
+        <td><button class="mini-btn load-career-match-btn" data-id="${m.match_id}">LOAD</button></td>
+      `;
+
+      const loadBtn = tr.querySelector('.load-career-match-btn');
+      if (loadBtn) {
+        loadBtn.addEventListener('click', (e) => {
+          e.stopPropagation();
+          const targetId = loadBtn.dataset.id;
+          if (targetId) {
+            matchSelect.value = targetId;
+            loadMatch(targetId);
+            closeCareerModal();
+            showToast(`Loaded match: ${m.map}`);
+          }
+        });
+      }
+
+      careerMatchesTbody.appendChild(tr);
+    });
+  }
+}
+
+function generateHexagonalRadarSvg(axes, benchmarks) {
+  const size = 320;
+  const center = size / 2;
+  const radius = 105;
+
+  const axisKeys = [
+    { key: 'aim_impact', label: 'AIM IMPACT' },
+    { key: 'economy_discipline', label: 'ECONOMY' },
+    { key: 'utility_mastery', label: 'UTILITY ROI' },
+    { key: 'clutch_resilience', label: 'CLUTCH' },
+    { key: 'tactical_survivability', label: 'SURVIVABILITY' },
+    { key: 'tactical_versatility', label: 'VERSATILITY' },
+  ];
+
+  // Helper to compute (x, y) for an axis index and score ratio (0 to 1)
+  const getPoint = (idx, ratio) => {
+    const angle = (idx * Math.PI) / 3 - Math.PI / 2;
+    const r = radius * Math.max(0.05, Math.min(1.0, ratio));
+    return {
+      x: center + r * Math.cos(angle),
+      y: center + r * Math.sin(angle),
+    };
+  };
+
+  // Concentric background grid polygons (25%, 50%, 75%, 100%)
+  let gridPolys = '';
+  [0.25, 0.5, 0.75, 1.0].forEach((level) => {
+    const pts = axisKeys.map((_, i) => {
+      const p = getPoint(i, level);
+      return `${p.x.toFixed(1)},${p.y.toFixed(1)}`;
+    }).join(' ');
+    gridPolys += `<polygon points="${pts}" fill="none" stroke="rgba(255, 255, 255, 0.08)" stroke-width="1" />`;
+  });
+
+  // Spokes
+  let spokes = '';
+  axisKeys.forEach((_, i) => {
+    const p = getPoint(i, 1.0);
+    spokes += `<line x1="${center}" y1="${center}" x2="${p.x.toFixed(1)}" y2="${p.y.toFixed(1)}" stroke="rgba(255, 255, 255, 0.12)" stroke-width="1" />`;
+  });
+
+  // Pro Benchmark Polygon (red dashed line)
+  const benchPoints = axisKeys.map((item, i) => {
+    const val = (benchmarks[item.key] || 80.0) / 100.0;
+    const p = getPoint(i, val);
+    return `${p.x.toFixed(1)},${p.y.toFixed(1)}`;
+  }).join(' ');
+  const benchPoly = `<polygon points="${benchPoints}" fill="rgba(255, 70, 85, 0.08)" stroke="#ff4655" stroke-width="1.8" stroke-dasharray="4,4" />`;
+
+  // Player Polygon (cyan glowing fill)
+  const playerPoints = axisKeys.map((item, i) => {
+    const val = (axes[item.key] || 50.0) / 100.0;
+    const p = getPoint(i, val);
+    return `${p.x.toFixed(1)},${p.y.toFixed(1)}`;
+  }).join(' ');
+  const playerPoly = `<polygon points="${playerPoints}" fill="rgba(0, 245, 212, 0.35)" stroke="#00f5d4" stroke-width="2.5" />`;
+
+  // Player Dots
+  let playerDots = '';
+  axisKeys.forEach((item, i) => {
+    const val = (axes[item.key] || 50.0) / 100.0;
+    const p = getPoint(i, val);
+    playerDots += `<circle cx="${p.x.toFixed(1)}" cy="${p.y.toFixed(1)}" r="4.5" fill="#00f5d4" stroke="#0f1923" stroke-width="1.5" />`;
+  });
+
+  // Axis Labels
+  let labels = '';
+  axisKeys.forEach((item, i) => {
+    const p = getPoint(i, 1.25);
+    const scoreVal = Math.round(axes[item.key] || 50);
+    const textAnchor = Math.abs(p.x - center) < 15 ? 'middle' : (p.x > center ? 'start' : 'end');
+    labels += `
+      <text x="${p.x.toFixed(1)}" y="${(p.y - 2).toFixed(1)}" text-anchor="${textAnchor}" fill="#a0a6b2" font-family="Rajdhani, sans-serif" font-size="10.5" font-weight="700">
+        ${item.label}
+      </text>
+      <text x="${p.x.toFixed(1)}" y="${(p.y + 11).toFixed(1)}" text-anchor="${textAnchor}" fill="#00f5d4" font-family="'Courier New', monospace" font-size="11" font-weight="bold">
+        ${scoreVal}
+      </text>
+    `;
+  });
+
+  return `
+    <svg width="${size}" height="${size}" viewBox="0 0 ${size}" style="max-width: 100%; height: auto; overflow: visible;">
+      ${gridPolys}
+      ${spokes}
+      ${benchPoly}
+      ${playerPoly}
+      ${playerDots}
+      ${labels}
+    </svg>
+  `;
+}
+
+function setupCareerRadarControls() {
+  if (btnOpenCareer) {
+    btnOpenCareer.addEventListener('click', openCareerModal);
+  }
+  if (btnCloseCareer) {
+    btnCloseCareer.addEventListener('click', closeCareerModal);
+  }
+  if (btnCloseCareerFooter) {
+    btnCloseCareerFooter.addEventListener('click', closeCareerModal);
+  }
+  if (careerLimitSelect) {
+    careerLimitSelect.addEventListener('change', (e) => {
+      loadCareerProfile(parseInt(e.target.value, 10));
+    });
+  }
+  if (careerModal) {
+    careerModal.addEventListener('click', (e) => {
+      if (e.target === careerModal) closeCareerModal();
     });
   }
 }

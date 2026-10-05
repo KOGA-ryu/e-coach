@@ -53,6 +53,8 @@
       <button id="btn-open-matrix" class="btn-matrix" title="Agent Profiling Matrix">AGENT MATRIX</button>
       <button id="btn-open-drills" class="btn-drills" title="Custom Practice Routines & Aim Trainer Exporter">PRACTICE DRILLS</button>
       <button id="btn-open-economy" class="btn-economy" title="Economy vs Flaw Correlation Matrix">ECONOMY MATRIX</button>
+      <button id="btn-open-utility" class="btn-utility" title="Post-Match Ability ROI & Tactical Synergy Matrix">🔮 UTILITY ROI</button>
+      <button id="btn-open-career" class="btn-career" title="Longitudinal Career Profile & 6-Axis Tactical Radar">📊 CAREER RADAR</button>
       <button id="btn-generate-montage" class="btn-montage" title="Generate Continuous Flaw Review Reel MP4">🎬 REVIEW REEL</button>
       <a id="btn-view-report" class="btn-report" target="_blank" href="#">COACHING REPORT</a>
       <a id="btn-export-dossier" class="btn-dossier" title="Export Standalone Offline Review Dossier (.html)" href="#" download>EXPORT DOSSIER</a>
@@ -250,6 +252,7 @@
         <div class="minimap-toggles" id="match-minimap-toggles">
           <button id="btn-radar-mode" class="mini-btn radar-btn active" data-mode="radar" title="Show events dynamically as video plays">LIVE RADAR</button>
           <button id="btn-toggle-trails" class="mini-btn trail-btn active" title="Toggle Rotation & Movement Trajectories">TRAILS</button>
+          <button id="btn-toggle-utility" class="mini-btn utility-toggle-btn active" title="Toggle Tactical Ability & Utility Overlays (Smokes, Flashes, Darts)">UTILITY</button>
           <button id="btn-filter-all" class="mini-btn active" data-filter="all">ALL</button>
           <button id="btn-filter-kills" class="mini-btn kill-btn" data-filter="kill">KILLS</button>
           <button id="btn-filter-deaths" class="mini-btn death-btn" data-filter="death">DEATHS</button>
@@ -1001,6 +1004,189 @@
       <div class="modal-footer" style="display: flex; justify-content: space-between; padding: 14px 20px;">
         <button id="btn-cancel-sync" class="btn-sync">CLOSE</button>
         <button id="btn-save-sync" class="btn-primary">APPLY & SAVE ALIGNMENT</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Post-Match Tactical Utility ROI & Ability Synergy Modal -->
+  <div class="modal-overlay" id="utility-modal" style="display: none;">
+    <div class="modal-card utility-modal-card">
+      <div class="modal-header">
+        <div class="modal-title-group">
+          <div class="modal-title">POST-MATCH ABILITY ROI & TACTICAL UTILITY SYNERGY</div>
+          <div class="modal-subtitle">Flash Conversion Rates, Smoke Timing Discipline, and Recon Intel Yield</div>
+        </div>
+        <button id="btn-close-utility" class="modal-close-btn">&times;</button>
+      </div>
+
+      <div class="modal-body utility-modal-body">
+        <!-- Top Status KPIs -->
+        <div class="sync-kpi-grid">
+          <div class="sync-kpi-card">
+            <span class="sync-kpi-label">OVERALL UTILITY RATING</span>
+            <span class="sync-kpi-val highlight" id="util-kpi-rating">--</span>
+            <span class="sync-kpi-sub" id="util-kpi-tier">CALCULATING...</span>
+          </div>
+          <div class="sync-kpi-card">
+            <span class="sync-kpi-label">FLASH CONVERSION RATE</span>
+            <span class="sync-kpi-val success" id="util-kpi-flash">--%</span>
+            <span class="sync-kpi-sub" id="util-kpi-flash-sub">0 assisted frags</span>
+          </div>
+          <div class="sync-kpi-card">
+            <span class="sync-kpi-label">SMOKE EFFICIENCY</span>
+            <span class="sync-kpi-val highlight" id="util-kpi-smoke">--%</span>
+            <span class="sync-kpi-sub" id="util-kpi-smoke-sub">0 execute blocks</span>
+          </div>
+          <div class="sync-kpi-card">
+            <span class="sync-kpi-label">RECON INTEL YIELD</span>
+            <span class="sync-kpi-val success" id="util-kpi-recon">--%</span>
+            <span class="sync-kpi-sub" id="util-kpi-recon-sub">0 enemies scanned</span>
+          </div>
+          <div class="sync-kpi-card">
+            <span class="sync-kpi-label">ABILITY ECONOMY BURN</span>
+            <span class="sync-kpi-val neutral" id="util-kpi-credits">0 ¤</span>
+            <span class="sync-kpi-sub" id="util-kpi-casts">0 total casts</span>
+          </div>
+        </div>
+
+        <!-- Agent Ability Breakdown Grid -->
+        <div class="utility-section">
+          <div class="sub-header">🎭 AGENT ABILITY PERFORMANCE BREAKDOWN</div>
+          <div class="utility-agent-grid" id="utility-agent-grid"></div>
+        </div>
+
+        <!-- Chronological Deployments Table -->
+        <div class="utility-section">
+          <div class="sub-header">📋 CHRONOLOGICAL ABILITY DEPLOYMENT TIMELINE (CLICK TO JUMP VOD)</div>
+          <div class="table-container utility-table-container">
+            <table class="data-table utility-table">
+              <thead>
+                <tr>
+                  <th>TIME</th>
+                  <th>ROUND</th>
+                  <th>PLAYER / AGENT</th>
+                  <th>ABILITY</th>
+                  <th>CATEGORY</th>
+                  <th>OUTCOME & IMPACT</th>
+                  <th>ROI SCORE</th>
+                  <th>ACTION</th>
+                </tr>
+              </thead>
+              <tbody id="utility-events-tbody">
+                <tr><td colspan="8" class="empty-cell">No utility events loaded yet.</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+      <div class="modal-footer" style="display: flex; justify-content: flex-end; padding: 14px 20px;">
+        <button id="btn-close-utility-footer" class="btn-sync">CLOSE</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Longitudinal Career Profile & 6-Axis Tactical Radar Modal -->
+  <div class="modal-overlay" id="career-modal" style="display: none;">
+    <div class="modal-card career-modal-card">
+      <div class="modal-header">
+        <div class="modal-title-group">
+          <div class="modal-title">LONGITUDINAL CAREER PROFILE & 6-AXIS TACTICAL RADAR</div>
+          <div class="modal-subtitle">Cross-Match Telemetry Aggregation, Pro Benchmarking & Flaw Reduction Trajectories</div>
+        </div>
+        <div style="display: flex; align-items: center; gap: 12px;">
+          <select id="career-limit-select" class="dropdown-select mini-select">
+            <option value="5">Last 5 Matches</option>
+            <option value="10">Last 10 Matches</option>
+            <option value="20" selected>Last 20 Matches</option>
+            <option value="50">All Matches</option>
+          </select>
+          <button id="btn-close-career" class="modal-close-btn">&times;</button>
+        </div>
+      </div>
+
+      <div class="modal-body career-modal-body">
+        <!-- Top Status KPIs -->
+        <div class="sync-kpi-grid">
+          <div class="sync-kpi-card">
+            <span class="sync-kpi-label">MATCHES REVIEWED</span>
+            <span class="sync-kpi-val highlight" id="career-kpi-matches">0</span>
+            <span class="sync-kpi-sub" id="career-kpi-rounds">0 rounds analyzed</span>
+          </div>
+          <div class="sync-kpi-card">
+            <span class="sync-kpi-label">CAREER WIN RATE</span>
+            <span class="sync-kpi-val success" id="career-kpi-winrate">0.0%</span>
+            <span class="sync-kpi-sub" id="career-kpi-win-sub">Post-game verified</span>
+          </div>
+          <div class="sync-kpi-card">
+            <span class="sync-kpi-label">CAREER K/D RATIO</span>
+            <span class="sync-kpi-val success" id="career-kpi-kd">0.00</span>
+            <span class="sync-kpi-sub" id="career-kpi-acs">0 ACS Avg</span>
+          </div>
+          <div class="sync-kpi-card">
+            <span class="sync-kpi-label">RANK READINESS RATING</span>
+            <span class="sync-kpi-val highlight" id="career-kpi-readiness">-- / 100</span>
+            <span class="sync-kpi-sub" id="career-kpi-rank">PRO READY</span>
+          </div>
+        </div>
+
+        <!-- Center Radar & Diagnostics Split -->
+        <div class="career-grid">
+          <!-- Left Column: Hexagonal SVG Radar -->
+          <div class="career-radar-card">
+            <div class="sub-header">🕸️ 6-AXIS TACTICAL SKILL RADAR</div>
+            <div class="radar-container" id="career-radar-container"></div>
+            <div class="radar-legend">
+              <span class="radar-legend-item"><span class="radar-legend-color player"></span> ACE PROFILE</span>
+              <span class="radar-legend-item"><span class="radar-legend-color benchmark"></span> IMMORTAL / RADIANT BENCHMARK</span>
+            </div>
+          </div>
+
+          <!-- Right Column: Strengths, Focus Areas & Flaw Trends -->
+          <div class="career-flaws-card">
+            <div class="sub-header">🎯 PRO CALIBRATION & FLAW REDUCTION TRAJECTORY</div>
+            <div class="career-strengths-box">
+              <div class="box-title text-success">KEY COMPETITIVE STRENGTHS</div>
+              <ul class="strength-list" id="career-strengths-list"></ul>
+            </div>
+            <div class="career-focus-box">
+              <div class="box-title text-danger">PRIORITY FOCUS AREAS</div>
+              <ul class="focus-list" id="career-focus-list"></ul>
+            </div>
+
+            <div class="sub-header" style="margin-top: 14px;">📉 MULTI-MATCH FLAW REDUCTION DELTAS</div>
+            <div class="flaw-trends-container" id="career-flaw-trends-list"></div>
+          </div>
+        </div>
+
+        <!-- Bottom Career Match History Table -->
+        <div class="career-section">
+          <div class="sub-header">📜 RECENT MATCH PROGRESSION & RATINGS</div>
+          <div class="table-container career-table-container">
+            <table class="data-table career-table">
+              <thead>
+                <tr>
+                  <th>MATCH ID</th>
+                  <th>MAP</th>
+                  <th>RESULT</th>
+                  <th>K / D (RATIO)</th>
+                  <th>SCORE</th>
+                  <th>ROUNDS</th>
+                  <th>ECONOMY</th>
+                  <th>UTILITY ROI</th>
+                  <th>ACTION</th>
+                </tr>
+              </thead>
+              <tbody id="career-matches-tbody">
+                <tr><td colspan="9" class="empty-cell">Loading career history...</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+      <div class="modal-footer" style="display: flex; justify-content: flex-end; padding: 14px 20px;">
+        <button id="btn-close-career-footer" class="btn-sync">CLOSE</button>
       </div>
     </div>
   </div>

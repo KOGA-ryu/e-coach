@@ -3,7 +3,7 @@
 import json
 from typing import Any, Optional
 from vallens.db.database import Database
-from vallens.models import CoachNote, MatchEvent, MatchMetadata, MatchPlayer, VodTag
+from vallens.models import CoachNote, MatchEvent, MatchMetadata, MatchPlayer, UtilityEvent, VodTag
 
 
 
@@ -142,6 +142,9 @@ class MatchRepository:
             cursor = conn.execute(sql, tag.to_tuple())
             return cursor.lastrowid
 
+    # Alias for convenience
+    insert_tag = create_tag
+
     def get_tags(
         self,
         match_id: str,
@@ -176,6 +179,9 @@ class MatchRepository:
                 )
                 for r in rows
             ]
+
+    # Alias for convenience
+    get_tags_for_match = get_tags
 
     def delete_tag(self, tag_id: int) -> bool:
         """Delete a tag by ID."""
@@ -345,6 +351,10 @@ class MatchRepository:
 
             return events, tags, match_ids
 
+    def insert_player(self, player: MatchPlayer) -> int:
+        """Insert a single match player record."""
+        return self.insert_match_players([player])
+
     def insert_match_players(self, players: list[MatchPlayer]) -> int:
         """Insert or replace player participant entries for matches."""
         if not players:
@@ -386,6 +396,9 @@ class MatchRepository:
                 )
                 for r in rows
             ]
+
+    # Alias for convenience
+    get_players = get_match_players
 
     def get_player_agent_matches(
         self, player_puuid: Optional[str] = None
@@ -481,5 +494,92 @@ class MatchRepository:
         with self.db.connection() as conn:
             cursor = conn.execute(sql, (note_id,))
             return cursor.rowcount > 0
+
+    # ------------------------------------------------------------------
+    # Tactical Utility Deployment & Ability Telemetry
+    # ------------------------------------------------------------------
+    def insert_utility_event(self, event: UtilityEvent) -> int:
+        """Insert a single utility event record."""
+        sql = """
+        INSERT INTO utility_events (
+            match_id, round_number, timestamp_ms, player_puuid, player_name,
+            agent_name, ability_name, ability_slot, category, pos_x, pos_y,
+            target_x, target_y, duration_ms, targets_affected, damage_dealt,
+            assisted_kill, team_inflicted, wasted, roi_score, details
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);
+        """
+        with self.db.connection() as conn:
+            cursor = conn.execute(sql, event.to_tuple())
+            return cursor.lastrowid
+
+    def insert_utility_events(self, events: list[UtilityEvent]) -> None:
+        """Batch insert utility events."""
+        if not events:
+            return
+        sql = """
+        INSERT INTO utility_events (
+            match_id, round_number, timestamp_ms, player_puuid, player_name,
+            agent_name, ability_name, ability_slot, category, pos_x, pos_y,
+            target_x, target_y, duration_ms, targets_affected, damage_dealt,
+            assisted_kill, team_inflicted, wasted, roi_score, details
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);
+        """
+        with self.db.connection() as conn:
+            conn.executemany(sql, [e.to_tuple() for e in events])
+
+    def get_utility_events(
+        self, match_id: str, round_number: Optional[int] = None
+    ) -> list[UtilityEvent]:
+        """Fetch utility deployment events for a match, optionally filtered by round."""
+        query = [
+            "SELECT utility_id, match_id, round_number, timestamp_ms, player_puuid,",
+            "player_name, agent_name, ability_name, ability_slot, category, pos_x, pos_y,",
+            "target_x, target_y, duration_ms, targets_affected, damage_dealt,",
+            "assisted_kill, team_inflicted, wasted, roi_score, details",
+            "FROM utility_events WHERE match_id = ?",
+        ]
+        params: list[Any] = [match_id]
+        if round_number is not None:
+            query.append("AND round_number = ?")
+            params.append(round_number)
+        query.append("ORDER BY timestamp_ms ASC;")
+        sql = " ".join(query)
+
+        with self.db.connection() as conn:
+            rows = conn.execute(sql, params).fetchall()
+            return [
+                UtilityEvent(
+                    utility_id=r["utility_id"],
+                    match_id=r["match_id"],
+                    round_number=r["round_number"],
+                    timestamp_ms=r["timestamp_ms"],
+                    player_puuid=r["player_puuid"],
+                    player_name=r["player_name"] or "",
+                    agent_name=r["agent_name"] or "",
+                    ability_name=r["ability_name"],
+                    ability_slot=r["ability_slot"] or "Ability1",
+                    category=r["category"],
+                    pos_x=r["pos_x"],
+                    pos_y=r["pos_y"],
+                    target_x=r["target_x"],
+                    target_y=r["target_y"],
+                    duration_ms=r["duration_ms"] or 5000,
+                    targets_affected=r["targets_affected"] or 0,
+                    damage_dealt=r["damage_dealt"] or 0.0,
+                    assisted_kill=bool(r["assisted_kill"]),
+                    team_inflicted=bool(r["team_inflicted"]),
+                    wasted=bool(r["wasted"]),
+                    roi_score=r["roi_score"] if r["roi_score"] is not None else 50.0,
+                    details=r["details"] or "",
+                )
+                for r in rows
+            ]
+
+    def delete_utility_events(self, match_id: str) -> None:
+        """Delete all utility events for a match."""
+        sql = "DELETE FROM utility_events WHERE match_id = ?;"
+        with self.db.connection() as conn:
+            conn.execute(sql, (match_id,))
+
 
 

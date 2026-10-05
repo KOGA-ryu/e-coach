@@ -5,6 +5,7 @@ from pathlib import Path
 from typing import Any, Optional
 
 from vallens.analytics.agent_profile import AgentMatrixResult, AgentProfilingEngine
+from vallens.analytics.career_radar import CareerProfileReport, CareerRadarEngine
 from vallens.analytics.drills import TrainingRoutineEngine, TrainingRoutineResult
 from vallens.analytics.economy import EconomyAnalysisResult, EconomyCorrelationEngine
 from vallens.analytics.frame_sync import FrameSyncEngine, FrameSyncResult
@@ -13,6 +14,7 @@ from vallens.analytics.perspective import PerspectiveDiffEngine, PerspectiveDiff
 from vallens.analytics.projection import CoordinateProjector
 from vallens.analytics.reference_vods import ProReferenceCatalog
 from vallens.analytics.transcription import CoachVoiceTranscriber
+from vallens.analytics.utility_roi import UtilityRoiEngine, UtilityRoiReport
 from vallens.db.database import Database
 from vallens.db.repository import MatchRepository
 from vallens.models import CoachNote, MatchEvent, MatchMetadata, MatchPlayer, VodTag
@@ -43,6 +45,12 @@ class ValLensService:
         self.transcriber = CoachVoiceTranscriber()
         self.reference_catalog = ProReferenceCatalog()
         self.sync_engine = FrameSyncEngine()
+        self.utility_roi_engine = UtilityRoiEngine(self.repo)
+        self.career_radar_engine = CareerRadarEngine(
+            self.repo,
+            economy_engine=self.economy_engine,
+            utility_roi_engine=self.utility_roi_engine,
+        )
         self.capture_controller = capture_controller or CaptureController(service=self)
 
     def ingest_match_payload(
@@ -688,6 +696,43 @@ class ValLensService:
             "events_count": len(events),
             "calibrated": (getattr(match, "video_offset_ms", 0) or 0) != 0,
         }
+
+    # ------------------------------------------------------------------
+    # Post-Match Ability ROI & Tactical Utility Telemetry
+    # ------------------------------------------------------------------
+    def get_match_utility_roi(
+        self, match_id: str, force_recompute: bool = False
+    ) -> Optional[dict[str, Any]]:
+        """Calculate post-game utility ROI, flash conversion, and smoke efficiency."""
+        match = self.repo.get_match(match_id)
+        if not match:
+            return None
+
+        report = self.utility_roi_engine.analyze_match_utility(
+            match_id, force_recompute=force_recompute
+        )
+        report_data = report.to_dict()
+        events = self.repo.get_utility_events(match_id)
+        report_data["events"] = [e.to_dict() for e in events]
+        return report_data
+
+    # ------------------------------------------------------------------
+    # Longitudinal Career Profile & 6-Axis Tactical Radar
+    # ------------------------------------------------------------------
+    def get_career_profile(
+        self,
+        player_puuid: Optional[str] = None,
+        limit: int = 20,
+        map_id: Optional[str] = None,
+    ) -> dict[str, Any]:
+        """Generate longitudinal career skill radar and flaw reduction trajectories."""
+        profile = self.career_radar_engine.generate_career_profile(
+            player_puuid=player_puuid,
+            limit=limit,
+            map_id=map_id,
+        )
+        return profile.to_dict()
+
 
 
 

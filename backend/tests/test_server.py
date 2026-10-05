@@ -499,6 +499,27 @@ class TestValLensServer(unittest.TestCase):
         self.assertIn("suggested_offset_ms", res)
         self.assertIn("strategy_used", res)
 
+    def test_utility_roi_endpoint(self):
+        status, body, _ = self._get(f"/api/matches/{self.match.match_id}/utility-roi")
+        self.assertEqual(status, 200)
+        res = json.loads(body.decode("utf-8"))
+        self.assertEqual(res["match_id"], self.match.match_id)
+        self.assertIn("flash_stats", res)
+        self.assertIn("smoke_stats", res)
+        self.assertIn("overall_utility_rating", res)
+        self.assertIn("events", res)
+
+    def test_career_profile_endpoint(self):
+        status, body, _ = self._get("/api/career/profile?limit=5")
+        self.assertEqual(status, 200)
+        res = json.loads(body.decode("utf-8"))
+        self.assertIn("radar_axes", res)
+        self.assertEqual(len(res["radar_axes"]), 6)
+        self.assertIn("rank_readiness_score", res)
+        self.assertIn("projected_rank", res)
+        self.assertIn("flaw_trends", res)
+        self.assertIn("match_history", res)
+
 
 if __name__ == "__main__":
     unittest.main()
