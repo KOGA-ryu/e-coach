@@ -68,6 +68,28 @@ class TestClipTrimmer(unittest.TestCase):
         with self.assertRaises(FileNotFoundError):
             self.trimmer.trim_clip("/non/existent/video.mp4", 0.0, 5.0)
 
+    def test_create_montage(self):
+        moments = [
+            {"timestamp_seconds": 15.0, "label": "whiffed_spray", "round_number": 1},
+            {"timestamp_seconds": 45.0, "label": "over_peeking", "round_number": 2},
+        ]
+        montage = self.trimmer.create_montage(
+            match_id="test-match-1234",
+            moments=moments,
+            pre_roll=1.0,
+            post_roll=1.0,
+            title="quick_flaws",
+        )
+        self.assertEqual(montage["segments_count"], 2)
+        self.assertEqual(montage["total_duration_seconds"], 4.0)
+        self.assertTrue(Path(montage["output_path"]).exists())
+        self.assertGreater(montage["file_size_bytes"], 1000)
+        self.assertIn("quick_flaws_montage.mp4", montage["filename"])
+
+    def test_empty_moments_raises(self):
+        with self.assertRaises(ValueError):
+            self.trimmer.create_montage(match_id="test-match", moments=[])
+
 
 if __name__ == "__main__":
     unittest.main()

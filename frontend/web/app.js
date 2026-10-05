@@ -1590,6 +1590,16 @@ function setupEventListeners() {
     btnBatchClip.addEventListener('click', batchTrimFlaws);
   }
 
+  // Review Reel Montage Buttons (Header and Side Pane)
+  const btnGenMontage = document.getElementById('btn-generate-montage');
+  if (btnGenMontage) {
+    btnGenMontage.addEventListener('click', () => generateReviewMontage('flaws'));
+  }
+  const btnMontageSide = document.getElementById('btn-montage-side');
+  if (btnMontageSide) {
+    btnMontageSide.addEventListener('click', () => generateReviewMontage('flaws'));
+  }
+
   // Local Video File Upload
   videoFileInput.addEventListener('change', async (e) => {
     const file = e.target.files[0];
@@ -2531,6 +2541,59 @@ async function batchTrimFlaws() {
   } catch (err) {
     console.error('Batch trimming error:', err);
     showToast('Failed to batch trim clips');
+  }
+}
+
+/**
+ * Compile all flaws, blindspots, or key moments into a continuous review montage MP4.
+ */
+async function generateReviewMontage(filterType = 'flaws') {
+  if (!state.currentMatchId) {
+    showToast('No match currently selected');
+    return;
+  }
+
+  showToast('Compiling Review Reel with FFmpeg... (Merging moments)');
+
+  try {
+    const res = await fetch(`/api/matches/${state.currentMatchId}/montage`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        filter_type: filterType,
+        pre_roll: 3.0,
+        post_roll: 2.0,
+      }),
+    });
+
+    if (!res.ok) {
+      const err = await res.json();
+      showToast(`Montage error: ${err.error || 'Failed'}`);
+      return;
+    }
+
+    const data = await res.json();
+    const montage = data.montage;
+
+    // Trigger instant browser download
+    const dlLink = document.createElement('a');
+    dlLink.href = montage.download_url;
+    dlLink.download = montage.filename;
+    document.body.appendChild(dlLink);
+    dlLink.click();
+    document.body.removeChild(dlLink);
+
+    // Offer to play directly in VOD player
+    if (confirm(`🎬 Review Reel Ready! (${montage.segments_count} moments • ${montage.total_duration_seconds}s)\n\nLoad and play this review reel in the VOD player now?`)) {
+      videoPlayer.src = montage.download_url;
+      videoPlaceholder.style.display = 'none';
+      videoPlayer.play();
+    }
+
+    showToast(`Review Reel Ready: ${montage.filename} (${montage.total_duration_seconds}s)`);
+  } catch (err) {
+    console.error('Montage compilation error:', err);
+    showToast('Failed to compile review reel');
   }
 }
 

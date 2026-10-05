@@ -234,6 +234,22 @@ class TestValLensServer(unittest.TestCase):
         self.assertGreaterEqual(batch_res["count"], 1)
         self.assertTrue(len(batch_res["clips"]) >= 1)
 
+    def test_montage_endpoint(self):
+        # 1. Generate review montage
+        payload = {"filter_type": "flaws", "pre_roll": 1.0, "post_roll": 1.0, "title": "coaching_reel"}
+        status, res = self._post_json(f"/api/matches/{self.match.match_id}/montage", payload)
+        self.assertEqual(status, 200)
+        self.assertTrue(res["success"])
+        montage = res["montage"]
+        self.assertIn("coaching_reel_montage.mp4", montage["filename"])
+        self.assertGreaterEqual(montage["segments_count"], 1)
+
+        # 2. Download/stream the merged montage
+        status, body, headers = self._get(montage["download_url"])
+        self.assertEqual(status, 200)
+        self.assertEqual(headers.get("Content-Type"), "video/mp4")
+        self.assertGreater(len(body), 1000)
+
 
 if __name__ == "__main__":
     unittest.main()

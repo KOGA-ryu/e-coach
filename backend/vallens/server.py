@@ -692,6 +692,41 @@ class ValLensRequestHandler(BaseHTTPRequestHandler):
                 self._send_error(f"Batch trimming failed: {e}", status=500)
             return
 
+        # Single Continuous Review Montage Reel API
+        if path.startswith("/api/matches/") and path.endswith("/montage"):
+            match_id = path.split("/")[3]
+            match = self.service.repo.get_match(match_id)
+            if not match:
+                self._send_error("Match not found", status=404)
+                return
+
+            content_length = int(self.headers.get("Content-Length", 0))
+            body = self.rfile.read(content_length).decode("utf-8") if content_length > 0 else "{}"
+            try:
+                data = json.loads(body) if body else {}
+            except Exception:
+                data = {}
+
+            filt = data.get("filter_type", "flaws")
+            pre = float(data.get("pre_roll", 3.0))
+            post = float(data.get("post_roll", 2.0))
+            title = data.get("title")
+
+            try:
+                montage = self.service.generate_match_montage(
+                    match_id=match_id,
+                    filter_type=filt,
+                    pre_roll=pre,
+                    post_roll=post,
+                    title=title,
+                )
+                self._send_json({"success": True, "montage": montage})
+            except ValueError as e:
+                self._send_error(str(e), status=404)
+            except Exception as e:
+                self._send_error(f"Montage generation failed: {e}", status=500)
+            return
+
         self._send_error("Unknown POST endpoint", status=404)
 
     def do_DELETE(self) -> None:

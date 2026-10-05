@@ -1430,10 +1430,50 @@ video {
   padding: 1px 5px;
 }
 
+.btn-montage {
+  background: rgba(255, 209, 102, 0.12);
+  border: 1px solid #ffd166;
+  color: #ffd166;
+  font-family: var(--font-tactical);
+  font-size: 13px;
+  font-weight: 700;
+  padding: 6px 14px;
+  border-radius: 4px;
+  letter-spacing: 1px;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.btn-montage:hover {
+  background: #ffd166;
+  color: #0b1118;
+  box-shadow: 0 0 10px rgba(255, 209, 102, 0.4);
+}
+
 .tag-header-actions {
   display: flex;
   align-items: center;
   gap: 6px;
+}
+
+.clip-montage-btn {
+  background: rgba(255, 209, 102, 0.12);
+  border: 1px solid rgba(255, 209, 102, 0.4);
+  color: #ffd166;
+  font-size: 11px;
+  font-family: var(--font-tactical);
+  font-weight: 700;
+  padding: 2px 7px;
+  letter-spacing: 0.5px;
+  cursor: pointer;
+  border-radius: 3px;
+  transition: all 0.15s ease;
+}
+
+.clip-montage-btn:hover {
+  background: #ffd166;
+  color: #0b1118;
+  box-shadow: 0 0 8px rgba(255, 209, 102, 0.35);
 }
 
 .clip-batch-btn {

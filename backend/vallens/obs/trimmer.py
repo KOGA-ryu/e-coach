@@ -253,3 +253,131 @@ class ClipTrimmer:
             clip["author"] = tag.author_type
             results.append(clip)
         return results
+
+    def create_montage(
+        self,
+        match_id: str,
+        moments: list[dict[str, Any]],
+        video_filepath: Optional[str] = None,
+        output_path: Optional[Path | str] = None,
+        pre_roll: float = 3.0,
+        post_roll: float = 2.0,
+        title: Optional[str] = None,
+    ) -> dict[str, Any]:
+        """Combine multiple match moments/flaws into a single concatenated review montage MP4.
+
+        Args:
+            match_id: Target match identifier.
+            moments: List of dicts, each with 'timestamp_seconds', 'label', and optional 'round_number'.
+            video_filepath: Path to local VOD video file (if available).
+            output_path: Target path for the combined montage MP4.
+            pre_roll: Seconds to include prior to each event.
+            post_roll: Seconds to include after each event.
+            title: Optional montage title.
+
+        Returns:
+            Dictionary with montage metadata, duration, segment count, and download URI.
+        """
+        if not moments:
+            raise ValueError("No moments provided to generate montage.")
+
+        short_id = match_id.replace("-", "")[:8]
+        clean_title = (title or "review_reel").lower().replace(" ", "_")
+        filename = f"vallens_{short_id}_{clean_title}_montage.mp4"
+        dest_path = Path(output_path) if output_path else self.clips_dir / filename
+        dest_path.parent.mkdir(parents=True, exist_ok=True)
+
+        temp_seg_dir = self.clips_dir / f"temp_montage_{short_id}"
+        temp_seg_dir.mkdir(parents=True, exist_ok=True)
+
+        segment_paths: list[Path] = []
+        try:
+            # 1. Generate or trim individual segment clips
+            for idx, moment in enumerate(moments):
+                ts = float(moment.get("timestamp_seconds", 0.0))
+                lbl = moment.get("label", f"moment_{idx+1}")
+                rnd = moment.get("round_number")
+
+                clip_info = self.trim_moment(
+                    match_id=match_id,
+                    timestamp_seconds=ts,
+                    video_filepath=video_filepath,
+                    pre_roll=pre_roll,
+                    post_roll=post_roll,
+                    label=f"{idx+1}_{lbl}",
+                    round_number=rnd,
+                )
+                src_clip = Path(clip_info["output_path"])
+                if src_clip.exists():
+                    segment_paths.append(src_clip)
+
+            if not segment_paths:
+                raise RuntimeError("Failed to extract any segments for the montage.")
+
+            # 2. Write filelist.txt for FFmpeg concat demuxer
+            concat_list_file = temp_seg_dir / "concat_list.txt"
+            with open(concat_list_file, "w", encoding="utf-8") as f:
+                for seg in segment_paths:
+                    safe_path = str(seg.resolve()).replace("'", "'\\''")
+                    f.write(f"file '{safe_path}'\n")
+
+            # 3. Concatenate using FFmpeg concat demuxer (-c copy)
+            cmd_concat = [
+                self.ffmpeg_bin,
+                "-y",
+                "-f",
+                "concat",
+                "-safe",
+                "0",
+                "-i",
+                str(concat_list_file),
+                "-c",
+                "copy",
+                str(dest_path),
+            ]
+            proc = subprocess.run(cmd_concat, stdout=subprocess.PIPE, stderr=subprocess.PIPE, timeout=45.0)
+
+            # 4. Fallback to re-encoding concat if stream copy fails
+            if proc.returncode != 0 or not dest_path.exists() or dest_path.stat().st_size == 0:
+                logger.warning("Concat stream copy failed; falling back to re-encoding concat filter.")
+                cmd_reencode = [
+                    self.ffmpeg_bin,
+                    "-y",
+                    "-f",
+                    "concat",
+                    "-safe",
+                    "0",
+                    "-i",
+                    str(concat_list_file),
+                    "-c:v",
+                    "libx264",
+                    "-preset",
+                    "ultrafast",
+                    "-pix_fmt",
+                    "yuv420p",
+                    "-crf",
+                    "22",
+                    str(dest_path),
+                ]
+                proc_re = subprocess.run(cmd_reencode, stdout=subprocess.PIPE, stderr=subprocess.PIPE, timeout=90.0)
+                if proc_re.returncode != 0:
+                    err_msg = proc_re.stderr.decode("utf-8", errors="replace")
+                    raise RuntimeError(f"FFmpeg montage concatenation failed: {err_msg}")
+
+            total_dur = len(segment_paths) * (pre_roll + post_roll)
+            file_size = dest_path.stat().st_size if dest_path.exists() else 0
+
+            return {
+                "match_id": match_id,
+                "title": title or "Review Reel",
+                "filename": dest_path.name,
+                "output_path": str(dest_path),
+                "download_url": f"/api/clips/{dest_path.name}",
+                "file_size_bytes": file_size,
+                "segments_count": len(segment_paths),
+                "total_duration_seconds": round(total_dur, 2),
+                "moments": moments,
+            }
+
+        finally:
+            shutil.rmtree(temp_seg_dir, ignore_errors=True)

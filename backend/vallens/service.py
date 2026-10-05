@@ -332,5 +332,76 @@ class ValLensService:
             post_roll=post_roll,
         )
 
+    def generate_match_montage(
+        self,
+        match_id: str,
+        filter_type: str = "flaws",
+        pre_roll: float = 3.0,
+        post_roll: float = 2.0,
+        title: Optional[str] = None,
+    ) -> dict[str, Any]:
+        """Compile a single continuous review montage video from match moments."""
+        match = self.repo.get_match(match_id)
+        if not match:
+            raise ValueError(f"Match not found: {match_id}")
+
+        moments: list[dict[str, Any]] = []
+
+        if filter_type == "blindspots":
+            diff = self.get_perspective_diff(match_id)
+            if diff:
+                for b in diff.blindspots:
+                    moments.append({
+                        "label": f"blindspot_{b.tag_name}",
+                        "timestamp_seconds": b.timestamp_ms / 1000.0,
+                        "round_number": b.round_number,
+                        "category": b.tag_category,
+                    })
+        elif filter_type == "deaths":
+            events = self.repo.get_events(match_id, event_type="death")
+            for e in events:
+                moments.append({
+                    "label": "death",
+                    "timestamp_seconds": e.event_time_ms / 1000.0,
+                    "round_number": e.round_number,
+                    "category": "Combat",
+                })
+        else:
+            tags = self.repo.get_tags(match_id)
+            for t in tags:
+                moments.append({
+                    "label": t.tag_name,
+                    "timestamp_seconds": t.timestamp_ms / 1000.0,
+                    "round_number": None,
+                    "category": t.tag_category,
+                })
+
+        # Fallback if no tags/blindspots: use death events
+        if not moments:
+            events = self.repo.get_events(match_id, event_type="death")
+            for e in events[:10]:
+                moments.append({
+                    "label": "death",
+                    "timestamp_seconds": e.event_time_ms / 1000.0,
+                    "round_number": e.round_number,
+                    "category": "Combat",
+                })
+
+        if not moments:
+            raise ValueError(f"No flaws or events found in match {match_id} to generate montage.")
+
+        # Sort chronologically
+        moments.sort(key=lambda m: m["timestamp_seconds"])
+
+        trimmer = ClipTrimmer()
+        return trimmer.create_montage(
+            match_id=match_id,
+            moments=moments,
+            video_filepath=match.video_filepath,
+            pre_roll=pre_roll,
+            post_roll=post_roll,
+            title=title or f"{filter_type}_review",
+        )
+
 
 
