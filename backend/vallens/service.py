@@ -10,6 +10,7 @@ from vallens.analytics.economy import EconomyAnalysisResult, EconomyCorrelationE
 from vallens.analytics.heatmap import HeatmapAggregationEngine, HeatmapAggregationResult
 from vallens.analytics.perspective import PerspectiveDiffEngine, PerspectiveDiffResult
 from vallens.analytics.projection import CoordinateProjector
+from vallens.analytics.reference_vods import ProReferenceCatalog
 from vallens.analytics.transcription import CoachVoiceTranscriber
 from vallens.db.database import Database
 from vallens.db.repository import MatchRepository
@@ -39,6 +40,7 @@ class ValLensService:
         self.heatmap_engine = HeatmapAggregationEngine(maps_file=maps_file)
         self.economy_engine = EconomyCorrelationEngine()
         self.transcriber = CoachVoiceTranscriber()
+        self.reference_catalog = ProReferenceCatalog()
         self.capture_controller = capture_controller or CaptureController(service=self)
 
     def ingest_match_payload(
@@ -577,6 +579,27 @@ class ValLensService:
             player_puuid=player_puuid,
         )
         return analysis.to_dict()
+
+    def list_pro_references(
+        self,
+        map_name: Optional[str] = None,
+        flaw_tag: Optional[str] = None,
+        agent: Optional[str] = None,
+    ) -> list[dict[str, Any]]:
+        """List curated pro reference VODs with optional filters."""
+        return self.reference_catalog.list_references(
+            map_name=map_name, flaw_tag=flaw_tag, agent=agent
+        )
+
+    def get_pro_reference(self, ref_id: str) -> Optional[dict[str, Any]]:
+        """Fetch a pro reference VOD by ID."""
+        return self.reference_catalog.get_reference_by_id(ref_id)
+
+    def recommend_pro_references(
+        self, flaw_tag: str, map_name: Optional[str] = None
+    ) -> list[dict[str, Any]]:
+        """Recommend pro reference clips targeted to a specific tactical flaw."""
+        return self.reference_catalog.recommend_for_flaw(flaw_tag=flaw_tag, map_name=map_name)
 
 
 

@@ -89,6 +89,15 @@ const state = {
     recording: false,
   },
   riotPollInterval: null,
+
+  // Pro Reference VOD Comparison State
+  splitViewActive: false,
+  splitSyncLock: true,
+  splitOffsetSec: 0.0,
+  splitAudioMode: 'primary',
+  splitPanesSwapped: false,
+  proReferences: [],
+  activeReferenceVod: null,
 };
 
 // DOM Elements
@@ -231,6 +240,25 @@ const riotTeleAgent = document.getElementById('riot-tele-agent');
 const riotTelePort = document.getElementById('riot-tele-port');
 const riotSimFeedback = document.getElementById('riot-sim-feedback');
 
+// Pro Reference VOD Comparison DOM Elements
+const btnToggleSplit = document.getElementById('btn-toggle-split');
+const primaryViewport = document.getElementById('primary-viewport');
+const refViewport = document.getElementById('ref-viewport');
+const refVideoPlayer = document.getElementById('ref-video-player');
+const refClipSelect = document.getElementById('ref-clip-select');
+const refFileInput = document.getElementById('ref-file-input');
+const refPlayerTitle = document.getElementById('ref-player-title');
+const refConceptPill = document.getElementById('ref-concept-pill');
+const refPointsList = document.getElementById('ref-points-list');
+const splitSyncToolbar = document.getElementById('split-sync-toolbar');
+const btnSyncLock = document.getElementById('btn-sync-lock');
+const btnOffsetMinus = document.getElementById('btn-offset-minus');
+const btnOffsetPlus = document.getElementById('btn-offset-plus');
+const btnOffsetReset = document.getElementById('btn-offset-reset');
+const syncOffsetVal = document.getElementById('sync-offset-val');
+const btnSwapPanes = document.getElementById('btn-swap-panes');
+const splitAudioSegmented = document.getElementById('split-audio-segmented');
+
 // Tag Mapping for 1-9 Hotkeys
 const TAG_MAP = {
   '1': { category: 'Mechanics', name: 'crosshair_placement' },
@@ -255,6 +283,7 @@ async function init() {
   setupRiotControls();
   await loadAvailableMaps();
   await loadMatchList();
+  await loadProReferenceCatalog();
 
   // Poll OBS WebSocket & Riot Client status
   await pollObsStatus();
@@ -1578,7 +1607,8 @@ function setupTelestrator() {
 }
 
 function resizeTelestratorCanvas() {
-  const rect = videoWrapper.getBoundingClientRect();
+  const container = primaryViewport || videoWrapper;
+  const rect = container.getBoundingClientRect();
   teleCanvas.width = rect.width;
   teleCanvas.height = rect.height;
 }
@@ -1933,6 +1963,13 @@ function setupEventListeners() {
       return;
     }
 
+    // Split Pro Reference VOD Comparison Hotkey: 'V'
+    if (e.key.toLowerCase() === 'v' && !e.ctrlKey && !e.metaKey && !e.altKey) {
+      e.preventDefault();
+      toggleSplitView();
+      return;
+    }
+
     // 1-9 Hotkey Review Tags
     if (TAG_MAP[e.key]) {
       e.preventDefault();
@@ -2040,7 +2077,13 @@ function setupEventListeners() {
   document.getElementById('btn-author-coach').addEventListener('click', () => setPerspective('coach'));
 
   // Video Playback Events
-  videoPlayer.addEventListener('timeupdate', updateScrubber);
+  videoPlayer.addEventListener('timeupdate', () => {
+    updateScrubber();
+    syncReferencePlayback();
+  });
+  videoPlayer.addEventListener('play', onPrimaryVideoPlay);
+  videoPlayer.addEventListener('pause', onPrimaryVideoPause);
+  videoPlayer.addEventListener('seeking', syncReferencePlayback);
   videoPlayer.addEventListener('loadedmetadata', () => {
     buildScrubberMarkers();
     updateScrubber();
@@ -2071,7 +2114,11 @@ function setupEventListeners() {
     btn.addEventListener('click', () => {
       document.querySelectorAll('.speed-btn').forEach((b) => b.classList.remove('active'));
       btn.classList.add('active');
-      videoPlayer.playbackRate = parseFloat(btn.dataset.speed);
+      const rate = parseFloat(btn.dataset.speed);
+      videoPlayer.playbackRate = rate;
+      if (refVideoPlayer) {
+        refVideoPlayer.playbackRate = rate;
+      }
     });
   });
 
@@ -2546,6 +2593,37 @@ function setupEventListeners() {
       }
     });
     noteTextInput.addEventListener('input', onNoteTextInputChanged);
+  }
+
+  // Pro Reference VOD Comparison Event Handlers
+  if (btnToggleSplit) {
+    btnToggleSplit.addEventListener('click', () => toggleSplitView());
+  }
+  if (refClipSelect) {
+    refClipSelect.addEventListener('change', (e) => selectReferenceVod(e.target.value));
+  }
+  if (refFileInput) {
+    refFileInput.addEventListener('change', onRefFileInputChange);
+  }
+  if (btnSyncLock) {
+    btnSyncLock.addEventListener('click', toggleSyncLock);
+  }
+  if (btnOffsetMinus) {
+    btnOffsetMinus.addEventListener('click', () => adjustSplitOffset(-0.2));
+  }
+  if (btnOffsetPlus) {
+    btnOffsetPlus.addEventListener('click', () => adjustSplitOffset(0.2));
+  }
+  if (btnOffsetReset) {
+    btnOffsetReset.addEventListener('click', resetSplitOffset);
+  }
+  if (btnSwapPanes) {
+    btnSwapPanes.addEventListener('click', swapSplitPanes);
+  }
+  if (splitAudioSegmented) {
+    splitAudioSegmented.querySelectorAll('.segment-btn').forEach((btn) => {
+      btn.addEventListener('click', () => setSplitAudioMode(btn.dataset.splitAudio));
+    });
   }
 }
 
@@ -4224,6 +4302,216 @@ function playAudioMemo(url) {
   activeMemoAudio = new Audio(url);
   activeMemoAudio.play().catch((e) => console.error('Audio play error:', e));
   showToast('Playing voice memo...');
+}
+
+// -------------------------------------------------------------
+// Pro Reference VOD Comparison & Dual-Player Split Engine
+// -------------------------------------------------------------
+
+async function loadProReferenceCatalog() {
+  try {
+    const res = await fetch('/api/references');
+    if (!res.ok) return;
+    const data = await res.json();
+    state.proReferences = data || [];
+
+    if (refClipSelect) {
+      refClipSelect.innerHTML = '';
+      state.proReferences.forEach((ref) => {
+        const opt = document.createElement('option');
+        opt.value = ref.id;
+        opt.textContent = `${ref.player} (${ref.team}) - ${ref.map} [${ref.flaw_tag}]`;
+        refClipSelect.appendChild(opt);
+      });
+    }
+
+    if (state.proReferences.length > 0 && !state.activeReferenceVod) {
+      selectReferenceVod(state.proReferences[0].id);
+    }
+  } catch (err) {
+    console.error('Failed to load pro reference catalog:', err);
+  }
+}
+
+function selectReferenceVod(refId) {
+  const ref = state.proReferences.find((r) => r.id === refId);
+  if (!ref) return;
+
+  state.activeReferenceVod = ref;
+  if (refClipSelect) refClipSelect.value = ref.id;
+
+  if (refPlayerTitle) {
+    refPlayerTitle.textContent = `${ref.player} (${ref.team}) · ${ref.agent}`;
+  }
+  if (refConceptPill) {
+    refConceptPill.textContent = ref.tactical_concept;
+  }
+  if (refPointsList) {
+    refPointsList.innerHTML = '';
+    (ref.key_points || []).forEach((pt) => {
+      const li = document.createElement('li');
+      li.textContent = pt;
+      refPointsList.appendChild(li);
+    });
+  }
+
+  if (refVideoPlayer) {
+    refVideoPlayer.src = ref.clip_url;
+    refVideoPlayer.playbackRate = videoPlayer.playbackRate || 1.0;
+  }
+
+  state.splitOffsetSec = typeof ref.default_offset_sec === 'number' ? ref.default_offset_sec : 0.0;
+  if (syncOffsetVal) {
+    syncOffsetVal.textContent = (state.splitOffsetSec >= 0 ? '+' : '') + state.splitOffsetSec.toFixed(1) + 's';
+  }
+
+  setSplitAudioMode(state.splitAudioMode || 'primary');
+  syncReferencePlayback();
+}
+
+function toggleSplitView(forceState = null) {
+  state.splitViewActive = forceState !== null ? forceState : !state.splitViewActive;
+
+  if (btnToggleSplit) {
+    btnToggleSplit.classList.toggle('active', state.splitViewActive);
+  }
+  if (videoWrapper) {
+    videoWrapper.classList.toggle('split-active', state.splitViewActive);
+  }
+  if (refViewport) {
+    refViewport.style.display = state.splitViewActive ? 'flex' : 'none';
+  }
+  if (splitSyncToolbar) {
+    splitSyncToolbar.style.display = state.splitViewActive ? 'flex' : 'none';
+  }
+
+  if (state.splitViewActive) {
+    if (state.proReferences.length === 0) {
+      loadProReferenceCatalog();
+    } else if (refVideoPlayer && !refVideoPlayer.src && state.activeReferenceVod) {
+      selectReferenceVod(state.activeReferenceVod.id);
+    }
+    syncReferencePlayback();
+    if (!videoPlayer.paused && refVideoPlayer) {
+      refVideoPlayer.play().catch(() => {});
+    }
+    showToast('Split View Active: Side-by-Side Pro Reference Comparison');
+  } else {
+    if (refVideoPlayer) {
+      refVideoPlayer.pause();
+    }
+    showToast('Single Player View Active');
+  }
+
+  setTimeout(resizeTelestratorCanvas, 60);
+}
+
+function syncReferencePlayback() {
+  if (!state.splitViewActive || !state.splitSyncLock || !refVideoPlayer || isNaN(videoPlayer.currentTime)) return;
+
+  const targetTime = Math.max(0, videoPlayer.currentTime + state.splitOffsetSec);
+  if (Math.abs(refVideoPlayer.currentTime - targetTime) > 0.25) {
+    refVideoPlayer.currentTime = targetTime;
+  }
+}
+
+function onPrimaryVideoPlay() {
+  if (state.splitViewActive && state.splitSyncLock && refVideoPlayer) {
+    syncReferencePlayback();
+    refVideoPlayer.play().catch((e) => console.warn('Ref video play error:', e));
+  }
+}
+
+function onPrimaryVideoPause() {
+  if (state.splitViewActive && state.splitSyncLock && refVideoPlayer) {
+    refVideoPlayer.pause();
+  }
+}
+
+function toggleSyncLock() {
+  state.splitSyncLock = !state.splitSyncLock;
+  if (btnSyncLock) {
+    btnSyncLock.classList.toggle('active', state.splitSyncLock);
+    btnSyncLock.textContent = state.splitSyncLock ? '🔒 LOCKSTEP SYNC' : '🔓 INDEPENDENT';
+  }
+  if (state.splitSyncLock) {
+    syncReferencePlayback();
+    if (!videoPlayer.paused && refVideoPlayer) {
+      refVideoPlayer.play().catch(() => {});
+    }
+    showToast('Lockstep Playback Synchronized');
+  } else {
+    showToast('Independent Playback Mode');
+  }
+}
+
+function adjustSplitOffset(delta) {
+  state.splitOffsetSec = Math.round((state.splitOffsetSec + delta) * 10) / 10;
+  if (syncOffsetVal) {
+    syncOffsetVal.textContent = (state.splitOffsetSec >= 0 ? '+' : '') + state.splitOffsetSec.toFixed(1) + 's';
+  }
+  syncReferencePlayback();
+}
+
+function resetSplitOffset() {
+  state.splitOffsetSec = 0.0;
+  if (syncOffsetVal) {
+    syncOffsetVal.textContent = '0.0s';
+  }
+  syncReferencePlayback();
+}
+
+function swapSplitPanes() {
+  state.splitPanesSwapped = !state.splitPanesSwapped;
+  if (videoWrapper) {
+    videoWrapper.classList.toggle('swapped', state.splitPanesSwapped);
+  }
+  showToast(state.splitPanesSwapped ? 'Swapped: Pro POV Left | Ace Right' : 'Swapped: Ace Left | Pro POV Right');
+  setTimeout(resizeTelestratorCanvas, 60);
+}
+
+function setSplitAudioMode(mode) {
+  state.splitAudioMode = mode;
+  if (splitAudioSegmented) {
+    splitAudioSegmented.querySelectorAll('.segment-btn').forEach((btn) => {
+      btn.classList.toggle('active', btn.dataset.splitAudio === mode);
+    });
+  }
+
+  if (mode === 'primary') {
+    videoPlayer.muted = false;
+    if (refVideoPlayer) refVideoPlayer.muted = true;
+  } else if (mode === 'ref') {
+    videoPlayer.muted = true;
+    if (refVideoPlayer) refVideoPlayer.muted = false;
+  } else if (mode === 'both') {
+    videoPlayer.muted = false;
+    if (refVideoPlayer) refVideoPlayer.muted = false;
+  }
+}
+
+function onRefFileInputChange(e) {
+  const file = e.target.files[0];
+  if (!file) return;
+
+  const url = URL.createObjectURL(file);
+  if (refVideoPlayer) {
+    refVideoPlayer.src = url;
+    refVideoPlayer.playbackRate = videoPlayer.playbackRate || 1.0;
+  }
+
+  if (refPlayerTitle) {
+    refPlayerTitle.textContent = `[Custom Reference] ${file.name}`;
+  }
+  if (refConceptPill) {
+    refConceptPill.textContent = 'User Loaded Custom Reference VOD';
+  }
+  if (refPointsList) {
+    refPointsList.innerHTML = '<li>Custom side-by-side comparison clip loaded from local disk.</li>';
+  }
+
+  showToast(`Loaded Custom Reference: ${file.name}`);
+  syncReferencePlayback();
 }
 
 // Start application

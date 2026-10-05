@@ -95,6 +95,7 @@
           VOD PLAYER
         </div>
         <div class="header-right-group">
+          <button id="btn-toggle-split" class="mini-btn split-btn" title="Toggle Pro Reference VOD Comparison (Side-by-Side Dual-Player Synced Split Layout) [V]">⚖ SPLIT [V]</button>
           <div class="telestrator-bar" id="telestrator-bar">
             <button id="btn-telestrator-toggle" class="mini-btn tele-btn" title="Toggle Telestrator Draw Mode [T]">
               DRAW [T]
@@ -116,18 +117,69 @@
       </div>
 
       <div class="video-container" id="video-wrapper">
-        <video id="video-player" playsinline>
-          Your browser does not support the video tag.
-        </video>
-        <canvas id="telestrator-canvas"></canvas>
-        <div class="video-placeholder" id="video-placeholder">
-          <svg class="placeholder-icon" viewBox="0 0 24 24"><polygon points="5 3 19 12 5 21 5 3"></polygon></svg>
-          <p>No Video Loaded</p>
-          <span class="subtext">Load a local VOD file or record via OBS</span>
-          <label class="btn-primary file-btn">
-            Load Local MP4
-            <input type="file" id="video-file-input" accept="video/mp4,video/mkv,video/webm" hidden>
-          </label>
+        <!-- Left Pane: Primary Student POV -->
+        <div class="video-viewport primary-viewport" id="primary-viewport">
+          <div class="viewport-badge primary-badge" id="primary-viewport-badge">ACE (PRIMARY POV)</div>
+          <video id="video-player" playsinline>
+            Your browser does not support the video tag.
+          </video>
+          <canvas id="telestrator-canvas"></canvas>
+          <div class="video-placeholder" id="video-placeholder">
+            <svg class="placeholder-icon" viewBox="0 0 24 24"><polygon points="5 3 19 12 5 21 5 3"></polygon></svg>
+            <p>No Video Loaded</p>
+            <span class="subtext">Load a local VOD file or record via OBS</span>
+            <label class="btn-primary file-btn">
+              Load Local MP4
+              <input type="file" id="video-file-input" accept="video/mp4,video/mkv,video/webm" hidden>
+            </label>
+          </div>
+        </div>
+
+        <!-- Right Pane: Pro Reference POV (Side-by-Side Comparison) -->
+        <div class="video-viewport ref-viewport" id="ref-viewport" style="display: none;">
+          <div class="viewport-badge ref-badge" id="ref-viewport-badge">PRO REFERENCE POV</div>
+          <div class="ref-top-bar" id="ref-top-bar">
+            <select id="ref-clip-select" class="dropdown-select ref-select" title="Choose Pro Reference VOD"></select>
+            <label class="mini-btn ref-upload-btn" title="Load custom reference video from disk">
+              📁
+              <input type="file" id="ref-file-input" accept="video/mp4,video/mkv,video/webm" hidden>
+            </label>
+          </div>
+          <video id="ref-video-player" playsinline muted>
+            Your browser does not support the video tag.
+          </video>
+          <div class="ref-tactical-card" id="ref-tactical-card">
+            <div class="ref-card-header">
+              <span class="ref-player-title" id="ref-player-title">Aspas (Leviatán) - Jett</span>
+              <span class="ref-concept-pill" id="ref-concept-pill">Micro-Adjusted Crosshair Buffer</span>
+            </div>
+            <ul class="ref-points-list" id="ref-points-list">
+              <li>Holds 1 head-width off door frame for reaction buffer rather than pixel edge</li>
+              <li>Pre-aims head height at Ascent A main arch crease</li>
+              <li>Zero dry repeeking: retreats immediately to site on contact</li>
+            </ul>
+          </div>
+        </div>
+      </div>
+
+      <!-- Split-Screen Playback Sync Controls Bar (visible when split is active) -->
+      <div class="split-sync-toolbar" id="split-sync-toolbar" style="display: none;">
+        <div class="sync-status-group">
+          <button id="btn-sync-lock" class="mini-btn sync-lock-btn active" title="Toggle Lockstep Playback Synchronization">🔒 LOCKSTEP SYNC</button>
+          <span class="sync-offset-label">OFFSET:</span>
+          <button id="btn-offset-minus" class="mini-btn offset-btn" title="Shift Pro VOD back 0.2s">-0.2s</button>
+          <span id="sync-offset-val" class="sync-offset-val">0.0s</span>
+          <button id="btn-offset-plus" class="mini-btn offset-btn" title="Shift Pro VOD forward 0.2s">+0.2s</button>
+          <button id="btn-offset-reset" class="mini-btn reset-btn" title="Reset Offset to 0.0s">RESET</button>
+        </div>
+        <div class="sync-audio-group">
+          <span class="sync-label">AUDIO:</span>
+          <div class="segmented-control mini-segmented" id="split-audio-segmented">
+            <button class="segment-btn active" data-split-audio="primary" title="Student VOD Audio">ACE</button>
+            <button class="segment-btn" data-split-audio="ref" title="Pro Reference Audio">PRO</button>
+            <button class="segment-btn" data-split-audio="both" title="Mix Both Audio Streams">BOTH</button>
+          </div>
+          <button id="btn-swap-panes" class="mini-btn swap-btn" title="Swap Left and Right Panes">⇄ SWAP</button>
         </div>
       </div>
 

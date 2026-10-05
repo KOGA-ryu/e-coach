@@ -517,6 +517,35 @@ class ValLensRequestHandler(BaseHTTPRequestHandler):
             self._send_json(riot_status)
             return
 
+        # Pro Reference VOD Comparison Catalog API
+        if path == "/api/references":
+            map_param = query.get("map", [None])[0]
+            flaw_param = query.get("flaw", [None])[0]
+            agent_param = query.get("agent", [None])[0]
+            refs = self.service.list_pro_references(
+                map_name=map_param, flaw_tag=flaw_param, agent=agent_param
+            )
+            self._send_json(refs)
+            return
+
+        if path == "/api/references/recommend":
+            flaw_param = query.get("flaw", ["crosshair_placement"])[0]
+            map_param = query.get("map", [None])[0]
+            recommended = self.service.recommend_pro_references(
+                flaw_tag=flaw_param, map_name=map_param
+            )
+            self._send_json(recommended)
+            return
+
+        if path.startswith("/api/references/"):
+            ref_id = path.split("/")[3]
+            ref = self.service.get_pro_reference(ref_id)
+            if not ref:
+                self._send_error("Reference VOD not found", status=404)
+                return
+            self._send_json(ref)
+            return
+
         # 9. Static Map Icons
         if path.startswith("/maps/"):
             map_name = path[len("/maps/"):].lower()

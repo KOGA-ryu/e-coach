@@ -427,6 +427,29 @@ class TestValLensServer(unittest.TestCase):
         self.assertIn("late_flash", tags)
         self.assertIn("poor_spacing", tags)
 
+    def test_pro_reference_endpoints(self):
+        # 1. Test GET /api/references
+        status, body, _ = self._get("/api/references")
+        self.assertEqual(status, 200)
+        refs = json.loads(body.decode("utf-8"))
+        self.assertGreaterEqual(len(refs), 4)
+        aspas = next(r for r in refs if r["player"] == "Aspas")
+        self.assertEqual(aspas["map"], "Ascent")
+        self.assertIn("clip_url", aspas)
+
+        # 2. Test GET /api/references/aspas_ascent_a_op
+        status, body, _ = self._get("/api/references/aspas_ascent_a_op")
+        self.assertEqual(status, 200)
+        ref = json.loads(body.decode("utf-8"))
+        self.assertEqual(ref["id"], "aspas_ascent_a_op")
+
+        # 3. Test GET /api/references/recommend
+        status, body, _ = self._get("/api/references/recommend?flaw=over_peeking&map=Ascent")
+        self.assertEqual(status, 200)
+        rec = json.loads(body.decode("utf-8"))
+        self.assertGreaterEqual(len(rec), 1)
+        self.assertEqual(rec[0]["player"], "TenZ")
+
 
 if __name__ == "__main__":
     unittest.main()
