@@ -5,6 +5,7 @@ import hashlib
 import json
 import logging
 import os
+from pathlib import Path
 import socket
 import struct
 import threading
@@ -249,9 +250,13 @@ class MockObsClient:
 
     def __init__(
         self,
-        default_output_path: str = "/recordings/valorant_capture.mp4",
+        default_output_path: Optional[str] = None,
         connected: bool = True,
     ):
+        if not default_output_path:
+            rec_dir = Path.cwd() / "data" / "recordings"
+            rec_dir.mkdir(parents=True, exist_ok=True)
+            default_output_path = str(rec_dir / "valorant_capture.mp4")
         self.default_output_path = default_output_path
         self.is_recording = False
         self.connected = connected

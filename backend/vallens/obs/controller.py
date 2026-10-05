@@ -116,6 +116,73 @@ class CaptureController:
             "auto_capture_active": self._running,
         }
 
+    def configure_local_client(
+        self,
+        use_mock: bool = False,
+        lockfile_path: Optional[str | Path] = None,
+    ) -> dict[str, Any]:
+        """Configure local Riot Client mode (mock vs live lockfile reader)."""
+        if use_mock:
+            self.local_client = MockLocalClient()
+            return {"success": True, "mode": "mock", "connected": True}
+        else:
+            self.local_client = LocalClient(lockfile_path=lockfile_path)
+            connected = self.local_client.read_lockfile()
+            return {
+                "success": True,
+                "mode": "live",
+                "connected": connected,
+                "port": self.local_client.port,
+            }
+
+    def get_riot_status(self) -> dict[str, Any]:
+        """Get current Riot Client session state and lockfile connection details."""
+        session = self.local_client.get_session_state()
+        is_mock = isinstance(self.local_client, MockLocalClient)
+        rec_status = False
+        try:
+            st = self.obs_client.get_record_status()
+            rec_status = st.get("outputActive", False)
+        except Exception:
+            pass
+
+        return {
+            "connected": session.get("connected", False),
+            "state": session.get("state", GameState.DISCONNECTED),
+            "match_map": session.get("match_map"),
+            "map_name": session.get("map_name"),
+            "agent": session.get("agent"),
+            "player_name": session.get("player_name"),
+            "queue_id": session.get("queue_id"),
+            "port": session.get("port"),
+            "protocol": session.get("protocol", "https"),
+            "is_mock": is_mock,
+            "auto_capture_active": self._running,
+            "recording": rec_status,
+        }
+
+    def simulate_game_state(
+        self,
+        state: str,
+        match_map: Optional[str] = None,
+        agent: Optional[str] = None,
+        player_name: Optional[str] = None,
+    ) -> dict[str, Any]:
+        """Simulate a game-state change for testing and automation validation."""
+        if not isinstance(self.local_client, MockLocalClient):
+            self.local_client = MockLocalClient()
+
+        self.local_client.set_state(
+            state=state,
+            match_map=match_map or "/Game/Maps/Ascent/Ascent",
+            agent=agent or "Sova",
+            player_name=player_name or "Ace#NA1",
+        )
+        poll_res = self.poll_once()
+        status = self.get_riot_status()
+        status["poll_result"] = poll_res
+        return status
+
     def toggle_auto_capture(self) -> bool:
         """Start or stop automated background polling."""
         if self._running:
@@ -167,8 +234,15 @@ class CaptureController:
             logger.info(f"OBS recording stopped: {output_file}")
 
             exported_files: list[Path] = []
-            if output_file and self.current_match_id:
-                exported_files = self.process_match_sync_and_edl(self.current_match_id, output_file)
+            target_match_id = self.current_match_id
+            if not target_match_id and hasattr(self.service, "repo"):
+                matches = self.service.repo.list_matches(limit=1)
+                if matches:
+                    target_match_id = matches[0].match_id
+                    self.current_match_id = target_match_id
+
+            if output_file and target_match_id:
+                exported_files = self.process_match_sync_and_edl(target_match_id, output_file)
 
             if self.on_recording_finished:
                 self.on_recording_finished(output_file, exported_files)

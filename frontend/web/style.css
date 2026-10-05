@@ -3440,5 +3440,303 @@ video {
   }
 }
 
+/* ------------------------------------------------------------- */
+/* RIOT CLIENT HUD STATUS PILL & ZERO-TOUCH MODAL */
+/* ------------------------------------------------------------- */
+.riot-control-wrapper {
+  display: inline-flex;
+  align-items: center;
+}
+
+.riot-hud-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 5px 12px;
+  border-radius: 4px;
+  font-family: var(--font-tactical);
+  font-size: 13px;
+  font-weight: 700;
+  letter-spacing: 1px;
+  cursor: pointer;
+  user-select: none;
+  transition: all 0.2s ease;
+}
+
+.riot-hud-pill .riot-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  display: inline-block;
+  transition: all 0.2s ease;
+}
+
+/* Offline / Disconnected */
+.riot-hud-pill.offline {
+  background: var(--bg-tertiary);
+  border: 1px solid var(--border-color);
+  color: var(--text-muted);
+}
+.riot-hud-pill.offline .riot-dot { background: #64748b; }
+.riot-hud-pill.offline:hover { border-color: rgba(255, 255, 255, 0.3); color: var(--text-main); }
+
+/* Menus */
+.riot-hud-pill.menus {
+  background: rgba(148, 163, 184, 0.12);
+  border: 1px solid #94a3b8;
+  color: #cbd5e1;
+}
+.riot-hud-pill.menus .riot-dot { background: #94a3b8; box-shadow: 0 0 6px #94a3b8; }
+.riot-hud-pill.menus:hover { border-color: #cbd5e1; color: #fff; }
+
+/* Pregame (Agent Select) */
+.riot-hud-pill.pregame {
+  background: rgba(255, 209, 102, 0.15);
+  border: 1px solid #ffd166;
+  color: #ffd166;
+}
+.riot-hud-pill.pregame .riot-dot { background: #ffd166; box-shadow: 0 0 8px #ffd166; }
+
+/* In-Game (Recording) */
+.riot-hud-pill.ingame {
+  background: rgba(255, 70, 85, 0.18);
+  border: 1px solid var(--accent-red);
+  color: #ff4655;
+  box-shadow: 0 0 10px rgba(255, 70, 85, 0.3);
+}
+.riot-hud-pill.ingame .riot-dot {
+  background: #ff4655;
+  box-shadow: 0 0 8px #ff4655;
+  animation: obs-record-pulse 1.2s infinite ease-in-out;
+}
+
+/* Postgame */
+.riot-hud-pill.postgame {
+  background: rgba(0, 245, 212, 0.12);
+  border: 1px solid var(--accent-cyan);
+  color: var(--accent-cyan);
+}
+.riot-hud-pill.postgame .riot-dot { background: var(--accent-cyan); box-shadow: 0 0 6px var(--accent-cyan); }
+
+/* Riot Modal Card */
+.riot-modal-card {
+  width: 700px;
+  max-width: 94vw;
+}
+
+.riot-status-banner {
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid var(--border-color);
+  padding: 12px 16px;
+  border-radius: 6px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 16px;
+}
+
+.riot-status-banner .status-left {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-family: var(--font-tactical);
+  font-weight: 700;
+  font-size: 13px;
+  letter-spacing: 0.5px;
+}
+
+.riot-status-dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: #64748b;
+  display: inline-block;
+  transition: all 0.2s ease;
+}
+.riot-status-dot.connected { background: var(--accent-cyan); box-shadow: 0 0 8px var(--accent-cyan); }
+.riot-status-dot.ingame { background: var(--accent-red); box-shadow: 0 0 8px var(--accent-red); }
+
+.player-tag-badge {
+  font-family: var(--font-tactical);
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--accent-cyan);
+  background: rgba(0, 245, 212, 0.1);
+  border: 1px solid rgba(0, 245, 212, 0.3);
+  padding: 3px 10px;
+  border-radius: 4px;
+}
+
+.riot-telemetry-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 10px;
+  margin-bottom: 16px;
+}
+
+.telemetry-box {
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid var(--border-color);
+  border-radius: 6px;
+  padding: 10px 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.telemetry-label {
+  font-family: var(--font-tactical);
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.8px;
+  color: var(--text-muted);
+}
+
+.telemetry-val {
+  font-family: var(--font-header);
+  font-size: 20px;
+  font-weight: 700;
+  line-height: 1.1;
+  color: #fff;
+}
+.telemetry-val.highlight { color: #ffd166; }
+.telemetry-val.cyan { color: var(--accent-cyan); }
+
+.telemetry-sub {
+  font-size: 11px;
+  color: var(--text-muted);
+}
+
+.state-machine-box {
+  background: rgba(255, 255, 255, 0.02);
+  border: 1px solid var(--border-color);
+  border-radius: 6px;
+  padding: 14px;
+  margin-bottom: 16px;
+}
+
+.state-flow-strip {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-top: 10px;
+  gap: 6px;
+}
+
+.state-step {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 8px 10px;
+  border-radius: 4px;
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid var(--border-color);
+  flex: 1;
+  text-align: center;
+  transition: all 0.2s ease;
+}
+
+.state-step.active {
+  border-color: var(--accent-cyan);
+  background: rgba(0, 245, 212, 0.1);
+  box-shadow: 0 0 10px rgba(0, 245, 212, 0.2);
+}
+
+.state-step.active .step-name {
+  color: var(--accent-cyan);
+  font-weight: 700;
+}
+
+.state-step.active-ingame {
+  border-color: var(--accent-red);
+  background: rgba(255, 70, 85, 0.15);
+  box-shadow: 0 0 10px rgba(255, 70, 85, 0.25);
+}
+
+.state-step.active-ingame .step-name {
+  color: #ff4655;
+  font-weight: 700;
+}
+
+.step-num {
+  font-family: var(--font-header);
+  font-size: 14px;
+  color: var(--text-muted);
+}
+
+.step-name {
+  font-family: var(--font-tactical);
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.5px;
+}
+
+.step-desc {
+  font-size: 10px;
+  color: var(--text-muted);
+  margin-top: 2px;
+}
+
+.state-arrow {
+  color: var(--text-muted);
+  font-size: 14px;
+}
+
+.riot-sim-box {
+  background: rgba(0, 245, 212, 0.04);
+  border: 1px solid rgba(0, 245, 212, 0.2);
+  border-radius: 6px;
+  padding: 14px;
+}
+
+.sim-actions-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 8px;
+  margin-top: 10px;
+}
+
+.sim-btn {
+  padding: 8px 10px;
+  font-family: var(--font-tactical);
+  font-size: 12px;
+  font-weight: 700;
+  border-radius: 4px;
+  border: 1px solid var(--border-color);
+  background: var(--bg-tertiary);
+  color: var(--text-main);
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.sim-btn:hover {
+  border-color: var(--accent-cyan);
+  color: #fff;
+  background: rgba(0, 245, 212, 0.15);
+}
+
+.sim-btn.ingame {
+  border-color: rgba(255, 70, 85, 0.4);
+  color: #ff4655;
+}
+
+.sim-btn.ingame:hover {
+  background: rgba(255, 70, 85, 0.25);
+  border-color: var(--accent-red);
+  color: #fff;
+}
+
+.sim-feedback-msg {
+  margin-top: 10px;
+  font-size: 12px;
+  font-family: var(--font-tactical);
+  font-weight: 600;
+  color: var(--accent-cyan);
+  padding: 6px 10px;
+  background: rgba(0, 245, 212, 0.08);
+  border-radius: 4px;
+}
+
+
 
 

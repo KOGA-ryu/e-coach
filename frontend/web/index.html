@@ -34,6 +34,13 @@
         </div>
       </div>
 
+      <div class="riot-control-wrapper">
+        <div class="riot-hud-pill offline" id="riot-hud-pill" title="Local Valorant Client & Lockfile Status (Click for Live Game State HUD)">
+          <span class="riot-dot"></span>
+          <span id="riot-text">RIOT: OFFLINE</span>
+        </div>
+      </div>
+
       <div class="obs-control-wrapper">
         <div class="obs-hud-pill idle" id="obs-hud-pill" title="OBS Studio Recording Status (Click to Toggle Recording)">
           <span class="obs-dot"></span>
@@ -552,6 +559,99 @@
         <!-- Prescribed Drills List -->
         <div class="drills-list-container" id="drills-list-container">
           <!-- Populated dynamically -->
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Riot Client Live Ingest & Game-State HUD Modal -->
+  <div class="modal-overlay" id="riot-modal" style="display: none;">
+    <div class="modal-card riot-modal-card">
+      <div class="modal-header">
+        <div class="modal-title-group">
+          <div class="modal-title">RIOT CLIENT LIVE INGEST & GAME STATE HUD</div>
+          <div class="modal-subtitle">Real-time local lockfile listener, presence telemetry, and zero-touch capture automation</div>
+        </div>
+        <button id="btn-close-riot" class="modal-close-btn">&times;</button>
+      </div>
+
+      <div class="modal-body riot-modal-body">
+        <!-- Live Connection Status Banner -->
+        <div class="riot-status-banner" id="riot-modal-status-banner">
+          <div class="status-left">
+            <span class="riot-status-dot" id="riot-modal-dot"></span>
+            <span class="status-text" id="riot-modal-status-text">DISCONNECTED</span>
+          </div>
+          <div class="status-right-group">
+            <span class="player-tag-badge" id="riot-modal-player-tag">NO PLAYER DETECTED</span>
+            <span class="status-mode-badge" id="riot-modal-mode-badge">LOCAL LOCKFILE</span>
+          </div>
+        </div>
+
+        <!-- Live Telemetry Card -->
+        <div class="riot-telemetry-grid">
+          <div class="telemetry-box">
+            <span class="telemetry-label">SESSION LOOP STATE</span>
+            <span class="telemetry-val highlight" id="riot-tele-state">MENUS</span>
+            <span class="telemetry-sub" id="riot-tele-state-sub">Valorant Main Menu</span>
+          </div>
+          <div class="telemetry-box">
+            <span class="telemetry-label">ACTIVE MAP</span>
+            <span class="telemetry-val" id="riot-tele-map">ASCENT</span>
+            <span class="telemetry-sub" id="riot-tele-queue">Competitive Queue</span>
+          </div>
+          <div class="telemetry-box">
+            <span class="telemetry-label">DETECTED AGENT</span>
+            <span class="telemetry-val cyan" id="riot-tele-agent">SOVA</span>
+            <span class="telemetry-sub">Auto-locked telemetry</span>
+          </div>
+          <div class="telemetry-box">
+            <span class="telemetry-label">LOCAL CLIENT PORT</span>
+            <span class="telemetry-val" id="riot-tele-port">55555</span>
+            <span class="telemetry-sub">HTTPS Basic Auth</span>
+          </div>
+        </div>
+
+        <!-- Zero-Touch State Machine Diagram -->
+        <div class="state-machine-box">
+          <div class="sub-header">🔄 ZERO-TOUCH RECORDING PIPELINE</div>
+          <div class="state-flow-strip">
+            <div class="state-step active" id="step-menus">
+              <span class="step-num">1</span>
+              <span class="step-name">MENUS</span>
+              <span class="step-desc">Standby</span>
+            </div>
+            <div class="state-arrow">➔</div>
+            <div class="state-step" id="step-pregame">
+              <span class="step-num">2</span>
+              <span class="step-name">AGENT SELECT</span>
+              <span class="step-desc">Arming OBS</span>
+            </div>
+            <div class="state-arrow">➔</div>
+            <div class="state-step" id="step-ingame">
+              <span class="step-num">3</span>
+              <span class="step-name">IN-GAME</span>
+              <span class="step-desc">Recording Live</span>
+            </div>
+            <div class="state-arrow">➔</div>
+            <div class="state-step" id="step-postgame">
+              <span class="step-num">4</span>
+              <span class="step-name">MATCH END</span>
+              <span class="step-desc">Auto Ingest & Sync</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Live Simulation Controls -->
+        <div class="riot-sim-box">
+          <div class="sub-header">⚡ GAME STATE SIMULATOR & TEST HARNESS</div>
+          <div class="sim-actions-grid">
+            <button class="sim-btn" data-sim="MENUS">🏠 1. MENUS</button>
+            <button class="sim-btn" data-sim="PREGAME">🎯 2. AGENT SELECT</button>
+            <button class="sim-btn ingame" data-sim="INGAME">🔴 3. IN-GAME (START REC)</button>
+            <button class="sim-btn" data-sim="POSTGAME">🏁 4. MATCH FINISH (SAVE & SYNC)</button>
+          </div>
+          <div class="sim-feedback-msg" id="riot-sim-feedback" style="display: none;"></div>
         </div>
       </div>
     </div>

@@ -69,6 +69,21 @@ const state = {
 
   // Economy Correlation State
   economyAnalysis: null,
+
+  // Riot Client Live Ingest State
+  riotStatus: {
+    connected: false,
+    state: 'DISCONNECTED',
+    match_map: null,
+    map_name: null,
+    agent: null,
+    player_name: null,
+    queue_id: null,
+    port: null,
+    is_mock: false,
+    recording: false,
+  },
+  riotPollInterval: null,
 };
 
 // DOM Elements
@@ -191,6 +206,23 @@ const ecoKpiTop = document.getElementById('eco-kpi-top');
 const economyTableBody = document.getElementById('economy-table-body');
 const economyInsightsList = document.getElementById('economy-insights-list');
 
+// Riot Client Live HUD DOM Elements
+const riotHudPill = document.getElementById('riot-hud-pill');
+const riotText = document.getElementById('riot-text');
+const riotModal = document.getElementById('riot-modal');
+const btnCloseRiot = document.getElementById('btn-close-riot');
+const riotModalDot = document.getElementById('riot-modal-dot');
+const riotModalStatusText = document.getElementById('riot-modal-status-text');
+const riotModalPlayerTag = document.getElementById('riot-modal-player-tag');
+const riotModalModeBadge = document.getElementById('riot-modal-mode-badge');
+const riotTeleState = document.getElementById('riot-tele-state');
+const riotTeleStateSub = document.getElementById('riot-tele-state-sub');
+const riotTeleMap = document.getElementById('riot-tele-map');
+const riotTeleQueue = document.getElementById('riot-tele-queue');
+const riotTeleAgent = document.getElementById('riot-tele-agent');
+const riotTelePort = document.getElementById('riot-tele-port');
+const riotSimFeedback = document.getElementById('riot-sim-feedback');
+
 // Tag Mapping for 1-9 Hotkeys
 const TAG_MAP = {
   '1': { category: 'Mechanics', name: 'crosshair_placement' },
@@ -212,12 +244,15 @@ async function init() {
   setupTelestrator();
   setupAggregateControls();
   setupObsControls();
+  setupRiotControls();
   await loadAvailableMaps();
   await loadMatchList();
 
-  // Poll OBS WebSocket status
+  // Poll OBS WebSocket & Riot Client status
   await pollObsStatus();
   state.obsPollInterval = setInterval(pollObsStatus, 3000);
+  await pollRiotStatus();
+  state.riotPollInterval = setInterval(pollRiotStatus, 3000);
 }
 
 
@@ -2462,6 +2497,9 @@ function setupEventListeners() {
       if (obsModal && obsModal.style.display === 'flex') {
         obsModal.style.display = 'none';
       }
+      if (riotModal && riotModal.style.display === 'flex') {
+        riotModal.style.display = 'none';
+      }
       if (noteModal && noteModal.style.display === 'flex') {
         closeNoteModal();
       }
@@ -3469,6 +3507,192 @@ async function associateMatchVideo(matchId, videoFilepath) {
     }
   } catch (err) {
     console.error('Failed to associate match video:', err);
+  }
+}
+
+// -------------------------------------------------------------
+// Riot Client Live Ingest & Game-State HUD Engine
+// -------------------------------------------------------------
+function setupRiotControls() {
+  if (riotHudPill) {
+    riotHudPill.addEventListener('click', () => {
+      if (riotModal) {
+        riotModal.style.display = 'flex';
+        updateRiotModalUI();
+      }
+    });
+  }
+
+  if (btnCloseRiot) {
+    btnCloseRiot.addEventListener('click', () => {
+      if (riotModal) riotModal.style.display = 'none';
+    });
+  }
+
+  if (riotModal) {
+    riotModal.addEventListener('click', (e) => {
+      if (e.target === riotModal) {
+        riotModal.style.display = 'none';
+      }
+    });
+  }
+
+  // Simulation harness buttons
+  const simBtns = document.querySelectorAll('.sim-btn');
+  simBtns.forEach((btn) => {
+    btn.addEventListener('click', async () => {
+      const simState = btn.getAttribute('data-sim');
+      await simulateRiotGameState(simState);
+    });
+  });
+}
+
+async function pollRiotStatus() {
+  if (!riotHudPill || !riotText) return;
+  try {
+    const res = await fetch('/api/riot/status');
+    if (!res.ok) return;
+    const data = await res.json();
+    state.riotStatus = data;
+    updateRiotHudUI(data);
+    if (riotModal && riotModal.style.display !== 'none') {
+      updateRiotModalUI();
+    }
+  } catch (err) {
+    updateRiotHudUI({ connected: false, state: 'DISCONNECTED' });
+  }
+}
+
+function updateRiotHudUI(data) {
+  if (!riotHudPill || !riotText) return;
+
+  riotHudPill.classList.remove('offline', 'menus', 'pregame', 'ingame', 'postgame');
+
+  const st = (data.state || 'DISCONNECTED').toUpperCase();
+  const mapFriendly = data.map_name || 'ASCENT';
+
+  if (!data.connected && st === 'DISCONNECTED') {
+    riotHudPill.classList.add('offline');
+    riotText.textContent = 'RIOT: OFFLINE';
+    riotHudPill.title = 'Riot Client lockfile not detected. Click for Live HUD & Simulator.';
+    return;
+  }
+
+  if (st === 'INGAME') {
+    riotHudPill.classList.add('ingame');
+    riotText.textContent = `LIVE: IN-GAME (${mapFriendly.toUpperCase()})`;
+    riotHudPill.title = `Valorant Live Match Active on ${mapFriendly}. Zero-Touch OBS Recording Active.`;
+  } else if (st === 'PREGAME') {
+    riotHudPill.classList.add('pregame');
+    riotText.textContent = 'RIOT: AGENT SELECT';
+    riotHudPill.title = 'Agent Select Lobby Detected. OBS armed for match start.';
+  } else if (st === 'POSTGAME') {
+    riotHudPill.classList.add('postgame');
+    riotText.textContent = 'RIOT: MATCH FINISH';
+    riotHudPill.title = 'Match concluded. Ingest and telemetry synchronization complete.';
+  } else {
+    riotHudPill.classList.add('menus');
+    riotText.textContent = 'RIOT: MENUS';
+    riotHudPill.title = 'Riot Client Connected (In Menus/Lobby). Click for Live HUD.';
+  }
+}
+
+function updateRiotModalUI() {
+  const d = state.riotStatus || {};
+  const st = (d.state || 'DISCONNECTED').toUpperCase();
+
+  if (riotModalDot) {
+    riotModalDot.className = 'riot-status-dot';
+    if (st === 'INGAME') riotModalDot.classList.add('ingame');
+    else if (d.connected) riotModalDot.classList.add('connected');
+  }
+
+  if (riotModalStatusText) {
+    riotModalStatusText.textContent = d.connected ? (d.is_mock ? 'SIMULATOR ACTIVE' : 'LIVE LOCKFILE LINKED') : 'NOT CONNECTED';
+  }
+
+  if (riotModalPlayerTag) {
+    riotModalPlayerTag.textContent = d.player_name || 'Ace#NA1';
+  }
+
+  if (riotModalModeBadge) {
+    riotModalModeBadge.textContent = d.is_mock ? 'SIMULATION MODE' : (d.port ? `PORT ${d.port} (${d.protocol})` : 'LOCKFILE LISTENER');
+  }
+
+  if (riotTeleState) {
+    riotTeleState.textContent = st;
+  }
+
+  if (riotTeleStateSub) {
+    if (st === 'INGAME') riotTeleStateSub.textContent = 'Live Competitive Match In-Progress';
+    else if (st === 'PREGAME') riotTeleStateSub.textContent = 'Agent Select Lock-in Phase';
+    else if (st === 'POSTGAME') riotTeleStateSub.textContent = 'Post-Match Summary & Scoreboard';
+    else if (st === 'MENUS') riotTeleStateSub.textContent = 'Valorant Main Menu / Lobby';
+    else riotTeleStateSub.textContent = 'Waiting for Valorant Client launch...';
+  }
+
+  if (riotTeleMap) {
+    riotTeleMap.textContent = (d.map_name || 'ASCENT').toUpperCase();
+  }
+
+  if (riotTeleQueue) {
+    riotTeleQueue.textContent = `${(d.queue_id || 'Competitive').toUpperCase()} QUEUE`;
+  }
+
+  if (riotTeleAgent) {
+    riotTeleAgent.textContent = (d.agent || 'SOVA').toUpperCase();
+  }
+
+  if (riotTelePort) {
+    riotTelePort.textContent = d.port ? `${d.port}` : 'OFFLINE';
+  }
+
+  // Update step indicators
+  const stepMenus = document.getElementById('step-menus');
+  const stepPregame = document.getElementById('step-pregame');
+  const stepIngame = document.getElementById('step-ingame');
+  const stepPostgame = document.getElementById('step-postgame');
+
+  [stepMenus, stepPregame, stepIngame, stepPostgame].forEach((el) => {
+    if (el) el.className = 'state-step';
+  });
+
+  if (st === 'MENUS' && stepMenus) stepMenus.classList.add('active');
+  else if (st === 'PREGAME' && stepPregame) stepPregame.classList.add('active');
+  else if (st === 'INGAME' && stepIngame) stepIngame.classList.add('active-ingame');
+  else if (st === 'POSTGAME' && stepPostgame) stepPostgame.classList.add('active');
+}
+
+async function simulateRiotGameState(simState) {
+  try {
+    const payload = {
+      state: simState,
+      map: '/Game/Maps/Ascent/Ascent',
+      agent: 'Sova',
+      player: 'Ace#NA1',
+    };
+    const res = await fetch('/api/riot/simulate', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload),
+    });
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    const data = await res.json();
+    state.riotStatus = data;
+    updateRiotHudUI(data);
+    updateRiotModalUI();
+
+    if (riotSimFeedback) {
+      riotSimFeedback.style.display = 'block';
+      riotSimFeedback.textContent = `✓ Simulated state: ${simState} (OBS Recording: ${data.recording ? 'ACTIVE' : 'IDLE'})`;
+    }
+    showToast(`Riot Game State: ${simState}`);
+
+    // If OBS status changed, poll OBS as well
+    await pollObsStatus();
+  } catch (err) {
+    console.error('Failed to simulate game state:', err);
+    showToast('Simulation failed');
   }
 }
 

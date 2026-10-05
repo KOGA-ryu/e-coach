@@ -362,6 +362,46 @@ class TestValLensServer(unittest.TestCase):
         self.assertEqual(status, 200)
         self.assertIn("attachment; filename=", headers.get("Content-Disposition", ""))
 
+    def test_riot_client_endpoints(self):
+        # 1. Fetch initial status
+        status, body, _ = self._get("/api/riot/status")
+        self.assertEqual(status, 200)
+        res = json.loads(body.decode("utf-8"))
+        self.assertIn("state", res)
+        self.assertIn("connected", res)
+
+        # 2. Configure mock mode
+        status, res = self._post_json("/api/riot/config", {"use_mock": True})
+        self.assertEqual(status, 200)
+        self.assertEqual(res["mode"], "mock")
+
+        # 3. Simulate state transition: PREGAME (Agent Select)
+        status, res = self._post_json(
+            "/api/riot/simulate",
+            {"state": "PREGAME", "map": "Ascent", "agent": "Sova", "player": "Ace#NA1"},
+        )
+        self.assertEqual(status, 200)
+        self.assertEqual(res["state"], "PREGAME")
+        self.assertEqual(res["agent"], "Sova")
+
+        # 4. Simulate state transition: INGAME -> Triggers OBS auto-recording
+        status, res = self._post_json(
+            "/api/riot/simulate",
+            {"state": "INGAME", "map": "/Game/Maps/Ascent/Ascent"},
+        )
+        self.assertEqual(status, 200)
+        self.assertEqual(res["state"], "INGAME")
+        self.assertTrue(res["recording"])
+
+        # 5. Simulate state transition: POSTGAME -> Stops OBS recording and auto-syncs
+        status, res = self._post_json(
+            "/api/riot/simulate",
+            {"state": "POSTGAME"},
+        )
+        self.assertEqual(status, 200)
+        self.assertEqual(res["state"], "POSTGAME")
+        self.assertFalse(res["recording"])
+
 
 if __name__ == "__main__":
     unittest.main()

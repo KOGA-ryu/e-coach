@@ -307,6 +307,30 @@ class ValLensService:
         """Toggle background game state detection loop."""
         return self.capture_controller.toggle_auto_capture()
 
+    def get_riot_status(self) -> dict[str, Any]:
+        """Return current Riot Client connection and game-state telemetry."""
+        return self.capture_controller.get_riot_status()
+
+    def configure_riot_client(
+        self, use_mock: bool = False, lockfile_path: Optional[str] = None
+    ) -> dict[str, Any]:
+        """Configure local Riot Client lockfile reader or mock simulation mode."""
+        return self.capture_controller.configure_local_client(
+            use_mock=use_mock, lockfile_path=lockfile_path
+        )
+
+    def simulate_riot_game_state(
+        self,
+        state: str,
+        map_name: Optional[str] = None,
+        agent: Optional[str] = None,
+        player_name: Optional[str] = None,
+    ) -> dict[str, Any]:
+        """Simulate a game state change for zero-touch auto-capture testing."""
+        return self.capture_controller.simulate_game_state(
+            state=state, match_map=map_name, agent=agent, player_name=player_name
+        )
+
     def attach_match_video(self, match_id: str, video_filepath: str) -> bool:
         """Associate a video recording file path with a match."""
         return self.repo.update_video_path(match_id, video_filepath)

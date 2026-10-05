@@ -511,6 +511,12 @@ class ValLensRequestHandler(BaseHTTPRequestHandler):
             self._send_json(obs_cfg)
             return
 
+        # Riot Client Status API
+        if path == "/api/riot/status":
+            riot_status = self.service.get_riot_status()
+            self._send_json(riot_status)
+            return
+
         # 9. Static Map Icons
         if path.startswith("/maps/"):
             map_name = path[len("/maps/"):].lower()
@@ -693,6 +699,40 @@ class ValLensRequestHandler(BaseHTTPRequestHandler):
         if path == "/api/obs/auto-capture":
             active = self.service.toggle_auto_capture()
             self._send_json({"auto_capture_active": active})
+            return
+
+        # Riot Client Simulation API
+        if path == "/api/riot/simulate":
+            content_length = int(self.headers.get("Content-Length", 0))
+            body = self.rfile.read(content_length).decode("utf-8") if content_length > 0 else "{}"
+            try:
+                data = json.loads(body) if body else {}
+            except Exception:
+                data = {}
+
+            state = str(data.get("state", "INGAME")).upper()
+            map_name = data.get("map")
+            agent = data.get("agent")
+            player = data.get("player")
+            res = self.service.simulate_riot_game_state(
+                state=state, map_name=map_name, agent=agent, player_name=player
+            )
+            self._send_json(res)
+            return
+
+        # Riot Client Configuration API
+        if path == "/api/riot/config":
+            content_length = int(self.headers.get("Content-Length", 0))
+            body = self.rfile.read(content_length).decode("utf-8") if content_length > 0 else "{}"
+            try:
+                data = json.loads(body) if body else {}
+            except Exception:
+                data = {}
+
+            use_mock = bool(data.get("use_mock", False))
+            lockfile_path = data.get("lockfile_path")
+            res = self.service.configure_riot_client(use_mock=use_mock, lockfile_path=lockfile_path)
+            self._send_json(res)
             return
 
         # Associate Match Video Path API
