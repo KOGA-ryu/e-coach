@@ -45,6 +45,7 @@
       <button id="btn-open-diff" class="btn-diff" title="Coach vs Solo Perspective Diff & Blindspots">PERSPECTIVE DIFF</button>
       <button id="btn-open-matrix" class="btn-matrix" title="Agent Profiling Matrix">AGENT MATRIX</button>
       <button id="btn-open-drills" class="btn-drills" title="Custom Practice Routines & Aim Trainer Exporter">PRACTICE DRILLS</button>
+      <button id="btn-open-economy" class="btn-economy" title="Economy vs Flaw Correlation Matrix">ECONOMY MATRIX</button>
       <button id="btn-generate-montage" class="btn-montage" title="Generate Continuous Flaw Review Reel MP4">🎬 REVIEW REEL</button>
       <a id="btn-view-report" class="btn-report" target="_blank" href="#">COACHING REPORT</a>
     </div>
@@ -524,6 +525,9 @@
           </div>
         </div>
       </div>
+    </div>
+  </div>
+
   <!-- Practice Routines & Aim Trainer Protocols Modal -->
   <div class="modal-overlay" id="drills-modal" style="display: none;">
     <div class="modal-card drills-modal-card">
@@ -663,6 +667,76 @@
       <div class="modal-footer" style="display: flex; justify-content: flex-end; gap: 10px; padding: 14px 20px;">
         <button id="btn-cancel-note" class="btn-sync">CANCEL</button>
         <button id="btn-save-note" class="btn-primary">SAVE NOTE [ENTER]</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Economy vs. Flaw Correlation Matrix Modal -->
+  <div class="modal-overlay" id="economy-modal" style="display: none;">
+    <div class="modal-card eco-modal-card">
+      <div class="modal-header">
+        <div class="modal-title-group">
+          <div class="modal-title">ECONOMY VS. FLAW CORRELATION MATRIX</div>
+          <div class="modal-subtitle">Cross-tabulating tactical mistakes against weapon buy tiers (Pistol, Eco/Save, Force Buy, Full Buy)</div>
+        </div>
+        <button id="btn-close-economy" class="modal-close-btn">&times;</button>
+      </div>
+
+      <div class="modal-body eco-modal-body">
+        <!-- Top KPI Grid -->
+        <div class="eco-kpi-grid">
+          <div class="eco-kpi-card">
+            <span class="eco-kpi-label">ECO FLAW RATE</span>
+            <span class="eco-kpi-val warning" id="eco-kpi-rate">0.0%</span>
+            <span class="eco-kpi-sub" id="eco-kpi-rate-sub">0 of 0 flaws on save rounds</span>
+          </div>
+          <div class="eco-kpi-card">
+            <span class="eco-kpi-label">FULL BUY WIN RATE</span>
+            <span class="eco-kpi-val success" id="eco-kpi-full">0.0%</span>
+            <span class="eco-kpi-sub">Rifles & Snipers loadout</span>
+          </div>
+          <div class="eco-kpi-card">
+            <span class="eco-kpi-label">FORCE BUY WIN RATE</span>
+            <span class="eco-kpi-val neutral" id="eco-kpi-force">0.0%</span>
+            <span class="eco-kpi-sub">SMGs, Shotguns, Light Rifles</span>
+          </div>
+          <div class="eco-kpi-card">
+            <span class="eco-kpi-label">TOP ECO MISTAKE</span>
+            <span class="eco-kpi-val highlight" id="eco-kpi-top">NONE</span>
+            <span class="eco-kpi-sub">Highest save-round occurrence</span>
+          </div>
+        </div>
+
+        <!-- Cross-Tabulation Matrix Table -->
+        <div class="eco-section-title">FLAW FREQUENCY BY LOADOUT TIER</div>
+        <div class="eco-table-wrapper">
+          <table class="eco-matrix-table">
+            <thead>
+              <tr>
+                <th>FLAW TAG</th>
+                <th>CATEGORY</th>
+                <th class="tier-col pistol">PISTOL</th>
+                <th class="tier-col eco">ECO / SAVE</th>
+                <th class="tier-col force">FORCE BUY</th>
+                <th class="tier-col full">FULL BUY</th>
+                <th>TOTAL</th>
+                <th>DOMINANT TIER</th>
+                <th>ECO SHARE</th>
+              </tr>
+            </thead>
+            <tbody id="economy-table-body">
+              <!-- Dynamically populated rows -->
+            </tbody>
+          </table>
+        </div>
+
+        <!-- Tactical Coaching Insights -->
+        <div class="eco-insights-card">
+          <div class="sub-header">💡 TACTICAL ECONOMY DIAGNOSIS & COACHING INSIGHTS</div>
+          <div class="eco-insights-list" id="economy-insights-list">
+            <!-- Dynamically populated insights -->
+          </div>
+        </div>
       </div>
     </div>
   </div>

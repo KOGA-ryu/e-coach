@@ -323,6 +323,16 @@ class TestValLensServer(unittest.TestCase):
         self.assertEqual(status, 200)
         self.assertTrue(del_voice["success"])
 
+    def test_economy_analysis_endpoint(self):
+        status, body, _ = self._get(f"/api/matches/{self.match.match_id}/economy")
+        self.assertEqual(status, 200)
+        res = json.loads(body.decode("utf-8"))
+        self.assertEqual(res["match_id"], self.match.match_id)
+        self.assertIn("rounds", res)
+        self.assertIn("flaw_rows", res)
+        self.assertIn("kpis", res)
+        self.assertIn("coaching_insights", res)
+
 
 if __name__ == "__main__":
     unittest.main()

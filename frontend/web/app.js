@@ -66,6 +66,9 @@ const state = {
   activeAudioChunks: [],
   audioRecordTimerInterval: null,
   recordedAudioBase64: null,
+
+  // Economy Correlation State
+  economyAnalysis: null,
 };
 
 // DOM Elements
@@ -176,6 +179,18 @@ const btnDownloadAimlab = document.getElementById('btn-download-aimlab');
 const drillsSummaryBanner = document.getElementById('drills-summary-banner');
 const drillsListContainer = document.getElementById('drills-list-container');
 
+// Economy Matrix DOM Elements
+const btnOpenEconomy = document.getElementById('btn-open-economy');
+const economyModal = document.getElementById('economy-modal');
+const btnCloseEconomy = document.getElementById('btn-close-economy');
+const ecoKpiRate = document.getElementById('eco-kpi-rate');
+const ecoKpiRateSub = document.getElementById('eco-kpi-rate-sub');
+const ecoKpiFull = document.getElementById('eco-kpi-full');
+const ecoKpiForce = document.getElementById('eco-kpi-force');
+const ecoKpiTop = document.getElementById('eco-kpi-top');
+const economyTableBody = document.getElementById('economy-table-body');
+const economyInsightsList = document.getElementById('economy-insights-list');
+
 // Tag Mapping for 1-9 Hotkeys
 const TAG_MAP = {
   '1': { category: 'Mechanics', name: 'crosshair_placement' },
@@ -257,6 +272,7 @@ async function loadMatch(matchId) {
     await loadCoachNotes(matchId);
     loadPerspectiveDiff(matchId);
     loadTrainingRoutine(matchId);
+    loadEconomyAnalysis(matchId);
 
     // 5. Setup map background
     const mapName = getMapNameFromPath(state.matchMetadata.map_id);
@@ -2397,6 +2413,32 @@ function setupEventListeners() {
     });
   }
 
+  // Economy Matrix Modal Handlers
+  if (btnOpenEconomy) {
+    btnOpenEconomy.addEventListener('click', () => {
+      economyModal.style.display = 'flex';
+      if (!state.economyAnalysis && state.currentMatchId) {
+        loadEconomyAnalysis(state.currentMatchId);
+      } else {
+        renderEconomyModal();
+      }
+    });
+  }
+
+  if (btnCloseEconomy) {
+    btnCloseEconomy.addEventListener('click', () => {
+      economyModal.style.display = 'none';
+    });
+  }
+
+  if (economyModal) {
+    economyModal.addEventListener('click', (e) => {
+      if (e.target === economyModal) {
+        economyModal.style.display = 'none';
+      }
+    });
+  }
+
   window.addEventListener('keydown', (e) => {
     if (e.key === 'Escape') {
       if (drillsModal && drillsModal.style.display === 'flex') {
@@ -2407,6 +2449,9 @@ function setupEventListeners() {
       }
       if (matrixModal && matrixModal.style.display === 'flex') {
         matrixModal.style.display = 'none';
+      }
+      if (economyModal && economyModal.style.display === 'flex') {
+        economyModal.style.display = 'none';
       }
       if (syncModal && syncModal.style.display === 'flex') {
         syncModal.style.display = 'none';
@@ -3421,6 +3466,107 @@ async function associateMatchVideo(matchId, videoFilepath) {
     }
   } catch (err) {
     console.error('Failed to associate match video:', err);
+  }
+}
+
+// -------------------------------------------------------------
+// Economy vs. Flaw Correlation Matrix Engine
+// -------------------------------------------------------------
+async function loadEconomyAnalysis(matchId) {
+  if (!matchId) return;
+  try {
+    const res = await fetch(`/api/matches/${matchId}/economy`);
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    const data = await res.json();
+    state.economyAnalysis = data;
+    renderEconomyModal();
+  } catch (err) {
+    console.error('Failed to load economy correlation:', err);
+  }
+}
+
+function renderEconomyModal() {
+  if (!state.economyAnalysis) return;
+  const d = state.economyAnalysis;
+  const kpis = d.kpis || {};
+
+  if (ecoKpiRate) {
+    const rate = kpis.eco_flaw_rate ?? 0;
+    ecoKpiRate.textContent = `${rate}%`;
+    if (rate >= 40) {
+      ecoKpiRate.className = 'eco-kpi-val warning';
+    } else if (rate <= 20) {
+      ecoKpiRate.className = 'eco-kpi-val success';
+    } else {
+      ecoKpiRate.className = 'eco-kpi-val neutral';
+    }
+  }
+
+  if (ecoKpiRateSub) {
+    ecoKpiRateSub.textContent = `${kpis.eco_flaws ?? 0} of ${kpis.total_flaws ?? 0} flaws on save rounds`;
+  }
+
+  if (ecoKpiFull) {
+    ecoKpiFull.textContent = `${kpis.full_buy_win_rate ?? 0}%`;
+  }
+
+  if (ecoKpiForce) {
+    ecoKpiForce.textContent = `${kpis.force_buy_win_rate ?? 0}%`;
+  }
+
+  if (ecoKpiTop) {
+    const topFlaw = kpis.most_frequent_eco_flaw || 'None';
+    ecoKpiTop.textContent = topFlaw.replace(/_/g, ' ').toUpperCase();
+  }
+
+  // Render Matrix Table
+  if (economyTableBody) {
+    economyTableBody.innerHTML = '';
+    const rows = d.flaw_rows || [];
+
+    if (rows.length === 0) {
+      economyTableBody.innerHTML = `
+        <tr>
+          <td colspan="9" style="text-align:center; padding: 24px; color: var(--text-muted);">
+            No flaw tags recorded for this match to cross-tabulate with economy data.
+          </td>
+        </tr>
+      `;
+    } else {
+      rows.forEach((r) => {
+        const tr = document.createElement('tr');
+        const tierClass = r.dominant_tier.toLowerCase().replace(/\s+/g, '-');
+
+        tr.innerHTML = `
+          <td><span class="eco-tag-name">${r.tag_name.replace(/_/g, ' ')}</span></td>
+          <td><span class="eco-cat-pill">${r.category}</span></td>
+          <td class="tier-cell"><span class="eco-count-pill ${r.pistol_count > 0 ? 'has-count' : ''}">${r.pistol_count}</span></td>
+          <td class="tier-cell"><span class="eco-count-pill ${r.eco_count > 0 ? 'has-count' : ''}">${r.eco_count}</span></td>
+          <td class="tier-cell"><span class="eco-count-pill ${r.force_count > 0 ? 'has-count' : ''}">${r.force_count}</span></td>
+          <td class="tier-cell"><span class="eco-count-pill ${r.full_count > 0 ? 'has-count' : ''}">${r.full_count}</span></td>
+          <td style="font-weight: 700; color: #fff;">${r.total_count}</td>
+          <td><span class="tier-badge ${tierClass}">${r.dominant_tier.toUpperCase()}</span></td>
+          <td style="font-weight: 600; color: ${r.eco_share_pct >= 40 ? '#ff4655' : 'var(--text-main)'};">${r.eco_share_pct}%</td>
+        `;
+        economyTableBody.appendChild(tr);
+      });
+    }
+  }
+
+  // Render Coaching Insights
+  if (economyInsightsList) {
+    economyInsightsList.innerHTML = '';
+    const insights = d.coaching_insights || [];
+    if (insights.length === 0) {
+      economyInsightsList.innerHTML = '<div class="eco-insight-item">No economy anomalies detected.</div>';
+    } else {
+      insights.forEach((txt) => {
+        const item = document.createElement('div');
+        item.className = 'eco-insight-item';
+        item.textContent = txt;
+        economyInsightsList.appendChild(item);
+      });
+    }
   }
 }
 

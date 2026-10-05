@@ -408,6 +408,17 @@ class ValLensRequestHandler(BaseHTTPRequestHandler):
             self._send_json(notes)
             return
 
+        # 7.9. Economy vs Flaw Correlation API
+        if path.startswith("/api/matches/") and path.endswith("/economy"):
+            match_id = path.split("/")[3]
+            player_puuid = query.get("player", [None])[0]
+            analysis = self.service.get_economy_analysis(match_id, player_puuid=player_puuid)
+            if not analysis:
+                self._send_error("Match not found", status=404)
+                return
+            self._send_json(analysis)
+            return
+
         # 8. Match Overview
         if path.startswith("/api/matches/"):
             match_id = path.split("/")[3]

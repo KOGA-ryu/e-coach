@@ -6,6 +6,7 @@ from typing import Any, Optional
 
 from vallens.analytics.agent_profile import AgentMatrixResult, AgentProfilingEngine
 from vallens.analytics.drills import TrainingRoutineEngine, TrainingRoutineResult
+from vallens.analytics.economy import EconomyAnalysisResult, EconomyCorrelationEngine
 from vallens.analytics.heatmap import HeatmapAggregationEngine, HeatmapAggregationResult
 from vallens.analytics.perspective import PerspectiveDiffEngine, PerspectiveDiffResult
 from vallens.analytics.projection import CoordinateProjector
@@ -35,6 +36,7 @@ class ValLensService:
         self.parser = MatchParser(projector=self.projector)
         self.client = RiotApiClient(api_key=riot_api_key)
         self.heatmap_engine = HeatmapAggregationEngine(maps_file=maps_file)
+        self.economy_engine = EconomyCorrelationEngine()
         self.capture_controller = capture_controller or CaptureController(service=self)
 
     def ingest_match_payload(
@@ -516,6 +518,25 @@ class ValLensService:
                 except Exception:
                     pass
         return self.repo.delete_note(note_id)
+
+    def get_economy_analysis(
+        self, match_id: str, player_puuid: Optional[str] = None
+    ) -> Optional[dict[str, Any]]:
+        """Run economy vs flaw correlation analysis for a match."""
+        match = self.repo.get_match(match_id)
+        if not match:
+            return None
+
+        events = self.repo.get_events(match_id)
+        tags = self.repo.get_tags(match_id)
+
+        analysis = self.economy_engine.analyze(
+            match_id=match_id,
+            events=events,
+            tags=tags,
+            player_puuid=player_puuid,
+        )
+        return analysis.to_dict()
 
 
 
