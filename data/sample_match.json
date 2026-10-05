@@ -1,0 +1,201 @@
+{
+  "matchInfo": {
+    "matchId": "f39bb79d-d81b-486d-b873-1991d3ec7a68",
+    "mapId": "/Game/Maps/Ascent/Ascent",
+    "gameMode": "/Game/GameModes/Bomb/BombGameMode.BombGameMode_C",
+    "gameLengthMillis": 2145000,
+    "gameStartMillis": 1700000000000,
+    "provisioningFlowId": "Matchmaking",
+    "isCompleted": true,
+    "customGameName": "",
+    "queueId": "competitive",
+    "gamePodId": "us-west-1"
+  },
+  "players": [
+    {
+      "puuid": "player-ace-001",
+      "gameName": "Ace",
+      "tagLine": "DEV",
+      "teamId": "Blue",
+      "partyId": "party-1",
+      "characterId": "add6443a-41bd-e414-f6ad-e58d267f4e95",
+      "stats": {
+        "score": 4500,
+        "roundsPlayed": 20,
+        "kills": 24,
+        "deaths": 12,
+        "assists": 6
+      }
+    },
+    {
+      "puuid": "player-002",
+      "gameName": "Teammate",
+      "tagLine": "VAL",
+      "teamId": "Blue",
+      "partyId": "party-1",
+      "characterId": "320b2a48-4d9b-a075-30f1-1f93a9b638fa",
+      "stats": {
+        "score": 3100,
+        "roundsPlayed": 20,
+        "kills": 14,
+        "deaths": 15,
+        "assists": 9
+      }
+    },
+    {
+      "puuid": "player-enemy-001",
+      "gameName": "Rival",
+      "tagLine": "TOP",
+      "teamId": "Red",
+      "partyId": "party-2",
+      "characterId": "a3bfb85b-4227-bba6-799e-0f86c25be5ee",
+      "stats": {
+        "score": 3800,
+        "roundsPlayed": 20,
+        "kills": 18,
+        "deaths": 17,
+        "assists": 4
+      }
+    },
+    {
+      "puuid": "player-enemy-002",
+      "gameName": "Shadow",
+      "tagLine": "OMN",
+      "teamId": "Red",
+      "partyId": "party-2",
+      "characterId": "8e252d34-4047-02aa-1b6d-b4d0ec80c325",
+      "stats": {
+        "score": 3400,
+        "roundsPlayed": 20,
+        "kills": 16,
+        "deaths": 16,
+        "assists": 7
+      }
+    }
+  ],
+  "roundResults": [
+    {
+      "roundNum": 0,
+      "roundResult": "Eliminated",
+      "roundCeremony": "CeremonyDefault",
+      "winningTeam": "Blue",
+      "bombPlanter": null,
+      "bombDefuser": null,
+      "plantRoundTime": 0,
+      "defuseRoundTime": 0,
+      "kills": [
+        {
+          "timeSinceGameStartMillis": 45000,
+          "timeSinceRoundStartMillis": 25000,
+          "killer": "player-ace-001",
+          "victim": "player-enemy-001",
+          "victimLocation": { "x": 3980.9, "y": -5938.7 },
+          "playerLocations": [
+            { "puuid": "player-ace-001", "location": { "x": 4489.0, "y": -3014.0 } },
+            { "puuid": "player-enemy-001", "location": { "x": 3980.9, "y": -5938.7 } }
+          ],
+          "finishingDamage": {
+            "damageType": "Weapon",
+            "damageItem": "Ghost",
+            "isSecondaryFireMode": false
+          }
+        },
+        {
+          "timeSinceGameStartMillis": 62000,
+          "timeSinceRoundStartMillis": 42000,
+          "killer": "player-enemy-002",
+          "victim": "player-002",
+          "victimLocation": { "x": 4200.0, "y": -3500.0 },
+          "playerLocations": [
+            { "puuid": "player-enemy-002", "location": { "x": 3800.0, "y": -5000.0 } },
+            { "puuid": "player-002", "location": { "x": 4200.0, "y": -3500.0 } }
+          ],
+          "finishingDamage": {
+            "damageType": "Weapon",
+            "damageItem": "Classic",
+            "isSecondaryFireMode": false
+          }
+        },
+        {
+          "timeSinceGameStartMillis": 71000,
+          "timeSinceRoundStartMillis": 51000,
+          "killer": "player-ace-001",
+          "victim": "player-enemy-002",
+          "victimLocation": { "x": 3800.0, "y": -5000.0 },
+          "playerLocations": [
+            { "puuid": "player-ace-001", "location": { "x": 4100.0, "y": -4000.0 } },
+            { "puuid": "player-enemy-002", "location": { "x": 3800.0, "y": -5000.0 } }
+          ],
+          "finishingDamage": {
+            "damageType": "Weapon",
+            "damageItem": "Ghost",
+            "isSecondaryFireMode": false
+          }
+        }
+      ]
+    },
+    {
+      "roundNum": 1,
+      "roundResult": "Bomb defused",
+      "roundCeremony": "CeremonyClutch",
+      "winningTeam": "Red",
+      "bombPlanter": "player-ace-001",
+      "plantRoundTime": 38000,
+      "plantSite": "A",
+      "plantLocation": { "x": 3500.0, "y": -6200.0 },
+      "bombDefuser": "player-enemy-002",
+      "defuseRoundTime": 78000,
+      "defuseLocation": { "x": 3500.0, "y": -6200.0 },
+      "kills": [
+        {
+          "timeSinceGameStartMillis": 142000,
+          "timeSinceRoundStartMillis": 42000,
+          "killer": "player-enemy-001",
+          "victim": "player-002",
+          "victimLocation": { "x": 3200.0, "y": -5800.0 },
+          "playerLocations": [
+            { "puuid": "player-enemy-001", "location": { "x": 2800.0, "y": -6400.0 } },
+            { "puuid": "player-002", "location": { "x": 3200.0, "y": -5800.0 } }
+          ],
+          "finishingDamage": {
+            "damageType": "Weapon",
+            "damageItem": "Spectre",
+            "isSecondaryFireMode": false
+          }
+        },
+        {
+          "timeSinceGameStartMillis": 150000,
+          "timeSinceRoundStartMillis": 50000,
+          "killer": "player-ace-001",
+          "victim": "player-enemy-001",
+          "victimLocation": { "x": 2800.0, "y": -6400.0 },
+          "playerLocations": [
+            { "puuid": "player-ace-001", "location": { "x": 3500.0, "y": -6200.0 } },
+            { "puuid": "player-enemy-001", "location": { "x": 2800.0, "y": -6400.0 } }
+          ],
+          "finishingDamage": {
+            "damageType": "Weapon",
+            "damageItem": "Sheriff",
+            "isSecondaryFireMode": false
+          }
+        },
+        {
+          "timeSinceGameStartMillis": 172000,
+          "timeSinceRoundStartMillis": 72000,
+          "killer": "player-enemy-002",
+          "victim": "player-ace-001",
+          "victimLocation": { "x": 3500.0, "y": -6200.0 },
+          "playerLocations": [
+            { "puuid": "player-enemy-002", "location": { "x": 3100.0, "y": -5500.0 } },
+            { "puuid": "player-ace-001", "location": { "x": 3500.0, "y": -6200.0 } }
+          ],
+          "finishingDamage": {
+            "damageType": "Weapon",
+            "damageItem": "Vandal",
+            "isSecondaryFireMode": false
+          }
+        }
+      ]
+    }
+  ]
+}
