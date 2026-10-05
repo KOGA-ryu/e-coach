@@ -153,6 +153,29 @@ body {
   color: #fff;
 }
 
+.btn-report {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background: rgba(0, 245, 212, 0.1);
+  border: 1px solid var(--accent-cyan);
+  color: var(--accent-cyan);
+  font-family: var(--font-tactical);
+  font-size: 13px;
+  font-weight: 700;
+  text-decoration: none;
+  padding: 6px 14px;
+  border-radius: 4px;
+  letter-spacing: 1px;
+  transition: all 0.15s ease;
+}
+
+.btn-report:hover {
+  background: var(--accent-cyan);
+  color: #0b1118;
+  box-shadow: 0 0 10px rgba(0, 245, 212, 0.4);
+}
+
 /* Match Info Strip */
 .match-info-strip {
   background: #0e161f;

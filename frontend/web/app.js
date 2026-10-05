@@ -106,6 +106,7 @@ async function loadMatch(matchId) {
     state.matchMetadata = overview.metadata;
 
     updateMatchHeader(overview);
+    document.getElementById('btn-view-report').href = `/api/matches/${matchId}/report`;
 
     // 2. Fetch telemetry events
     const eventsRes = await fetch(`/api/matches/${matchId}/events`);

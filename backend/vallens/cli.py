@@ -65,6 +65,13 @@ def main() -> None:
     serve_parser.add_argument("--port", type=int, default=8000, help="Port to run server on")
     serve_parser.add_argument("--host", default="127.0.0.1", help="Host IP to bind to")
 
+    # Report command
+    report_parser = subparsers.add_parser("report", help="Generate Coaching Report Card")
+    report_parser.add_argument("match_id", help="Match UUID")
+    report_parser.add_argument("--format", choices=["markdown", "html"], default="markdown", help="Report format")
+    report_parser.add_argument("--output", default=None, help="Save to file instead of stdout")
+    report_parser.add_argument("--player", default=None, help="Player PUUID focus")
+
     args = parser.parse_args()
 
     db = Database(args.db)
@@ -192,6 +199,26 @@ def main() -> None:
         except KeyboardInterrupt:
             print("\nShutting down server.")
             server.server_close()
+
+    elif args.command == "report":
+        from vallens.analytics.report import CoachingReportGenerator
+        match = service.repo.get_match(args.match_id)
+        if not match:
+            print(f"Error: match not found: {args.match_id}", file=sys.stderr)
+            sys.exit(1)
+        events = service.repo.get_events(args.match_id)
+        tags = service.repo.get_tags(args.match_id)
+        gen = CoachingReportGenerator()
+        if args.format == "html":
+            content = gen.generate_html(match, events, tags, player_puuid=args.player)
+        else:
+            content = gen.generate_markdown(match, events, tags, player_puuid=args.player)
+
+        if args.output:
+            Path(args.output).write_text(content, encoding="utf-8")
+            print(f"Report written to {args.output}")
+        else:
+            print(content)
 
 
 if __name__ == "__main__":

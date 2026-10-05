@@ -10,6 +10,8 @@ from pathlib import Path
 from typing import Optional
 import urllib.parse
 
+from vallens.analytics.correlations import FlawCorrelationEngine
+from vallens.analytics.report import CoachingReportGenerator
 from vallens.db.database import Database
 from vallens.models import VodTag
 from vallens.obs.exporter import EdlExporter
@@ -26,9 +28,9 @@ class ValLensRequestHandler(BaseHTTPRequestHandler):
     """HTTP Request handler with REST routes and static file serving."""
 
     service: ValLensService
+    report_gen: CoachingReportGenerator = CoachingReportGenerator()
 
     def log_message(self, format: str, *args: object) -> None:
-        # Suppress noisy GET logs in console
         pass
 
     def _send_json(self, data: object, status: int = 200) -> None:
@@ -57,7 +59,7 @@ class ValLensRequestHandler(BaseHTTPRequestHandler):
         path = parsed.path
         query = urllib.parse.parse_qs(parsed.query)
 
-        # 1. REST Endpoints
+        # 1. Matches List
         if path == "/api/matches":
             matches = self.service.repo.list_matches()
             self._send_json([
@@ -73,6 +75,7 @@ class ValLensRequestHandler(BaseHTTPRequestHandler):
             ])
             return
 
+        # 2. Events Stream
         if path.startswith("/api/matches/") and path.endswith("/events"):
             parts = path.split("/")
             match_id = parts[3]
@@ -97,6 +100,7 @@ class ValLensRequestHandler(BaseHTTPRequestHandler):
             ])
             return
 
+        # 3. Heatmap Coordinates
         if path.startswith("/api/matches/") and path.endswith("/heatmap"):
             parts = path.split("/")
             match_id = parts[3]
@@ -108,6 +112,7 @@ class ValLensRequestHandler(BaseHTTPRequestHandler):
             self._send_json(pts)
             return
 
+        # 4. Tags
         if path.startswith("/api/matches/") and path.endswith("/tags"):
             parts = path.split("/")
             match_id = parts[3]
@@ -126,6 +131,7 @@ class ValLensRequestHandler(BaseHTTPRequestHandler):
             ])
             return
 
+        # 5. Chapters
         if path.startswith("/api/matches/") and path.endswith("/chapters"):
             parts = path.split("/")
             match_id = parts[3]
@@ -135,6 +141,82 @@ class ValLensRequestHandler(BaseHTTPRequestHandler):
             self._send_json(segments)
             return
 
+        # 6. Coaching Insights & Correlations API
+        if path.startswith("/api/matches/") and path.endswith("/insights"):
+            parts = path.split("/")
+            match_id = parts[3]
+            match = self.service.repo.get_match(match_id)
+            if not match:
+                self._send_error("Match not found", status=404)
+                return
+
+            events = self.service.repo.get_events(match_id)
+            tags = self.service.repo.get_tags(match_id)
+            player_puuid = query.get("player", [None])[0]
+
+            report_data = self.report_gen.generate_data(match, events, tags, player_puuid=player_puuid)
+            # Serialize
+            self._send_json({
+                "match_id": match.match_id,
+                "grade": report_data["grade"],
+                "kills": report_data["kills"],
+                "deaths": report_data["deaths"],
+                "kd_ratio": report_data["kd_ratio"],
+                "first_bloods": report_data["first_bloods"],
+                "first_deaths": report_data["first_deaths"],
+                "trade_rate": report_data["trade_rate"],
+                "traded_deaths": report_data["traded_deaths"],
+                "untraded_deaths": report_data["untraded_deaths"],
+                "tag_correlations": [
+                    {
+                        "category": tc.category,
+                        "tag_name": tc.tag_name,
+                        "total_count": tc.total_count,
+                        "first_deaths": tc.first_death_count,
+                        "untraded_deaths": tc.untraded_death_count,
+                        "early_deaths": tc.early_death_count,
+                    }
+                    for tc in report_data["tag_correlations"]
+                ],
+                "coach_agreement_score": report_data["discrepancy"].agreement_score,
+                "blindspots_count": len(report_data["discrepancy"].blindspots),
+                "drills": report_data["drills"],
+            })
+            return
+
+        # 7. Rendered Coaching Report Card (HTML or Markdown)
+        if path.startswith("/api/matches/") and path.endswith("/report"):
+            parts = path.split("/")
+            match_id = parts[3]
+            match = self.service.repo.get_match(match_id)
+            if not match:
+                self._send_error("Match not found", status=404)
+                return
+
+            events = self.service.repo.get_events(match_id)
+            tags = self.service.repo.get_tags(match_id)
+            fmt = query.get("format", ["html"])[0]
+
+            if fmt == "markdown":
+                md_text = self.report_gen.generate_markdown(match, events, tags)
+                payload = md_text.encode("utf-8")
+                self.send_response(200)
+                self.send_header("Content-Type", "text/markdown; charset=utf-8")
+                self.send_header("Content-Length", str(len(payload)))
+                self.end_headers()
+                self.wfile.write(payload)
+                return
+            else:
+                html_text = self.report_gen.generate_html(match, events, tags)
+                payload = html_text.encode("utf-8")
+                self.send_response(200)
+                self.send_header("Content-Type", "text/html; charset=utf-8")
+                self.send_header("Content-Length", str(len(payload)))
+                self.end_headers()
+                self.wfile.write(payload)
+                return
+
+        # 8. Match Overview
         if path.startswith("/api/matches/"):
             match_id = path.split("/")[3]
             overview = self.service.get_match_overview(match_id)
@@ -164,7 +246,7 @@ class ValLensRequestHandler(BaseHTTPRequestHandler):
             self._send_json(summary)
             return
 
-        # 2. Static Map Icons
+        # 9. Static Map Icons
         if path.startswith("/maps/"):
             map_name = path[len("/maps/"):].lower()
             if not map_name.endswith(".png"):
@@ -174,7 +256,7 @@ class ValLensRequestHandler(BaseHTTPRequestHandler):
                 self._serve_file(file_path, "image/png")
                 return
 
-        # 3. Local Video Streaming with HTTP Byte-Range (206)
+        # 10. Local Video Streaming with HTTP Byte-Range (206)
         if path == "/api/video":
             video_param = query.get("path", [None])[0]
             if video_param and Path(video_param).exists():
@@ -183,7 +265,7 @@ class ValLensRequestHandler(BaseHTTPRequestHandler):
             self._send_error("Video file not found", status=404)
             return
 
-        # 4. Web Frontend Static Files
+        # 11. Web Frontend Static Files
         clean_path = path.lstrip("/")
         if not clean_path:
             clean_path = "index.html"
@@ -193,7 +275,6 @@ class ValLensRequestHandler(BaseHTTPRequestHandler):
             self._serve_file(target_file, mime_type or "application/octet-stream")
             return
 
-        # Fallback to index.html for SPA
         index_file = STATIC_DIR / "index.html"
         if index_file.exists():
             self._serve_file(index_file, "text/html")
@@ -259,13 +340,12 @@ class ValLensRequestHandler(BaseHTTPRequestHandler):
                 self.wfile.write(f.read())
             return
 
-        # Parse "bytes=start-end"
         bytes_spec = range_header.strip().replace("bytes=", "").split("-")
         start = int(bytes_spec[0]) if bytes_spec[0] else 0
         end = int(bytes_spec[1]) if len(bytes_spec) > 1 and bytes_spec[1] else file_size - 1
         length = end - start + 1
 
-        self.send_response(206)  # Partial Content
+        self.send_response(206)
         self.send_header("Content-Type", "video/mp4")
         self.send_header("Content-Range", f"bytes {start}-{end}/{file_size}")
         self.send_header("Content-Length", str(length))
