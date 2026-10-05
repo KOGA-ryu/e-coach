@@ -476,6 +476,12 @@ class ValLensRequestHandler(BaseHTTPRequestHandler):
             self._send_json(obs_status)
             return
 
+        # OBS Configuration API
+        if path == "/api/obs/config":
+            obs_cfg = self.service.get_obs_config()
+            self._send_json(obs_cfg)
+            return
+
         # 9. Static Map Icons
         if path.startswith("/maps/"):
             map_name = path[len("/maps/"):].lower()
@@ -593,6 +599,35 @@ class ValLensRequestHandler(BaseHTTPRequestHandler):
                 self._send_json(res)
             except Exception as e:
                 self._send_error(str(e), status=400)
+            return
+
+        # OBS WebSocket Configuration & Handshake API
+        if path == "/api/obs/config":
+            content_length = int(self.headers.get("Content-Length", 0))
+            body = self.rfile.read(content_length).decode("utf-8") if content_length > 0 else "{}"
+            try:
+                data = json.loads(body) if body else {}
+            except Exception:
+                data = {}
+
+            host = str(data.get("host", "127.0.0.1")).strip()
+            port = int(data.get("port", 4455))
+            password = data.get("password")
+            use_mock = bool(data.get("use_mock", False))
+
+            res = self.service.configure_obs(
+                host=host,
+                port=port,
+                password=password,
+                use_mock=use_mock,
+            )
+            self._send_json(res)
+            return
+
+        # OBS Auto-Capture State Machine Toggle API
+        if path == "/api/obs/auto-capture":
+            active = self.service.toggle_auto_capture()
+            self._send_json({"auto_capture_active": active})
             return
 
         # Associate Match Video Path API

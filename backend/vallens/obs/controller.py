@@ -36,6 +36,11 @@ class CaptureController:
         self.service = service
         self.poll_interval = poll_interval
 
+        self.obs_host: str = "127.0.0.1"
+        self.obs_port: int = 4455
+        self.obs_password: Optional[str] = None
+        self.is_mock_obs: bool = isinstance(self.obs_client, MockObsClient)
+
         self.last_state = GameState.DISCONNECTED
         self.current_match_id: Optional[str] = None
         self.recording_start_time: Optional[float] = None
@@ -48,6 +53,77 @@ class CaptureController:
         self.on_state_change: Optional[Callable[[str, str], None]] = None
         self.on_recording_started: Optional[Callable[[], None]] = None
         self.on_recording_finished: Optional[Callable[[str, list[Path]], None]] = None
+
+    def configure_obs(
+        self,
+        host: str = "127.0.0.1",
+        port: int = 4455,
+        password: Optional[str] = None,
+        use_mock: bool = False,
+    ) -> dict[str, Any]:
+        """Configure and connect to OBS WebSocket v5 or Mock client."""
+        self.obs_host = host
+        self.obs_port = port
+        self.obs_password = password
+
+        if use_mock:
+            self.obs_client = MockObsClient(connected=True)
+            self.is_mock_obs = True
+            logger.info("Configured OBS in Mock mode.")
+            return {
+                "success": True,
+                "connected": True,
+                "mode": "mock",
+                "message": "Connected to Mock OBS Client",
+            }
+
+        client = ObsWebSocketClient(host=host, port=port, password=password, timeout=3.0)
+        try:
+            client.connect()
+            self.obs_client = client
+            self.is_mock_obs = False
+            logger.info(f"Successfully connected to OBS WebSocket v5 at {host}:{port}")
+            return {
+                "success": True,
+                "connected": True,
+                "mode": "live",
+                "message": f"Connected and authenticated with OBS Studio v5 at {host}:{port}",
+            }
+        except Exception as e:
+            logger.warning(f"Failed to connect to OBS WebSocket at {host}:{port}: {e}")
+            return {
+                "success": False,
+                "connected": False,
+                "mode": "live",
+                "error": str(e),
+                "message": f"Failed to connect to OBS Studio at {host}:{port}: {e}",
+            }
+
+    def get_obs_config(self) -> dict[str, Any]:
+        """Get current OBS client configuration."""
+        connected = False
+        if hasattr(self.obs_client, "connected"):
+            connected = bool(self.obs_client.connected)
+        elif hasattr(self.obs_client, "ws"):
+            connected = self.obs_client.ws is not None
+
+        return {
+            "host": getattr(self, "obs_host", "127.0.0.1"),
+            "port": getattr(self, "obs_port", 4455),
+            "has_password": bool(getattr(self, "obs_password", None)),
+            "use_mock": isinstance(self.obs_client, MockObsClient),
+            "connected": connected,
+            "auto_capture_active": self._running,
+        }
+
+    def toggle_auto_capture(self) -> bool:
+        """Start or stop automated background polling."""
+        if self._running:
+            self.stop_polling()
+            return False
+        else:
+            self.start_polling()
+            return True
 
     def poll_once(self) -> dict[str, Any]:
         """Perform a single iteration of game-state polling and trigger recording state actions."""

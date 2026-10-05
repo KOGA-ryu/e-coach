@@ -282,6 +282,29 @@ class ValLensService:
         else:
             raise ValueError(f"Unknown OBS action: {action}")
 
+    def get_obs_config(self) -> dict[str, Any]:
+        """Return current OBS WebSocket connection and auto-capture settings."""
+        return self.capture_controller.get_obs_config()
+
+    def configure_obs(
+        self,
+        host: str = "127.0.0.1",
+        port: int = 4455,
+        password: Optional[str] = None,
+        use_mock: bool = False,
+    ) -> dict[str, Any]:
+        """Configure and connect to OBS WebSocket v5 or switch to Mock mode."""
+        return self.capture_controller.configure_obs(
+            host=host,
+            port=port,
+            password=password,
+            use_mock=use_mock,
+        )
+
+    def toggle_auto_capture(self) -> bool:
+        """Toggle background game state detection loop."""
+        return self.capture_controller.toggle_auto_capture()
+
     def attach_match_video(self, match_id: str, video_filepath: str) -> bool:
         """Associate a video recording file path with a match."""
         return self.repo.update_video_path(match_id, video_filepath)

@@ -200,6 +200,29 @@ class TestValLensServer(unittest.TestCase):
         overview = json.loads(body.decode("utf-8"))
         self.assertEqual(overview["metadata"]["video_filepath"], vid_path)
 
+        # 5. Check OBS Config API
+        status, body, _ = self._get("/api/obs/config")
+        self.assertEqual(status, 200)
+        cfg = json.loads(body.decode("utf-8"))
+        self.assertIn("host", cfg)
+        self.assertIn("port", cfg)
+        self.assertIn("use_mock", cfg)
+
+        # 6. Configure Mock mode
+        status, res = self._post_json("/api/obs/config", {"use_mock": True, "host": "127.0.0.1", "port": 4455})
+        self.assertEqual(status, 200)
+        self.assertTrue(res["success"])
+        self.assertEqual(res["mode"], "mock")
+
+        # 7. Toggle auto-capture polling
+        status, res = self._post_json("/api/obs/auto-capture", {})
+        self.assertEqual(status, 200)
+        self.assertTrue(res["auto_capture_active"])
+        # Toggle off
+        status, res = self._post_json("/api/obs/auto-capture", {})
+        self.assertEqual(status, 200)
+        self.assertFalse(res["auto_capture_active"])
+
     def test_clip_trimmer_endpoints(self):
         # 1. Trim single moment
         payload = {

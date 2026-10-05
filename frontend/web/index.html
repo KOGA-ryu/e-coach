@@ -34,9 +34,12 @@
         </div>
       </div>
 
-      <div class="obs-hud-pill idle" id="obs-hud-pill" title="OBS Studio Recording Status (Click to Toggle Recording)">
-        <span class="obs-dot"></span>
-        <span id="obs-text">OBS: IDLE</span>
+      <div class="obs-control-wrapper">
+        <div class="obs-hud-pill idle" id="obs-hud-pill" title="OBS Studio Recording Status (Click to Toggle Recording)">
+          <span class="obs-dot"></span>
+          <span id="obs-text">OBS: IDLE</span>
+        </div>
+        <button id="btn-obs-settings" class="obs-gear-btn" title="OBS Studio Connection Settings">⚙</button>
       </div>
       <button id="btn-open-sync" class="btn-sync" title="Connect Riot Account">LINK ACCOUNT</button>
       <button id="btn-open-diff" class="btn-diff" title="Coach vs Solo Perspective Diff & Blindspots">PERSPECTIVE DIFF</button>
@@ -539,6 +542,74 @@
         <div class="drills-list-container" id="drills-list-container">
           <!-- Populated dynamically -->
         </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- OBS Studio Connection & Automation Modal -->
+  <div class="modal-overlay" id="obs-modal" style="display: none;">
+    <div class="modal-card obs-modal-card">
+      <div class="modal-header">
+        <div class="modal-title">OBS STUDIO WEBSOCKET & AUTOMATION</div>
+        <button class="modal-close-btn" id="btn-close-obs">&times;</button>
+      </div>
+
+      <div class="modal-body obs-modal-body">
+        <!-- Live Connection Status Banner -->
+        <div class="obs-status-banner" id="obs-modal-status-banner">
+          <div class="status-left">
+            <span class="obs-status-dot" id="obs-modal-dot"></span>
+            <span class="status-text" id="obs-modal-status-text">DISCONNECTED</span>
+          </div>
+          <span class="status-mode-badge" id="obs-modal-mode-badge">MOCK MODE</span>
+        </div>
+
+        <!-- Mode Selector -->
+        <div class="form-group">
+          <label class="form-label">CONNECTION MODE</label>
+          <div class="segmented-control" style="width: 100%;">
+            <button id="btn-obs-mode-mock" class="segment-btn active" style="flex: 1;">MOCK OBS (TESTING)</button>
+            <button id="btn-obs-mode-live" class="segment-btn" style="flex: 1;">LIVE OBS STUDIO v5</button>
+          </div>
+        </div>
+
+        <!-- Live OBS Studio Settings -->
+        <div id="obs-live-fields" style="display: none;">
+          <div class="form-row" style="display: flex; gap: 12px; margin-bottom: 12px;">
+            <div class="form-group" style="flex: 2; margin-bottom: 0;">
+              <label class="form-label" for="obs-host-input">WEBSOCKET HOST</label>
+              <input type="text" id="obs-host-input" class="form-input" value="127.0.0.1" placeholder="127.0.0.1">
+            </div>
+            <div class="form-group" style="flex: 1; margin-bottom: 0;">
+              <label class="form-label" for="obs-port-input">PORT</label>
+              <input type="number" id="obs-port-input" class="form-input" value="4455" placeholder="4455">
+            </div>
+          </div>
+
+          <div class="form-group">
+            <label class="form-label" for="obs-password-input">WEBSOCKET SERVER PASSWORD</label>
+            <input type="password" id="obs-password-input" class="form-input" placeholder="Leave blank if no server password">
+            <span class="field-hint">OBS Studio: Tools ➔ WebSocket Server Settings ➔ Server Password</span>
+          </div>
+        </div>
+
+        <!-- Zero-Touch Auto Capture Toggle -->
+        <div class="obs-automation-box">
+          <div class="auto-header">
+            <div>
+              <div class="auto-title">ZERO-TOUCH RECORDING AUTOMATION</div>
+              <div class="auto-desc">Automatically starts OBS recording when entering INGAME and saves + links match VOD on match finish.</div>
+            </div>
+            <button id="btn-toggle-auto-capture" class="mini-btn auto-toggle-btn">AUTO-CAPTURE: OFF</button>
+          </div>
+        </div>
+
+        <div class="obs-test-feedback" id="obs-test-feedback" style="display: none;"></div>
+      </div>
+
+      <div class="modal-footer" style="display: flex; justify-content: space-between; padding: 14px 20px;">
+        <button id="btn-test-obs" class="btn-sync">TEST CONNECTION</button>
+        <button id="btn-save-obs" class="btn-primary">SAVE & CONNECT</button>
       </div>
     </div>
   </div>

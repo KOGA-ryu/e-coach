@@ -66,6 +66,22 @@ const videoPlaceholder = document.getElementById('video-placeholder');
 const videoFileInput = document.getElementById('video-file-input');
 const obsHudPill = document.getElementById('obs-hud-pill');
 const obsText = document.getElementById('obs-text');
+const btnObsSettings = document.getElementById('btn-obs-settings');
+const obsModal = document.getElementById('obs-modal');
+const btnCloseObs = document.getElementById('btn-close-obs');
+const obsModalDot = document.getElementById('obs-modal-dot');
+const obsModalStatusText = document.getElementById('obs-modal-status-text');
+const obsModalModeBadge = document.getElementById('obs-modal-mode-badge');
+const btnObsModeMock = document.getElementById('btn-obs-mode-mock');
+const btnObsModeLive = document.getElementById('btn-obs-mode-live');
+const obsLiveFields = document.getElementById('obs-live-fields');
+const obsHostInput = document.getElementById('obs-host-input');
+const obsPortInput = document.getElementById('obs-port-input');
+const obsPasswordInput = document.getElementById('obs-password-input');
+const btnToggleAutoCapture = document.getElementById('btn-toggle-auto-capture');
+const obsTestFeedback = document.getElementById('obs-test-feedback');
+const btnTestObs = document.getElementById('btn-test-obs');
+const btnSaveObs = document.getElementById('btn-save-obs');
 
 const timecodeDisplay = document.getElementById('timecode-display');
 const scrubberContainer = document.getElementById('scrubber-container');
@@ -2600,12 +2616,237 @@ async function generateReviewMontage(filterType = 'flaws') {
 // -------------------------------------------------------------
 // OBS WebSocket HUD & Recording Automation
 // -------------------------------------------------------------
-function setupObsControls() {
-  if (!obsHudPill) return;
+let currentObsMode = 'mock';
 
-  obsHudPill.addEventListener('click', async () => {
-    await toggleObsRecording();
-  });
+function setupObsControls() {
+  if (obsHudPill) {
+    obsHudPill.addEventListener('click', async () => {
+      await toggleObsRecording();
+    });
+  }
+
+  if (btnObsSettings) {
+    btnObsSettings.addEventListener('click', () => {
+      openObsModal();
+    });
+  }
+
+  if (btnCloseObs) {
+    btnCloseObs.addEventListener('click', () => {
+      closeObsModal();
+    });
+  }
+
+  if (obsModal) {
+    obsModal.addEventListener('click', (e) => {
+      if (e.target === obsModal) {
+        closeObsModal();
+      }
+    });
+  }
+
+  if (btnObsModeMock) {
+    btnObsModeMock.addEventListener('click', () => {
+      setObsModeUI('mock');
+    });
+  }
+
+  if (btnObsModeLive) {
+    btnObsModeLive.addEventListener('click', () => {
+      setObsModeUI('live');
+    });
+  }
+
+  if (btnToggleAutoCapture) {
+    btnToggleAutoCapture.addEventListener('click', async () => {
+      await toggleAutoCapture();
+    });
+  }
+
+  if (btnTestObs) {
+    btnTestObs.addEventListener('click', async () => {
+      await testObsConnection();
+    });
+  }
+
+  if (btnSaveObs) {
+    btnSaveObs.addEventListener('click', async () => {
+      await saveObsConfig();
+    });
+  }
+}
+
+function setObsModeUI(mode) {
+  currentObsMode = mode;
+  if (mode === 'live') {
+    if (btnObsModeLive) btnObsModeLive.classList.add('active');
+    if (btnObsModeMock) btnObsModeMock.classList.remove('active');
+    if (obsLiveFields) obsLiveFields.style.display = 'block';
+    if (obsModalModeBadge) obsModalModeBadge.textContent = 'LIVE OBS v5';
+  } else {
+    if (btnObsModeMock) btnObsModeMock.classList.add('active');
+    if (btnObsModeLive) btnObsModeLive.classList.remove('active');
+    if (obsLiveFields) obsLiveFields.style.display = 'none';
+    if (obsModalModeBadge) obsModalModeBadge.textContent = 'MOCK MODE';
+  }
+}
+
+function closeObsModal() {
+  if (obsModal) obsModal.style.display = 'none';
+}
+
+function updateAutoCaptureUI(enabled) {
+  if (!btnToggleAutoCapture) return;
+  if (enabled) {
+    btnToggleAutoCapture.classList.add('active');
+    btnToggleAutoCapture.textContent = 'AUTO-CAPTURE: ON';
+  } else {
+    btnToggleAutoCapture.classList.remove('active');
+    btnToggleAutoCapture.textContent = 'AUTO-CAPTURE: OFF';
+  }
+}
+
+function updateObsModalStatusUI(connected, recording) {
+  if (!obsModalDot || !obsModalStatusText) return;
+  if (connected) {
+    obsModalDot.classList.add('connected');
+    obsModalStatusText.textContent = recording ? 'RECORDING ACTIVE' : 'CONNECTED & READY';
+  } else {
+    obsModalDot.classList.remove('connected');
+    obsModalStatusText.textContent = 'DISCONNECTED';
+  }
+}
+
+async function openObsModal() {
+  if (!obsModal) return;
+  obsModal.style.display = 'flex';
+  if (obsTestFeedback) obsTestFeedback.style.display = 'none';
+
+  try {
+    const res = await fetch('/api/obs/config');
+    if (res.ok) {
+      const data = await res.json();
+      if (obsHostInput) obsHostInput.value = data.host || '127.0.0.1';
+      if (obsPortInput) obsPortInput.value = data.port || 4455;
+      if (obsPasswordInput) {
+        obsPasswordInput.value = '';
+        if (data.has_password) {
+          obsPasswordInput.placeholder = '(Saved password configured)';
+        } else {
+          obsPasswordInput.placeholder = 'Leave blank if no server password';
+        }
+      }
+      setObsModeUI(data.use_mock ? 'mock' : 'live');
+      updateAutoCaptureUI(Boolean(data.auto_capture_enabled));
+      updateObsModalStatusUI(Boolean(data.connected), Boolean(data.recording));
+    }
+  } catch (err) {
+    console.error('Failed to fetch OBS config:', err);
+  }
+}
+
+async function testObsConnection() {
+  if (!btnTestObs || !obsTestFeedback) return;
+  btnTestObs.disabled = true;
+  btnTestObs.textContent = 'TESTING...';
+  obsTestFeedback.style.display = 'block';
+  obsTestFeedback.className = 'obs-test-feedback';
+  obsTestFeedback.textContent = 'Attempting WebSocket handshake...';
+
+  const useMock = currentObsMode === 'mock';
+  const payload = {
+    use_mock: useMock,
+    host: obsHostInput ? obsHostInput.value.trim() || '127.0.0.1' : '127.0.0.1',
+    port: obsPortInput ? parseInt(obsPortInput.value, 10) || 4455 : 4455,
+  };
+  if (obsPasswordInput && obsPasswordInput.value.trim().length > 0) {
+    payload.password = obsPasswordInput.value.trim();
+  }
+
+  try {
+    const res = await fetch('/api/obs/config', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload),
+    });
+    const data = await res.json();
+    if (data.success && data.connected) {
+      obsTestFeedback.className = 'obs-test-feedback success';
+      obsTestFeedback.textContent = `✓ ${data.message || 'Connected to OBS Studio'}`;
+      updateObsModalStatusUI(true, false);
+    } else {
+      obsTestFeedback.className = 'obs-test-feedback error';
+      obsTestFeedback.textContent = `✗ ${data.message || data.error || 'Connection failed'}`;
+      updateObsModalStatusUI(false, false);
+    }
+    await pollObsStatus();
+  } catch (err) {
+    obsTestFeedback.className = 'obs-test-feedback error';
+    obsTestFeedback.textContent = `✗ Connection error: ${err.message}`;
+    updateObsModalStatusUI(false, false);
+  } finally {
+    btnTestObs.disabled = false;
+    btnTestObs.textContent = 'TEST CONNECTION';
+  }
+}
+
+async function saveObsConfig() {
+  if (!btnSaveObs) return;
+  btnSaveObs.disabled = true;
+  btnSaveObs.textContent = 'SAVING...';
+
+  const useMock = currentObsMode === 'mock';
+  const payload = {
+    use_mock: useMock,
+    host: obsHostInput ? obsHostInput.value.trim() || '127.0.0.1' : '127.0.0.1',
+    port: obsPortInput ? parseInt(obsPortInput.value, 10) || 4455 : 4455,
+  };
+  if (obsPasswordInput && obsPasswordInput.value.trim().length > 0) {
+    payload.password = obsPasswordInput.value.trim();
+  }
+
+  try {
+    const res = await fetch('/api/obs/config', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload),
+    });
+    const data = await res.json();
+    if (data.success) {
+      showToast(`OBS Configured (${useMock ? 'Mock Client' : 'Live WebSocket v5'})`);
+      closeObsModal();
+      await pollObsStatus();
+    } else {
+      if (obsTestFeedback) {
+        obsTestFeedback.style.display = 'block';
+        obsTestFeedback.className = 'obs-test-feedback error';
+        obsTestFeedback.textContent = `✗ ${data.message || data.error || 'Connection failed'}`;
+      }
+      showToast(`OBS Connection Failed: ${data.error || 'Check Settings'}`);
+    }
+  } catch (err) {
+    showToast('Failed to save OBS configuration');
+  } finally {
+    btnSaveObs.disabled = false;
+    btnSaveObs.textContent = 'SAVE & CONNECT';
+  }
+}
+
+async function toggleAutoCapture() {
+  try {
+    const res = await fetch('/api/obs/auto-capture', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+    });
+    if (res.ok) {
+      const data = await res.json();
+      updateAutoCaptureUI(Boolean(data.auto_capture_active));
+      showToast(`Zero-Touch Auto-Capture: ${data.auto_capture_active ? 'ENABLED' : 'DISABLED'}`);
+    }
+  } catch (err) {
+    console.error('Failed to toggle auto-capture:', err);
+    showToast('Failed to toggle auto-capture');
+  }
 }
 
 async function pollObsStatus() {
@@ -2623,6 +2864,10 @@ async function pollObsStatus() {
 
 function updateObsHudUI(data) {
   if (!obsHudPill || !obsText) return;
+
+  if (obsModal && obsModal.style.display !== 'none') {
+    updateObsModalStatusUI(Boolean(data.connected), Boolean(data.recording));
+  }
 
   obsHudPill.classList.remove('idle', 'recording', 'ingame', 'disconnected');
 
