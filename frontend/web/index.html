@@ -1,0 +1,270 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>ValLens — Valorant VOD Review & Analytics</title>
+  <link rel="stylesheet" href="style.css">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Teko:wght@500;700&family=Rajdhani:wght@500;600;700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+</head>
+<body>
+  <!-- Top Navigation Header -->
+  <header class="app-header">
+    <div class="logo-group">
+      <div class="logo-badge">VL</div>
+      <div class="brand-title">VAL<span>LENS</span></div>
+      <div class="version-tag">v0.1.0 • REVIEW SUITE</div>
+    </div>
+
+    <div class="header-controls">
+      <div class="match-select-wrapper">
+        <label for="match-select">SELECT MATCH:</label>
+        <select id="match-select" class="dropdown-select">
+          <option value="">Loading matches...</option>
+        </select>
+      </div>
+
+      <div class="author-toggle">
+        <span class="toggle-label">PERSPECTIVE:</span>
+        <div class="segmented-control">
+          <button id="btn-author-solo" class="segment-btn active" data-author="solo">SOLO</button>
+          <button id="btn-author-coach" class="segment-btn" data-author="coach">COACH</button>
+        </div>
+      </div>
+    </div>
+  </header>
+
+  <!-- Match Info Bar -->
+  <div class="match-info-strip">
+    <div class="info-block">
+      <span class="info-label">MAP</span>
+      <span id="info-map" class="info-value">ASCENT</span>
+    </div>
+    <div class="info-block">
+      <span class="info-label">MODE</span>
+      <span id="info-mode" class="info-value">COMPETITIVE</span>
+    </div>
+    <div class="info-block">
+      <span class="info-label">ROUNDS</span>
+      <span id="info-rounds" class="info-value">--</span>
+    </div>
+    <div class="info-block">
+      <span class="info-label">KILLS / DEATHS</span>
+      <span id="info-kd" class="info-value">-- / --</span>
+    </div>
+    <div class="info-block active-round-block">
+      <span class="info-label">CURRENT ROUND</span>
+      <span id="info-active-round" class="info-value highlight">ROUND 1</span>
+    </div>
+  </div>
+
+  <!-- Main 3-Column Review Layout -->
+  <main class="review-grid">
+
+    <!-- Column 1: Media Player Pane -->
+    <section class="pane video-pane">
+      <div class="pane-header">
+        <div class="pane-title">
+          <svg class="icon" viewBox="0 0 24 24"><polygon points="5 3 19 12 5 21 5 3"></polygon></svg>
+          VOD PLAYER
+        </div>
+        <div class="timecode-display" id="timecode-display">00:00:00.00</div>
+      </div>
+
+      <div class="video-container" id="video-wrapper">
+        <video id="video-player" playsinline>
+          Your browser does not support the video tag.
+        </video>
+        <div class="video-placeholder" id="video-placeholder">
+          <svg class="placeholder-icon" viewBox="0 0 24 24"><polygon points="5 3 19 12 5 21 5 3"></polygon></svg>
+          <p>No Video Loaded</p>
+          <span class="subtext">Load a local VOD file or record via OBS</span>
+          <label class="btn-primary file-btn">
+            Load Local MP4
+            <input type="file" id="video-file-input" accept="video/mp4,video/mkv,video/webm" hidden>
+          </label>
+        </div>
+      </div>
+
+      <!-- Scrubber & Playback Controls -->
+      <div class="playback-controls">
+        <div class="scrubber-bar-container" id="scrubber-container">
+          <div class="scrubber-progress" id="scrubber-progress"></div>
+          <div class="round-markers" id="round-markers"></div>
+          <div class="scrubber-thumb" id="scrubber-thumb"></div>
+        </div>
+
+        <div class="controls-toolbar">
+          <div class="left-controls">
+            <button id="btn-prev-frame" class="ctrl-btn" title="Step Back 5s">◀◀ 5s</button>
+            <button id="btn-play-pause" class="ctrl-btn primary-ctrl" title="Play/Pause (Space)">PLAY</button>
+            <button id="btn-next-frame" class="ctrl-btn" title="Step Forward 5s">5s ▶▶</button>
+          </div>
+
+          <div class="center-controls">
+            <div class="speed-selector">
+              <span class="speed-label">SPEED:</span>
+              <button class="speed-btn active" data-speed="1.0">1.0x</button>
+              <button class="speed-btn" data-speed="0.5">0.5x</button>
+              <button class="speed-btn" data-speed="0.25">0.25x</button>
+            </div>
+          </div>
+
+          <div class="right-controls">
+            <button id="btn-prev-round" class="ctrl-btn nav-btn" title="Previous Round">◀ PREV RND</button>
+            <button id="btn-next-round" class="ctrl-btn nav-btn" title="Next Round">NEXT RND ▶</button>
+          </div>
+        </div>
+
+        <!-- Round Selector Pills -->
+        <div class="round-pills-scroll" id="round-pills"></div>
+      </div>
+
+      <!-- Live Round Events Feed -->
+      <div class="round-events-feed">
+        <div class="feed-header">ROUND EVENTS TIMELINE</div>
+        <div class="feed-list" id="round-events-list">
+          <div class="feed-empty">No events in this round</div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Column 2: Minimap & Spatial Heatmap Engine -->
+    <section class="pane minimap-pane">
+      <div class="pane-header">
+        <div class="pane-title">
+          <svg class="icon" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"></circle><polygon points="12 2 15 9 12 12 9 9 12 2"></polygon></svg>
+          SPATIAL HEATMAP & TELEMETRY
+        </div>
+        <div class="minimap-toggles">
+          <button id="btn-filter-all" class="mini-btn active" data-filter="all">ALL</button>
+          <button id="btn-filter-kills" class="mini-btn kill-btn" data-filter="kill">KILLS</button>
+          <button id="btn-filter-deaths" class="mini-btn death-btn" data-filter="death">DEATHS</button>
+        </div>
+      </div>
+
+      <div class="minimap-container" id="minimap-wrapper">
+        <canvas id="minimap-canvas" width="600" height="600"></canvas>
+        <div class="map-tooltip" id="map-tooltip"></div>
+      </div>
+
+      <div class="minimap-legend">
+        <div class="legend-item"><span class="legend-dot kill"></span> Kill Position</div>
+        <div class="legend-item"><span class="legend-dot death"></span> Death Position</div>
+        <div class="legend-item"><span class="legend-dot plant"></span> Spike Plant/Defuse</div>
+      </div>
+    </section>
+
+    <!-- Column 3: Hotkey Tagging Grid & Habit Insights -->
+    <section class="pane tag-pane">
+      <div class="pane-header">
+        <div class="pane-title">
+          <svg class="icon" viewBox="0 0 24 24"><path d="M20.59 13.41l-7.17 7.17a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82z"></path><line x1="7" y1="7" x2="7.01" y2="7"></line></svg>
+          HOTKEY TAGGING GRID
+        </div>
+        <span class="hotkey-hint">PRESS [1-9] TO TAG</span>
+      </div>
+
+      <!-- Action Grid -->
+      <div class="tag-grid" id="tag-grid">
+        <!-- 1-9 Fast Action Keys -->
+        <button class="tag-card mechanics" data-key="1" data-cat="Mechanics" data-name="crosshair_placement">
+          <span class="key-badge">1</span>
+          <div class="tag-info">
+            <span class="tag-name">Crosshair Placement</span>
+            <span class="tag-cat">Mechanics</span>
+          </div>
+        </button>
+
+        <button class="tag-card mechanics" data-key="2" data-cat="Mechanics" data-name="whiffed_spray">
+          <span class="key-badge">2</span>
+          <div class="tag-info">
+            <span class="tag-name">Whiffed Spray</span>
+            <span class="tag-cat">Mechanics</span>
+          </div>
+        </button>
+
+        <button class="tag-card positioning" data-key="3" data-cat="Positioning" data-name="over_peeking">
+          <span class="key-badge">3</span>
+          <div class="tag-info">
+            <span class="tag-name">Over Peeking</span>
+            <span class="tag-cat">Positioning</span>
+          </div>
+        </button>
+
+        <button class="tag-card positioning" data-key="4" data-cat="Positioning" data-name="poor_spacing">
+          <span class="key-badge">4</span>
+          <div class="tag-info">
+            <span class="tag-name">Poor Spacing</span>
+            <span class="tag-cat">Positioning</span>
+          </div>
+        </button>
+
+        <button class="tag-card utility" data-key="5" data-cat="Utility" data-name="wasted_utility">
+          <span class="key-badge">5</span>
+          <div class="tag-info">
+            <span class="tag-name">Wasted Utility</span>
+            <span class="tag-cat">Utility</span>
+          </div>
+        </button>
+
+        <button class="tag-card utility" data-key="6" data-cat="Utility" data-name="late_flash">
+          <span class="key-badge">6</span>
+          <div class="tag-info">
+            <span class="tag-name">Late Flash</span>
+            <span class="tag-cat">Utility</span>
+          </div>
+        </button>
+
+        <button class="tag-card decision" data-key="7" data-cat="Decision" data-name="forced_fight">
+          <span class="key-badge">7</span>
+          <div class="tag-info">
+            <span class="tag-name">Forced Fight</span>
+            <span class="tag-cat">Decision</span>
+          </div>
+        </button>
+
+        <button class="tag-card decision" data-key="8" data-cat="Decision" data-name="late_rotate">
+          <span class="key-badge">8</span>
+          <div class="tag-info">
+            <span class="tag-name">Late Rotate</span>
+            <span class="tag-cat">Decision</span>
+          </div>
+        </button>
+
+        <button class="tag-card strength" data-key="9" data-cat="Strength" data-name="great_crossfire">
+          <span class="key-badge">9</span>
+          <div class="tag-info">
+            <span class="tag-name">Great Crossfire</span>
+            <span class="tag-cat">Strength</span>
+          </div>
+        </button>
+      </div>
+
+      <!-- Tag Toast Notification -->
+      <div class="tag-toast" id="tag-toast">Tagged!</div>
+
+      <!-- Review Tags Log -->
+      <div class="tag-history-section">
+        <div class="sub-header">LOGGED VOD TAGS (<span id="tag-count">0</span>)</div>
+        <div class="tag-history-list" id="tag-history-list">
+          <div class="empty-tags">No tags applied yet. Use numeric keys [1-9] while reviewing.</div>
+        </div>
+      </div>
+
+      <!-- Habit Aggregations -->
+      <div class="insights-section">
+        <div class="sub-header">RECURRING HABITS & FLAWS</div>
+        <div class="habit-bars" id="habit-bars">
+          <!-- Dynamic habit bars -->
+        </div>
+      </div>
+    </section>
+
+  </main>
+
+  <script src="app.js"></script>
+</body>
+</html>

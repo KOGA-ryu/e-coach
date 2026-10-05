@@ -19,20 +19,20 @@ class MatchRepository:
             match_id, map_id, game_mode, match_duration, timestamp, video_filepath
         ) VALUES (?, ?, ?, ?, ?, ?);
         """
-        with self.db.get_connection() as conn:
+        with self.db.connection() as conn:
             conn.execute(sql, match.to_tuple())
 
     def update_video_path(self, match_id: str, video_filepath: str) -> bool:
         """Associate a video recording file path with a match."""
         sql = "UPDATE matches SET video_filepath = ? WHERE match_id = ?;"
-        with self.db.get_connection() as conn:
+        with self.db.connection() as conn:
             cursor = conn.execute(sql, (video_filepath, match_id))
             return cursor.rowcount > 0
 
     def get_match(self, match_id: str) -> Optional[MatchMetadata]:
         """Fetch a match by its ID."""
         sql = "SELECT match_id, map_id, game_mode, match_duration, timestamp, video_filepath FROM matches WHERE match_id = ?;"
-        with self.db.get_connection() as conn:
+        with self.db.connection() as conn:
             row = conn.execute(sql, (match_id,)).fetchone()
             if not row:
                 return None
@@ -48,7 +48,7 @@ class MatchRepository:
     def list_matches(self, limit: int = 50, offset: int = 0) -> list[MatchMetadata]:
         """List recent matches ordered by timestamp descending."""
         sql = "SELECT match_id, map_id, game_mode, match_duration, timestamp, video_filepath FROM matches ORDER BY timestamp DESC LIMIT ? OFFSET ?;"
-        with self.db.get_connection() as conn:
+        with self.db.connection() as conn:
             rows = conn.execute(sql, (limit, offset)).fetchall()
             return [
                 MatchMetadata(
@@ -73,7 +73,7 @@ class MatchRepository:
         ) VALUES (?, ?, ?, ?, ?, ?, ?, ?);
         """
         payloads = [e.to_tuple() for e in events]
-        with self.db.get_connection() as conn:
+        with self.db.connection() as conn:
             cursor = conn.executemany(sql, payloads)
             return cursor.rowcount
 
@@ -101,7 +101,7 @@ class MatchRepository:
         query.append("ORDER BY event_time_ms ASC;")
         sql = " ".join(query)
 
-        with self.db.get_connection() as conn:
+        with self.db.connection() as conn:
             rows = conn.execute(sql, params).fetchall()
             results = []
             for r in rows:
@@ -128,7 +128,7 @@ class MatchRepository:
             match_id, event_id, timestamp_ms, tag_category, tag_name, author_type
         ) VALUES (?, ?, ?, ?, ?, ?);
         """
-        with self.db.get_connection() as conn:
+        with self.db.connection() as conn:
             cursor = conn.execute(sql, tag.to_tuple())
             return cursor.lastrowid
 
@@ -152,7 +152,7 @@ class MatchRepository:
         query.append("ORDER BY timestamp_ms ASC;")
         sql = " ".join(query)
 
-        with self.db.get_connection() as conn:
+        with self.db.connection() as conn:
             rows = conn.execute(sql, params).fetchall()
             return [
                 VodTag(
@@ -170,7 +170,7 @@ class MatchRepository:
     def delete_tag(self, tag_id: int) -> bool:
         """Delete a tag by ID."""
         sql = "DELETE FROM vod_tags WHERE tag_id = ?;"
-        with self.db.get_connection() as conn:
+        with self.db.connection() as conn:
             cursor = conn.execute(sql, (tag_id,))
             return cursor.rowcount > 0
 
@@ -192,7 +192,7 @@ class MatchRepository:
         query.append("GROUP BY tag_category, tag_name, author_type ORDER BY count DESC;")
         sql = " ".join(query)
 
-        with self.db.get_connection() as conn:
+        with self.db.connection() as conn:
             rows = conn.execute(sql, params).fetchall()
             return [
                 {

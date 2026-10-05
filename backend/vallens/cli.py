@@ -1,4 +1,4 @@
-"""Command-line interface for ValLens backend operations and OBS automation."""
+"""Command-line interface for ValLens backend operations and review interface."""
 
 import argparse
 import json
@@ -10,6 +10,7 @@ from vallens.db.database import Database
 from vallens.obs.client import MockObsClient, ObsWebSocketClient
 from vallens.obs.controller import CaptureController
 from vallens.obs.local_client import GameState, LocalClient, MockLocalClient
+from vallens.server import run_server
 from vallens.service import ValLensService
 
 
@@ -58,6 +59,11 @@ def main() -> None:
     poll_parser.add_argument("--obs-port", type=int, default=4455, help="OBS WebSocket port")
     poll_parser.add_argument("--obs-password", default=None, help="OBS WebSocket password")
     poll_parser.add_argument("--mock", action="store_true", help="Run with simulated clients for testing")
+
+    # Serve command (Web Review UI)
+    serve_parser = subparsers.add_parser("serve", help="Launch the local ValLens Web Review Interface")
+    serve_parser.add_argument("--port", type=int, default=8000, help="Port to run server on")
+    serve_parser.add_argument("--host", default="127.0.0.1", help="Host IP to bind to")
 
     args = parser.parse_args()
 
@@ -165,6 +171,27 @@ def main() -> None:
                 controller.stop_polling()
                 obs_client.close()
                 print("\nStopped.")
+
+    elif args.command == "serve":
+        # If DB is empty, auto-ingest sample match for immediate out-of-the-box exploration
+        matches = service.repo.list_matches(limit=1)
+        if not matches:
+            sample_path = Path(__file__).parent.parent.parent / "data" / "sample_match.json"
+            if sample_path.exists():
+                service.ingest_match_file(sample_path)
+                print(f"Auto-ingested sample Ascent match into {args.db}")
+
+        server = run_server(service=service, port=args.port, host=args.host)
+        print(f"\n=======================================================")
+        print(f"  ValLens Review Interface Running:")
+        print(f"  http://{args.host}:{args.port}/")
+        print(f"=======================================================\n")
+        print("Press Ctrl+C to stop.")
+        try:
+            server.serve_forever()
+        except KeyboardInterrupt:
+            print("\nShutting down server.")
+            server.server_close()
 
 
 if __name__ == "__main__":
