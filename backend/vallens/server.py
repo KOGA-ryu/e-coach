@@ -469,6 +469,12 @@ class ValLensRequestHandler(BaseHTTPRequestHandler):
             self._send_json(acc)
             return
 
+        # OBS Status API
+        if path == "/api/obs/status":
+            obs_status = self.service.get_obs_status()
+            self._send_json(obs_status)
+            return
+
         # 9. Static Map Icons
         if path.startswith("/maps/"):
             map_name = path[len("/maps/"):].lower()
@@ -559,6 +565,51 @@ class ValLensRequestHandler(BaseHTTPRequestHandler):
                 })
             except Exception as e:
                 self._send_error(f"Sync failed: {e}", status=500)
+            return
+
+        # OBS Recording Action API
+        if path == "/api/obs/record":
+            content_length = int(self.headers.get("Content-Length", 0))
+            body = self.rfile.read(content_length).decode("utf-8") if content_length > 0 else "{}"
+            try:
+                data = json.loads(body) if body else {}
+            except Exception:
+                data = {}
+
+            action = data.get("action", "toggle")
+            try:
+                res = self.service.set_obs_recording(action=action)
+                self._send_json(res)
+            except Exception as e:
+                self._send_error(str(e), status=400)
+            return
+
+        # Associate Match Video Path API
+        if path.startswith("/api/matches/") and path.endswith("/video"):
+            match_id = path.split("/")[3]
+            match = self.service.repo.get_match(match_id)
+            if not match:
+                self._send_error("Match not found", status=404)
+                return
+
+            content_length = int(self.headers.get("Content-Length", 0))
+            body = self.rfile.read(content_length).decode("utf-8") if content_length > 0 else "{}"
+            try:
+                data = json.loads(body) if body else {}
+            except Exception:
+                data = {}
+
+            video_filepath = data.get("video_filepath", "").strip()
+            if not video_filepath:
+                self._send_error("Missing video_filepath", status=400)
+                return
+
+            success = self.service.attach_match_video(match_id, video_filepath)
+            self._send_json({
+                "success": success,
+                "match_id": match_id,
+                "video_filepath": video_filepath,
+            })
             return
 
         self._send_error("Unknown POST endpoint", status=404)

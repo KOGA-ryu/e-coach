@@ -157,6 +157,49 @@ class TestValLensServer(unittest.TestCase):
         pl_data = json.loads(playlist_body.decode("utf-8"))
         self.assertIn("tasks", pl_data)
 
+    def test_obs_endpoints_and_match_video(self):
+        # 1. Check initial OBS status
+        status, body, _ = self._get("/api/obs/status")
+        self.assertEqual(status, 200)
+        data = json.loads(body.decode("utf-8"))
+        self.assertIn("connected", data)
+        self.assertIn("recording", data)
+        self.assertIn("game_state", data)
+        self.assertFalse(data["recording"])
+
+        # 2. Trigger start recording
+        status, res = self._post_json("/api/obs/record", {"action": "start"})
+        self.assertEqual(status, 200)
+        self.assertEqual(res["action"], "started")
+        self.assertTrue(res["recording"])
+
+        # Verify status is recording
+        status, body, _ = self._get("/api/obs/status")
+        data = json.loads(body.decode("utf-8"))
+        self.assertTrue(data["recording"])
+
+        # 3. Toggle/Stop recording
+        status, res = self._post_json("/api/obs/record", {"action": "stop"})
+        self.assertEqual(status, 200)
+        self.assertEqual(res["action"], "stopped")
+        self.assertFalse(res["recording"])
+        self.assertTrue(len(res["output_path"]) > 0)
+
+        # 4. Associate video with match
+        vid_path = "/recordings/custom_match_review.mp4"
+        status, vid_res = self._post_json(
+            f"/api/matches/{self.match.match_id}/video",
+            {"video_filepath": vid_path},
+        )
+        self.assertEqual(status, 200)
+        self.assertTrue(vid_res["success"])
+        self.assertEqual(vid_res["video_filepath"], vid_path)
+
+        # Verify overview reflects video_filepath
+        status, body, _ = self._get(f"/api/matches/{self.match.match_id}")
+        overview = json.loads(body.decode("utf-8"))
+        self.assertEqual(overview["metadata"]["video_filepath"], vid_path)
+
 
 if __name__ == "__main__":
     unittest.main()

@@ -46,6 +46,16 @@ const state = {
 
   // Practice Drills State
   trainingRoutine: null,
+
+  // OBS Studio & Automation State
+  obsStatus: {
+    connected: false,
+    recording: false,
+    duration_seconds: 0.0,
+    output_path: '',
+    game_state: 'DISCONNECTED',
+  },
+  obsPollInterval: null,
 };
 
 // DOM Elements
@@ -54,6 +64,8 @@ const videoPlayer = document.getElementById('video-player');
 const videoWrapper = document.getElementById('video-wrapper');
 const videoPlaceholder = document.getElementById('video-placeholder');
 const videoFileInput = document.getElementById('video-file-input');
+const obsHudPill = document.getElementById('obs-hud-pill');
+const obsText = document.getElementById('obs-text');
 
 const timecodeDisplay = document.getElementById('timecode-display');
 const scrubberContainer = document.getElementById('scrubber-container');
@@ -141,8 +153,13 @@ async function init() {
   setupEventListeners();
   setupTelestrator();
   setupAggregateControls();
+  setupObsControls();
   await loadAvailableMaps();
   await loadMatchList();
+
+  // Poll OBS WebSocket status
+  await pollObsStatus();
+  state.obsPollInterval = setInterval(pollObsStatus, 3000);
 }
 
 
@@ -1528,13 +1545,18 @@ function setupEventListeners() {
   });
 
   // Local Video File Upload
-  videoFileInput.addEventListener('change', (e) => {
+  videoFileInput.addEventListener('change', async (e) => {
     const file = e.target.files[0];
     if (file) {
       const url = URL.createObjectURL(file);
       videoPlayer.src = url;
       videoPlaceholder.style.display = 'none';
       videoPlayer.play();
+
+      if (state.currentMatchId) {
+        await associateMatchVideo(state.currentMatchId, file.name);
+        showToast(`Loaded VOD: ${file.name}`);
+      }
     }
   });
 
@@ -2355,6 +2377,117 @@ function renderTrainingRoutineModal() {
 
       drillsListContainer.appendChild(card);
     });
+  }
+}
+
+// -------------------------------------------------------------
+// OBS WebSocket HUD & Recording Automation
+// -------------------------------------------------------------
+function setupObsControls() {
+  if (!obsHudPill) return;
+
+  obsHudPill.addEventListener('click', async () => {
+    await toggleObsRecording();
+  });
+}
+
+async function pollObsStatus() {
+  if (!obsHudPill || !obsText) return;
+  try {
+    const res = await fetch('/api/obs/status');
+    if (!res.ok) return;
+    const data = await res.json();
+    state.obsStatus = data;
+    updateObsHudUI(data);
+  } catch (err) {
+    updateObsHudUI({ connected: false, recording: false, duration_seconds: 0, game_state: 'DISCONNECTED' });
+  }
+}
+
+function updateObsHudUI(data) {
+  if (!obsHudPill || !obsText) return;
+
+  obsHudPill.classList.remove('idle', 'recording', 'ingame', 'disconnected');
+
+  if (!data.connected) {
+    obsHudPill.classList.add('disconnected');
+    obsText.textContent = 'OBS: OFFLINE';
+    obsHudPill.title = 'OBS Studio not connected (Check WebSocket)';
+    return;
+  }
+
+  if (data.recording) {
+    obsHudPill.classList.add('recording');
+    const dur = Math.max(0, Math.floor(data.duration_seconds || 0));
+    const mins = Math.floor(dur / 60).toString().padStart(2, '0');
+    const secs = (dur % 60).toString().padStart(2, '0');
+    obsText.textContent = `REC ${mins}:${secs}`;
+    obsHudPill.title = `OBS Recording Active (${mins}:${secs}) — Click to Stop & Save`;
+    return;
+  }
+
+  if (data.game_state === 'INGAME') {
+    obsHudPill.classList.add('ingame');
+    obsText.textContent = 'GAME: IN-GAME';
+    obsHudPill.title = 'Valorant In-Game (OBS Standby) — Click to Record Manual Clip';
+    return;
+  }
+
+  obsHudPill.classList.add('idle');
+  obsText.textContent = 'OBS: IDLE';
+  obsHudPill.title = 'OBS Studio Ready — Click to Start Recording';
+}
+
+async function toggleObsRecording() {
+  try {
+    const res = await fetch('/api/obs/record', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ action: 'toggle' }),
+    });
+    if (!res.ok) {
+      const errData = await res.json();
+      showToast(`OBS Error: ${errData.error || 'Failed'}`);
+      return;
+    }
+    const data = await res.json();
+
+    if (data.action === 'started') {
+      showToast('OBS Recording Started');
+    } else if (data.action === 'stopped') {
+      const outName = data.output_path ? data.output_path.split('/').pop() : 'capture';
+      showToast(`OBS Recording Stopped (${outName})`);
+
+      // If a match is active, associate video and load into player if empty
+      if (state.currentMatchId && data.output_path) {
+        await associateMatchVideo(state.currentMatchId, data.output_path);
+        if (!videoPlayer.src || videoPlayer.src === window.location.href || videoPlaceholder.style.display !== 'none') {
+          videoPlayer.src = `/api/video?path=${encodeURIComponent(data.output_path)}`;
+          videoPlaceholder.style.display = 'none';
+        }
+      }
+    }
+    await pollObsStatus();
+  } catch (err) {
+    console.error('Failed to toggle OBS recording:', err);
+    showToast('Failed to toggle OBS recording');
+  }
+}
+
+async function associateMatchVideo(matchId, videoFilepath) {
+  try {
+    const res = await fetch(`/api/matches/${matchId}/video`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ video_filepath: videoFilepath }),
+    });
+    if (res.ok) {
+      if (state.matchMetadata) {
+        state.matchMetadata.video_filepath = videoFilepath;
+      }
+    }
+  } catch (err) {
+    console.error('Failed to associate match video:', err);
   }
 }
 

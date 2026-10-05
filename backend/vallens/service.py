@@ -12,6 +12,7 @@ from vallens.analytics.projection import CoordinateProjector
 from vallens.db.database import Database
 from vallens.db.repository import MatchRepository
 from vallens.models import MatchEvent, MatchMetadata, MatchPlayer, VodTag
+from vallens.obs.controller import CaptureController
 from vallens.riot.client import RiotApiClient
 from vallens.riot.parser import MatchParser
 
@@ -25,6 +26,7 @@ class ValLensService:
         db: Optional[Database] = None,
         maps_file: Optional[Path | str] = None,
         riot_api_key: Optional[str] = None,
+        capture_controller: Optional[CaptureController] = None,
     ):
         self.db = db or Database()
         self.repo = MatchRepository(self.db)
@@ -32,6 +34,7 @@ class ValLensService:
         self.parser = MatchParser(projector=self.projector)
         self.client = RiotApiClient(api_key=riot_api_key)
         self.heatmap_engine = HeatmapAggregationEngine(maps_file=maps_file)
+        self.capture_controller = capture_controller or CaptureController(service=self)
 
     def ingest_match_payload(
         self, raw_data: dict[str, Any], video_filepath: Optional[str] = None
@@ -217,6 +220,70 @@ class ValLensService:
         return engine.generate_routine(
             metadata=match, events=events, tags=tags, player_puuid=player_puuid
         )
+
+    def get_obs_status(self) -> dict[str, Any]:
+        """Return current OBS connection, recording state, and local client game state."""
+        client = self.capture_controller.obs_client
+        connected = False
+        if hasattr(client, "connected"):
+            connected = bool(client.connected)
+        elif hasattr(client, "ws"):
+            connected = client.ws is not None
+        else:
+            connected = True
+
+        rec_status = False
+        duration_sec = 0.0
+        output_path = ""
+        try:
+            status = client.get_record_status()
+            rec_status = status.get("outputActive", False)
+            duration_sec = status.get("outputDuration", 0.0) / 1000.0 if "outputDuration" in status else 0.0
+            output_path = status.get("outputPath", "")
+        except Exception:
+            pass
+
+        session = self.capture_controller.local_client.get_session_state()
+        game_state = session.get("state", "DISCONNECTED")
+
+        return {
+            "connected": connected,
+            "recording": rec_status,
+            "duration_seconds": round(duration_sec, 1),
+            "output_path": output_path or self.capture_controller.last_recorded_file or "",
+            "game_state": game_state,
+        }
+
+    def set_obs_recording(self, action: str = "toggle") -> dict[str, Any]:
+        """Start, stop, or toggle OBS recording."""
+        client = self.capture_controller.obs_client
+        status = client.get_record_status()
+        active = status.get("outputActive", False)
+
+        if action == "start":
+            if not active:
+                client.start_recording()
+            return {"action": "started", "recording": True}
+        elif action == "stop":
+            out_file = ""
+            if active:
+                out_file = client.stop_recording()
+                self.capture_controller.last_recorded_file = out_file
+            return {"action": "stopped", "recording": False, "output_path": out_file}
+        elif action == "toggle":
+            if not active:
+                client.start_recording()
+                return {"action": "started", "recording": True}
+            else:
+                out_file = client.stop_recording()
+                self.capture_controller.last_recorded_file = out_file
+                return {"action": "stopped", "recording": False, "output_path": out_file}
+        else:
+            raise ValueError(f"Unknown OBS action: {action}")
+
+    def attach_match_video(self, match_id: str, video_filepath: str) -> bool:
+        """Associate a video recording file path with a match."""
+        return self.repo.update_video_path(match_id, video_filepath)
 
 
 
