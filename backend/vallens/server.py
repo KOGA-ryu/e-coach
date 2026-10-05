@@ -527,6 +527,22 @@ class ValLensRequestHandler(BaseHTTPRequestHandler):
                 self._send_error(f"Round comparison failed: {e}", status=500)
             return
 
+        # Opponent Tendency & Default Timing Profiler API
+        if path.startswith("/api/matches/") and path.endswith("/tendencies"):
+            match_id = path.split("/")[3]
+            target_team = query.get("team", [None])[0]
+            target_player = query.get("player", [None])[0]
+            try:
+                report = self.service.get_opponent_tendencies(
+                    match_id=match_id,
+                    target_team=target_team,
+                    user_puuid=target_player,
+                )
+                self._send_json(report)
+            except Exception as e:
+                self._send_error(f"Tendency profiling failed: {e}", status=500)
+            return
+
         # Auto-Detected Highlight Candidates API
         if path.startswith("/api/matches/") and path.endswith("/clips/candidates"):
             match_id = path.split("/")[3]

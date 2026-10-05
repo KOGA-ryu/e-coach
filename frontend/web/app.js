@@ -405,6 +405,7 @@ async function init() {
   setupMinimapWhiteboardAndPlaybook();
   setupHighlightStudio();
   setupRoundComparison();
+  setupOpponentTendencies();
   await loadAvailableMaps();
 
   await loadMatchList();
@@ -7103,6 +7104,228 @@ function setupRoundComparison() {
       cmpState.speed = parseFloat(b.dataset.cmpSpeed) || 1.0;
     });
   });
+}
+
+// ------------------------------------------------------------------
+// Opponent Tendency & Default Timing Profiler UI
+// ------------------------------------------------------------------
+function setupOpponentTendencies() {
+  const btnOpen = document.getElementById('btn-open-tendencies');
+  const modal = document.getElementById('tendencies-modal');
+  const btnClose = document.getElementById('btn-close-tendencies-modal');
+  const btnCloseFooter = document.getElementById('btn-close-tendencies-footer');
+  const teamButtons = document.querySelectorAll('#tendencies-team-toggle .segment-btn');
+  let currentTargetTeam = 'Red';
+
+  if (!btnOpen || !modal) return;
+
+  function closeModal() {
+    modal.classList.add('hidden');
+  }
+
+  function openModal() {
+    modal.classList.remove('hidden');
+    loadTendencyData();
+  }
+
+  btnOpen.addEventListener('click', openModal);
+  if (btnClose) btnClose.addEventListener('click', closeModal);
+  if (btnCloseFooter) btnCloseFooter.addEventListener('click', closeModal);
+
+  modal.addEventListener('click', (e) => {
+    if (e.target === modal) closeModal();
+  });
+
+  teamButtons.forEach((btn) => {
+    btn.addEventListener('click', () => {
+      teamButtons.forEach((b) => b.classList.remove('active'));
+      btn.classList.add('active');
+      currentTargetTeam = btn.dataset.team || 'Red';
+      loadTendencyData();
+    });
+  });
+
+  async function loadTendencyData() {
+    if (!state.currentMatchId) return;
+
+    const summaryPills = document.getElementById('tendencies-summary-pills');
+    const badgePredominantPace = document.getElementById('badge-predominant-pace');
+    const paceList = document.getElementById('pace-breakdown-list');
+    const badgePrimarySite = document.getElementById('badge-primary-site');
+    const siteList = document.getElementById('site-preference-list');
+    const badgeRotationClass = document.getElementById('badge-rotation-class');
+    const rotationBox = document.getElementById('rotation-profile-box');
+    const badgeAggressionRate = document.getElementById('badge-aggression-rate');
+    const aggressionBox = document.getElementById('aggression-profile-box');
+    const entriesTbody = document.getElementById('opponent-entries-tbody');
+    const counterStratsDeck = document.getElementById('counter-strats-deck');
+
+    if (summaryPills) summaryPills.innerHTML = '<span class="empty-hint">Analyzing opponent telemetry...</span>';
+
+    try {
+      const url = `/api/matches/${state.currentMatchId}/tendencies?team=${encodeURIComponent(currentTargetTeam)}&player=${encodeURIComponent(state.selectedPlayerPuuid || '')}`;
+      const res = await fetch(url);
+      if (!res.ok) throw new Error(`HTTP error ${res.status}`);
+      const data = await res.json();
+
+      // 1. Summary Pills
+      if (summaryPills) {
+        summaryPills.innerHTML = `
+          <div class="tendency-summary-pill pill-accent" title="Predominant Attack Pace">
+            <span>⚡</span>
+            <span>PACE: ${data.predominant_pace}</span>
+          </div>
+          <div class="tendency-summary-pill pill-cyan" title="Primary Targeted Bomb Site">
+            <span>📍</span>
+            <span>PRIMARY SITE: ${data.primary_site_target}</span>
+          </div>
+          <div class="tendency-summary-pill pill-yellow" title="Anchor Defense Rotation Profile">
+            <span>⏱️</span>
+            <span>ROTATION: ${data.rotation_profile.classification} (${data.rotation_profile.avg_rotation_latency_sec}s)</span>
+          </div>
+          <div class="tendency-summary-pill" title="Defense Forward Push Rate">
+            <span>⚠️</span>
+            <span>CHOKE PUSH: ${data.aggression_profile.team_aggression_rate}%</span>
+          </div>
+        `;
+      }
+
+      // 2. Pace Breakdown
+      if (badgePredominantPace) badgePredominantPace.textContent = data.predominant_pace;
+      if (paceList) {
+        if (!data.pace_breakdown || data.pace_breakdown.length === 0) {
+          paceList.innerHTML = '<div class="empty-hint">No attack rounds analyzed.</div>';
+        } else {
+          paceList.innerHTML = data.pace_breakdown.map((p) => {
+            const fillClass = p.tag === 'blitz' ? 'fill-blitz' : (p.tag === 'default' ? 'fill-default' : 'fill-late');
+            return `
+              <div class="pace-row">
+                <div class="row-label-group">
+                  <span class="row-name">${p.name}</span>
+                  <span class="row-meta">${p.count} rounds (${p.percentage}%) • <strong>${p.win_rate}% Win</strong></span>
+                </div>
+                <div class="tendency-progress-track">
+                  <div class="tendency-progress-fill ${fillClass}" style="width: ${Math.max(4, p.percentage)}%"></div>
+                </div>
+              </div>
+            `;
+          }).join('');
+        }
+      }
+
+      // 3. Site Preferences
+      if (badgePrimarySite) badgePrimarySite.textContent = data.primary_site_target;
+      if (siteList) {
+        if (!data.site_preferences || data.site_preferences.length === 0) {
+          siteList.innerHTML = '<div class="empty-hint">No site attack data recorded.</div>';
+        } else {
+          siteList.innerHTML = data.site_preferences.map((s) => {
+            return `
+              <div class="site-row">
+                <div class="row-label-group">
+                  <span class="row-name">${s.site}</span>
+                  <span class="row-meta">${s.attempts} hits (${s.percentage}%) • <strong>${s.win_rate}% Win</strong> • Avg ${s.avg_hit_time_sec}s</span>
+                </div>
+                <div class="tendency-progress-track">
+                  <div class="tendency-progress-fill fill-site" style="width: ${Math.max(4, s.percentage)}%"></div>
+                </div>
+              </div>
+            `;
+          }).join('');
+        }
+      }
+
+      // 4. Rotation Latency Profile
+      const rot = data.rotation_profile;
+      if (badgeRotationClass) {
+        badgeRotationClass.textContent = rot.classification;
+        badgeRotationClass.className = `card-badge ${rot.classification === 'Hyper-Rotator' ? 'alert' : ''}`;
+      }
+      if (rotationBox) {
+        const badgeClass = rot.classification === 'Hyper-Rotator' ? 'badge-hyper' : (rot.classification === 'Disciplined Anchor' ? 'badge-anchor' : 'badge-balanced');
+        rotationBox.innerHTML = `
+          <div class="profile-stat-hero">
+            <span class="profile-stat-number">${rot.avg_rotation_latency_sec}s</span>
+            <span class="profile-stat-unit">AVG DEFENSE ROTATION LATENCY</span>
+            <span class="profile-badge-tag ${badgeClass}">${rot.classification.toUpperCase()}</span>
+          </div>
+          <div class="profile-text-desc">${rot.summary}</div>
+          <div class="profile-exploit-callout">
+            <strong>TACTICAL EXPLOIT:</strong> ${rot.exploit_advice}
+          </div>
+        `;
+      }
+
+      // 5. Defense Early Aggression Profile
+      const agg = data.aggression_profile;
+      if (badgeAggressionRate) badgeAggressionRate.textContent = `${agg.team_aggression_rate}% Push Rate`;
+      if (aggressionBox) {
+        const pushersHtml = (agg.aggressive_players && agg.aggressive_players.length > 0)
+          ? agg.aggressive_players.map((p) => `
+              <div class="pusher-item">
+                <span><strong>${p.name}</strong> <span class="pusher-agent-badge">${p.agent}</span></span>
+                <span>Pushed <strong>${p.push_count}x</strong> (${p.push_rate}%) → <em>${p.primary_choke}</em></span>
+              </div>
+            `).join('')
+          : '<div class="empty-hint" style="font-size: 11px;">No defenders recorded aggressive pushes.</div>';
+
+        aggressionBox.innerHTML = `
+          <div class="profile-stat-hero">
+            <span class="profile-stat-number">${agg.team_aggression_rate}%</span>
+            <span class="profile-stat-unit">OF DEFENSE ROUNDS FEATURE EARLY CHOKE PUSHES</span>
+          </div>
+          <div class="profile-text-desc">Primary Corridors Contested: <strong>${agg.primary_choke_targets.join(', ') || 'None'}</strong></div>
+          <div class="top-pushers-list">
+            ${pushersHtml}
+          </div>
+        `;
+      }
+
+      // 6. Opening Duel Entry Profiles Table
+      if (entriesTbody) {
+        if (!data.top_entries || data.top_entries.length === 0) {
+          entriesTbody.innerHTML = '<tr><td colspan="7" class="empty-hint">No entry duel records found.</td></tr>';
+        } else {
+          entriesTbody.innerHTML = data.top_entries.map((e) => {
+            const winRateColor = e.entry_success_rate >= 50 ? '#06d6a0' : '#ff4655';
+            return `
+              <tr>
+                <td><strong>${e.player_name}</strong></td>
+                <td><span class="pusher-agent-badge">${e.agent_name}</span></td>
+                <td><span>${e.first_duels_count}</span></td>
+                <td><span style="color: #06d6a0; font-weight: 600;">${e.first_kills_count}</span></td>
+                <td><span style="color: #ff4655; font-weight: 600;">${e.first_deaths_count}</span></td>
+                <td><span>${e.entry_attempt_rate}%</span></td>
+                <td><strong style="color: ${winRateColor};">${e.entry_success_rate}%</strong></td>
+              </tr>
+            `;
+          }).join('');
+        }
+      }
+
+      // 7. Counter-Strats Deck
+      if (counterStratsDeck) {
+        if (!data.counter_strats || data.counter_strats.length === 0) {
+          counterStratsDeck.innerHTML = '<div class="empty-hint">No counter-strat directives generated.</div>';
+        } else {
+          counterStratsDeck.innerHTML = data.counter_strats.map((cs) => {
+            const isDanger = cs.includes('🚨') || cs.includes('Fast Execute') || cs.includes('⚠️');
+            const isWarning = cs.includes('🎭') || cs.includes('Over-Rotation') || cs.includes('📍');
+            const cardClass = isDanger ? 'danger' : (isWarning ? 'warning' : 'info');
+            return `
+              <div class="counter-strat-card-item ${cardClass}">
+                <div class="counter-strat-text">${cs}</div>
+              </div>
+            `;
+          }).join('');
+        }
+      }
+
+    } catch (err) {
+      console.error('Failed to load opponent tendencies:', err);
+      if (summaryPills) summaryPills.innerHTML = '<span class="empty-hint error">Failed to load opponent tendencies telemetry.</span>';
+    }
+  }
 }
 
 // Start application

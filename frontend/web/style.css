@@ -5554,6 +5554,300 @@ video {
   color: #ff4655;
 }
 
+/* ------------------------------------------------------------------
+ * Opponent Tendency & Default Timing Profiler Styles
+ * ------------------------------------------------------------------ */
+.btn-tendencies {
+  background: rgba(255, 70, 85, 0.15);
+  border: 1px solid rgba(255, 70, 85, 0.4);
+  color: #ff4655;
+  font-family: var(--font-tactical);
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 1px;
+  padding: 6px 12px;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.btn-tendencies:hover {
+  background: rgba(255, 70, 85, 0.3);
+  border-color: #ff4655;
+  color: #fff;
+  box-shadow: 0 0 10px rgba(255, 70, 85, 0.3);
+}
+
+.tendencies-modal-card {
+  width: 95vw;
+  max-width: 1150px;
+  max-height: 90vh;
+  display: flex;
+  flex-direction: column;
+}
+
+.tendencies-modal-body {
+  overflow-y: auto;
+  padding: 16px 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.tendencies-top-bar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 12px;
+  background: rgba(25, 35, 48, 0.6);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 6px;
+  padding: 10px 16px;
+}
+
+.tendencies-summary-pills {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.tendency-summary-pill {
+  font-family: var(--font-tactical);
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.5px;
+  padding: 4px 10px;
+  border-radius: 12px;
+  background: rgba(15, 25, 35, 0.8);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  color: #ece8e1;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.tendency-summary-pill.pill-accent {
+  border-color: var(--accent-red);
+  color: #ff8590;
+}
+.tendency-summary-pill.pill-cyan {
+  border-color: #00f2fe;
+  color: #72efff;
+}
+.tendency-summary-pill.pill-yellow {
+  border-color: #fdbb2d;
+  color: #ffdf79;
+}
+
+.tendencies-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+  gap: 14px;
+}
+
+.tendency-card {
+  background: rgba(18, 27, 36, 0.85);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 6px;
+  padding: 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.card-header-tactical {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-family: var(--font-tactical);
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 1px;
+  color: #ece8e1;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+  padding-bottom: 8px;
+}
+
+.card-subtitle-tag {
+  font-size: 10px;
+  font-weight: normal;
+  color: var(--text-muted);
+  text-transform: none;
+}
+
+.pace-breakdown-list,
+.site-preference-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.pace-row,
+.site-row {
+  background: rgba(11, 17, 24, 0.6);
+  border: 1px solid rgba(255, 255, 255, 0.04);
+  border-radius: 4px;
+  padding: 8px 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.row-label-group {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 11px;
+}
+
+.row-name {
+  font-weight: 600;
+  color: #fff;
+}
+
+.row-meta {
+  font-size: 10px;
+  color: var(--text-muted);
+}
+
+.tendency-progress-track {
+  width: 100%;
+  height: 6px;
+  background: rgba(255, 255, 255, 0.08);
+  border-radius: 3px;
+  overflow: hidden;
+}
+
+.tendency-progress-fill {
+  height: 100%;
+  border-radius: 3px;
+  transition: width 0.3s ease;
+}
+.fill-blitz { background: linear-gradient(90deg, #ff4655, #ff8590); }
+.fill-default { background: linear-gradient(90deg, #00f2fe, #4facfe); }
+.fill-late { background: linear-gradient(90deg, #fdbb2d, #f59e0b); }
+.fill-site { background: linear-gradient(90deg, #06d6a0, #22c55e); }
+
+.rotation-profile-box,
+.aggression-profile-box {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  background: rgba(11, 17, 24, 0.6);
+  border-radius: 4px;
+  padding: 10px;
+}
+
+.profile-stat-hero {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+}
+
+.profile-stat-number {
+  font-family: var(--font-display);
+  font-size: 28px;
+  font-weight: 700;
+  color: #fff;
+  line-height: 1;
+}
+
+.profile-stat-unit {
+  font-size: 11px;
+  color: var(--text-muted);
+}
+
+.profile-badge-tag {
+  display: inline-block;
+  padding: 2px 8px;
+  border-radius: 4px;
+  font-size: 10px;
+  font-weight: 700;
+  font-family: var(--font-tactical);
+  letter-spacing: 0.5px;
+}
+.badge-hyper { background: rgba(255, 70, 85, 0.2); color: #ff8590; border: 1px solid #ff4655; }
+.badge-anchor { background: rgba(6, 214, 160, 0.2); color: #6ee7b7; border: 1px solid #06d6a0; }
+.badge-balanced { background: rgba(0, 180, 216, 0.2); color: #72efff; border: 1px solid #00b4d8; }
+
+.profile-text-desc {
+  font-size: 11px;
+  color: var(--text-muted);
+  line-height: 1.4;
+}
+
+.profile-exploit-callout {
+  background: rgba(255, 70, 85, 0.1);
+  border-left: 3px solid #ff4655;
+  padding: 6px 10px;
+  border-radius: 2px;
+  font-size: 11px;
+  color: #ece8e1;
+  line-height: 1.35;
+}
+
+.top-pushers-list {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-top: 4px;
+}
+
+.pusher-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 11px;
+  background: rgba(255, 255, 255, 0.03);
+  padding: 4px 8px;
+  border-radius: 3px;
+}
+
+.pusher-agent-badge {
+  background: rgba(255, 70, 85, 0.2);
+  color: #ff8590;
+  padding: 1px 6px;
+  border-radius: 3px;
+  font-size: 10px;
+  font-weight: 600;
+}
+
+.entry-profiles-table-wrapper {
+  overflow-x: auto;
+}
+
+.counter-strats-deck {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+  gap: 10px;
+}
+
+.counter-strat-card-item {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  background: rgba(11, 17, 24, 0.7);
+  border-left: 3px solid #00f2fe;
+  padding: 10px 14px;
+  border-radius: 4px;
+  font-size: 12px;
+  color: #ece8e1;
+  line-height: 1.45;
+}
+.counter-strat-card-item.danger {
+  border-left-color: #ff4655;
+}
+.counter-strat-card-item.warning {
+  border-left-color: #fdbb2d;
+}
+.counter-strat-card-item.info {
+  border-left-color: #00f2fe;
+}
+
+
 
 
 

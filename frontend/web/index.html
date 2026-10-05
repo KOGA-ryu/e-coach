@@ -61,6 +61,7 @@
       <button id="btn-open-playbook" class="btn-playbook" title="Tactical Strat Playbook & Minimap Whiteboard">📖 STRAT PLAYBOOK</button>
       <button id="btn-open-highlights" class="btn-highlights" title="Auto-Detect Highlights & Clip Studio">🎬 CLIPS & REEL</button>
       <button id="btn-open-round-compare" class="btn-round-compare" title="Multi-POV / Round-over-Round Side-by-Side Synchronizer">👥 ROUND COMPARE</button>
+      <button id="btn-open-tendencies" class="btn-tendencies" title="Opponent Tendency & Default Timing Profiler">⏱️ TENDENCIES</button>
       <button id="btn-generate-montage" class="btn-montage" title="Generate Continuous Flaw Review Reel MP4">🎬 REVIEW REEL</button>
 
       <a id="btn-view-report" class="btn-report" target="_blank" href="#">COACHING REPORT</a>
@@ -1720,6 +1721,126 @@
 
       <div class="modal-footer" style="display: flex; justify-content: flex-end; padding: 14px 20px;">
         <button id="btn-close-round-compare-footer" class="btn-sync">CLOSE</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Opponent Tendency & Default Timing Profiler Modal -->
+  <div id="tendencies-modal" class="modal-overlay hidden">
+    <div class="modal-card tendencies-modal-card">
+      <div class="modal-header">
+        <div class="modal-title-group">
+          <div class="modal-icon">⏱️</div>
+          <div>
+            <div class="modal-title">OPPONENT TENDENCY & DEFAULT TIMING PROFILER</div>
+            <div class="modal-subtitle">Post-Game Macro Habits • Attack Pacing Breakdown • Rotation Latency • Defense Early Aggression</div>
+          </div>
+        </div>
+        <button id="btn-close-tendencies-modal" class="btn-icon-close">✕</button>
+      </div>
+
+      <div class="modal-body tendencies-modal-body">
+        <!-- Team Selector & Macro Summary Banner -->
+        <div class="tendencies-top-bar">
+          <div class="team-filter-group">
+            <span class="filter-label">TARGET OPPONENT:</span>
+            <div class="segmented-control" id="tendencies-team-toggle">
+              <button class="segment-btn active" data-team="Red">TEAM RED</button>
+              <button class="segment-btn" data-team="Blue">TEAM BLUE</button>
+            </div>
+          </div>
+          <div class="tendencies-summary-pills" id="tendencies-summary-pills">
+            <!-- Populated dynamically -->
+          </div>
+        </div>
+
+        <!-- Metric Grid -->
+        <div class="tendencies-grid">
+          <!-- Col 1: Attack Pacing Breakdown -->
+          <div class="tendency-card">
+            <div class="card-header-tactical">
+              <span>⚡ ATTACK EXECUTION PACING</span>
+              <span class="card-badge" id="badge-predominant-pace">--</span>
+            </div>
+            <div class="pace-breakdown-list" id="pace-breakdown-list">
+              <div class="empty-hint">Loading pace distribution...</div>
+            </div>
+          </div>
+
+          <!-- Col 2: Site Preference & Plant Bias -->
+          <div class="tendency-card">
+            <div class="card-header-tactical">
+              <span>📍 SITE PREFERENCES & WINRATES</span>
+              <span class="card-badge" id="badge-primary-site">--</span>
+            </div>
+            <div class="site-preference-list" id="site-preference-list">
+              <div class="empty-hint">Loading site preferences...</div>
+            </div>
+          </div>
+
+          <!-- Col 3: Defense Rotation Speed & Anchor Discipline -->
+          <div class="tendency-card">
+            <div class="card-header-tactical">
+              <span>🔄 ROTATION LATENCY & ANCHORS</span>
+              <span class="card-badge" id="badge-rotation-class">--</span>
+            </div>
+            <div class="rotation-profile-box" id="rotation-profile-box">
+              <div class="empty-hint">Loading rotation analytics...</div>
+            </div>
+          </div>
+
+          <!-- Col 4: Defense Chokehold Aggression Index -->
+          <div class="tendency-card">
+            <div class="card-header-tactical">
+              <span>⚠️ DEFENSE CHOKE AGGRESSION</span>
+              <span class="card-badge" id="badge-aggression-rate">--</span>
+            </div>
+            <div class="aggression-profile-box" id="aggression-profile-box">
+              <div class="empty-hint">Loading aggression index...</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Opening Duel Entries & Primary Contact Players -->
+        <div class="tendency-card full-width-card">
+          <div class="card-header-tactical">
+            <span>🎯 OPPONENT OPENING DUEL / ENTRY PROFILES</span>
+            <span class="card-subtitle-tag">First contact engagement rates & duel conversion</span>
+          </div>
+          <div class="entry-profiles-table-wrapper">
+            <table class="tactical-table" id="opponent-entries-table">
+              <thead>
+                <tr>
+                  <th>PLAYER</th>
+                  <th>AGENT</th>
+                  <th>FIRST DUELS</th>
+                  <th>FIRST KILLS</th>
+                  <th>FIRST DEATHS</th>
+                  <th>ENTRY ATTEMPT %</th>
+                  <th>ENTRY WIN RATE</th>
+                </tr>
+              </thead>
+              <tbody id="opponent-entries-tbody">
+                <tr><td colspan="7" class="empty-hint">Loading opponent entry profiles...</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        <!-- AI Tactical Counter-Strats & Exploit Guide -->
+        <div class="tendency-card full-width-card counter-strats-card">
+          <div class="card-header-tactical">
+            <span>💡 AI TACTICAL COUNTER-STRATS & EXPLOIT DOSSIER</span>
+            <span class="card-badge alert">COACHING DIRECTIVES</span>
+          </div>
+          <div class="counter-strats-deck" id="counter-strats-deck">
+            <!-- Actionable counter-strat cards -->
+          </div>
+        </div>
+      </div>
+
+      <div class="modal-footer" style="display: flex; justify-content: flex-end; padding: 14px 20px;">
+        <button id="btn-close-tendencies-footer" class="btn-sync">CLOSE</button>
       </div>
     </div>
   </div>

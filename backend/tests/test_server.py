@@ -569,6 +569,17 @@ class TestValLensServer(unittest.TestCase):
         self.assertIn("deltas", res)
         self.assertIn("key_takeaways", res)
 
+    def test_opponent_tendency_endpoint(self):
+        status, body, _ = self._get(f"/api/matches/{self.match.match_id}/tendencies")
+        self.assertEqual(status, 200)
+        res = json.loads(body.decode("utf-8"))
+        self.assertEqual(res["match_id"], self.match.match_id)
+        self.assertIn("pace_breakdown", res)
+        self.assertIn("site_preferences", res)
+        self.assertIn("rotation_profile", res)
+        self.assertIn("aggression_profile", res)
+        self.assertIn("counter_strats", res)
+
     def test_highlight_clips_endpoints(self):
         # 1. Candidates list
         status, body, _ = self._get(f"/api/matches/{self.match.match_id}/clips/candidates")

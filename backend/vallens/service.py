@@ -15,6 +15,7 @@ from vallens.analytics.projection import CoordinateProjector
 from vallens.analytics.reference_vods import ProReferenceCatalog
 from vallens.analytics.round_comparison import RoundComparisonEngine, RoundComparisonResult
 from vallens.analytics.scouting_report import ScoutingReportGenerator
+from vallens.analytics.tendency_profiler import OpponentTendencyReport, TendencyProfilerEngine
 from vallens.analytics.trade_matrix import MatchTradeReport, TradeMatrixEngine
 from vallens.analytics.transcription import CoachVoiceTranscriber
 from vallens.analytics.utility_roi import UtilityRoiEngine, UtilityRoiReport
@@ -78,6 +79,10 @@ class ValLensService:
             repo=self.repo,
             win_prob_engine=self.win_prob_engine,
             trade_engine=self.trade_engine,
+        )
+        self.tendency_profiler = TendencyProfilerEngine(
+            repo=self.repo,
+            heatmap_engine=self.heatmap_engine,
         )
         try:
             self.repo.seed_default_strats()
@@ -948,6 +953,23 @@ class ValLensService:
             target_puuid=target_puuid,
         )
         return result.to_dict()
+
+    # ------------------------------------------------------------------
+    # Opponent Tendency & Default Timing Profiler
+    # ------------------------------------------------------------------
+    def get_opponent_tendencies(
+        self,
+        match_id: str,
+        target_team: Optional[str] = None,
+        user_puuid: Optional[str] = None,
+    ) -> dict[str, Any]:
+        """Analyze opponent pace, site preferences, rotation latency, and early defense aggression."""
+        report = self.tendency_profiler.analyze_opponent_tendencies(
+            match_id=match_id,
+            target_team=target_team,
+            user_puuid=user_puuid,
+        )
+        return report.to_dict()
 
 
 
