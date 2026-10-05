@@ -206,6 +206,48 @@ function getMapNameFromPath(mapPath) {
   return parts[parts.length - 1].toLowerCase();
 }
 
+// -------------------------------------------------------------
+// Valorant Map Projection Calibration & Coordinate Conversion
+// -------------------------------------------------------------
+const MAP_CONFIG = {
+  Ascent: { xMultiplier: 0.00007, yMultiplier: -0.00007, xScalar: 0.813895, yScalar: 0.573242 },
+  Split: { xMultiplier: 0.000078, yMultiplier: -0.000078, xScalar: 0.842188, yScalar: 0.697578 },
+  Fracture: { xMultiplier: 0.000078, yMultiplier: -0.000078, xScalar: 0.556952, yScalar: 1.155886 },
+  Bind: { xMultiplier: 0.000059, yMultiplier: -0.000059, xScalar: 0.576941, yScalar: 0.967566 },
+  Breeze: { xMultiplier: 0.00007, yMultiplier: -0.00007, xScalar: 0.465123, yScalar: 0.833078 },
+  Abyss: { xMultiplier: 0.000081, yMultiplier: -0.000081, xScalar: 0.5, yScalar: 0.5 },
+  Lotus: { xMultiplier: 0.000072, yMultiplier: -0.000072, xScalar: 0.454789, yScalar: 0.917752 },
+  Sunset: { xMultiplier: 0.000078, yMultiplier: -0.000078, xScalar: 0.5, yScalar: 0.515625 },
+  Pearl: { xMultiplier: 0.000078, yMultiplier: -0.000078, xScalar: 0.480469, yScalar: 0.916016 },
+  Icebox: { xMultiplier: 0.000072, yMultiplier: -0.000072, xScalar: 0.460214, yScalar: 0.304687 },
+  Haven: { xMultiplier: 0.000075, yMultiplier: -0.000075, xScalar: 1.09345, yScalar: 0.642728 },
+};
+
+function worldToCanvasCoords(gameX, gameY, canvasWidth, canvasHeight, mapName = 'Ascent') {
+  const normKey = Object.keys(MAP_CONFIG).find((k) => k.toLowerCase() === (mapName || 'ascent').toLowerCase()) || 'Ascent';
+  const cfg = MAP_CONFIG[normKey];
+  // Note the axis flip: Unreal Engine / Valorant API Y drives canvas X, API X drives canvas Y
+  const normX = gameY * cfg.xMultiplier + cfg.xScalar;
+  const normY = gameX * cfg.yMultiplier + cfg.yScalar;
+
+  return {
+    x: normX * canvasWidth,
+    y: normY * canvasHeight,
+    normX,
+    normY,
+  };
+}
+
+function getEventNormCoords(ev) {
+  if (!ev || ev.pos_x === null || ev.pos_y === null) return { x: 0, y: 0 };
+  if (Math.abs(ev.pos_x) > 2 || Math.abs(ev.pos_y) > 2) {
+    const activeMap = state.matchMetadata ? getMapNameFromPath(state.matchMetadata.map_id) : 'Ascent';
+    const pt = worldToCanvasCoords(ev.pos_x, ev.pos_y, 1, 1, activeMap);
+    return { x: pt.normX, y: pt.normY };
+  }
+  return { x: ev.pos_x, y: ev.pos_y };
+}
+
 function loadMapImage(mapName) {
   state.mapLoaded = false;
   state.mapImage.onload = () => {
@@ -448,7 +490,9 @@ function renderRoundEventsFeed(events, roundNum) {
 
   items.forEach((item) => {
     const el = document.createElement('div');
-    el.className = `feed-item ${item.itemClass}`;
+    el.className = `feed-item timeline-event-item ${item.itemClass}`;
+    el.setAttribute('data-seconds', (item.timeMs / 1000).toFixed(2));
+    el.setAttribute('data-event-time', item.timeMs);
     el.innerHTML = `
       <div class="feed-item-left">
         ${item.badgeText ? `<span class="feed-badge ${item.badgeClass}">${item.badgeText}</span>` : ''}
@@ -512,8 +556,9 @@ function renderMinimap() {
 
   // 3. Draw Telemetry Points
   currentEvents.forEach((e) => {
-    const px = e.pos_x * w;
-    const py = e.pos_y * h;
+    const coords = getEventNormCoords(e);
+    const px = coords.x * w;
+    const py = coords.y * h;
     const deltaMs = currentVideoMs - e.event_time_ms;
     const isRecent = state.radarMode && deltaMs >= 0 && deltaMs <= 4000;
     const isPast = state.radarMode && deltaMs > 4000;
@@ -1532,8 +1577,9 @@ function setupEventListeners() {
     // Single-match mode hover
     const hit = state.events.find((ev) => {
       if (ev.round_number !== state.activeRound || ev.pos_x === null) return false;
-      const dx = ev.pos_x - mx;
-      const dy = ev.pos_y - my;
+      const coords = getEventNormCoords(ev);
+      const dx = coords.x - mx;
+      const dy = coords.y - my;
       return Math.sqrt(dx * dx + dy * dy) < 0.035;
     });
 
@@ -1577,8 +1623,9 @@ function setupEventListeners() {
 
     const hit = state.events.find((ev) => {
       if (ev.round_number !== state.activeRound || ev.pos_x === null) return false;
-      const dx = ev.pos_x - mx;
-      const dy = ev.pos_y - my;
+      const coords = getEventNormCoords(ev);
+      const dx = coords.x - mx;
+      const dy = coords.y - my;
       return Math.sqrt(dx * dx + dy * dy) < 0.035;
     });
 
