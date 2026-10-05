@@ -158,11 +158,42 @@
           <svg class="icon" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"></circle><polygon points="12 2 15 9 12 12 9 9 12 2"></polygon></svg>
           SPATIAL HEATMAP & TELEMETRY
         </div>
-        <div class="minimap-toggles">
+        <div class="minimap-toggles" id="match-minimap-toggles">
           <button id="btn-radar-mode" class="mini-btn radar-btn active" data-mode="radar" title="Show events dynamically as video plays">LIVE RADAR</button>
           <button id="btn-filter-all" class="mini-btn active" data-filter="all">ALL</button>
           <button id="btn-filter-kills" class="mini-btn kill-btn" data-filter="kill">KILLS</button>
           <button id="btn-filter-deaths" class="mini-btn death-btn" data-filter="death">DEATHS</button>
+        </div>
+      </div>
+
+      <!-- Mode Switcher: Current Match vs Multi-Match Aggregate -->
+      <div class="minimap-subbar">
+        <div class="map-view-switch">
+          <button id="btn-view-match" class="subbar-btn active">CURRENT MATCH</button>
+          <button id="btn-view-aggregate" class="subbar-btn agg-tab">MULTI-MATCH AGGREGATE</button>
+        </div>
+        <!-- Aggregate Controls Bar (visible in aggregate mode) -->
+        <div class="agg-controls-bar" id="agg-controls-bar" style="display: none;">
+          <div class="agg-control-group">
+            <label class="mini-label" for="agg-map-select">MAP:</label>
+            <select id="agg-map-select" class="dropdown-select mini-select"></select>
+          </div>
+          <div class="agg-control-group">
+            <span class="mini-label">SIDE:</span>
+            <div class="segmented-control mini-segmented">
+              <button class="segment-btn active" data-agg-side="all">ALL</button>
+              <button class="segment-btn" data-agg-side="attack">ATK</button>
+              <button class="segment-btn" data-agg-side="defense">DEF</button>
+            </div>
+          </div>
+          <div class="agg-control-group">
+            <span class="mini-label">TYPE:</span>
+            <div class="segmented-control mini-segmented">
+              <button class="segment-btn active" data-agg-type="death">DEATHS</button>
+              <button class="segment-btn" data-agg-type="kill">KILLS</button>
+            </div>
+          </div>
+          <button id="btn-heat-gradient" class="mini-btn heat-btn active" title="Toggle Smooth Heat Gradient">HEAT GLOW</button>
         </div>
       </div>
 
@@ -171,12 +202,31 @@
         <div class="map-tooltip" id="map-tooltip"></div>
       </div>
 
-      <div class="minimap-legend">
+      <div class="minimap-legend" id="match-minimap-legend">
         <div class="legend-item"><span class="legend-dot kill"></span> Kill Position</div>
         <div class="legend-item"><span class="legend-dot death"></span> Death Position</div>
         <div class="legend-item"><span class="legend-dot plant"></span> Spike Plant/Defuse</div>
       </div>
+
+      <div class="minimap-legend" id="agg-minimap-legend" style="display: none;">
+        <div class="legend-item"><span class="legend-dot death-hotspot"></span> Hotspot Centroid</div>
+        <div class="legend-item"><span class="legend-dot heat-density"></span> Density Cluster</div>
+        <div class="legend-item"><span class="legend-dot death-point"></span> Event Point</div>
+      </div>
+
+      <!-- Multi-Match Hotspot Clusters Panel -->
+      <div class="agg-hotspots-container" id="agg-hotspots-container" style="display: none;">
+        <div class="sub-header">
+          <span>TOP POSITIONAL FLAWS (<span id="agg-cluster-count">0</span>)</span>
+          <span class="subtle-badge" id="agg-matches-badge">0 MATCHES</span>
+        </div>
+        <div class="agg-insights-banner" id="agg-insights-banner"></div>
+        <div class="hotspots-list" id="hotspots-list">
+          <!-- Populated dynamically with hotspot cards -->
+        </div>
+      </div>
     </section>
+
 
     <!-- Column 3: Hotkey Tagging Grid & Habit Insights -->
     <section class="pane tag-pane">

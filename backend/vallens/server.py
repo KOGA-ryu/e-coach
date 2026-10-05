@@ -246,6 +246,30 @@ class ValLensRequestHandler(BaseHTTPRequestHandler):
             self._send_json(summary)
             return
 
+        # Multi-Match Heatmap Aggregation & Maps Catalog
+        if path == "/api/analytics/maps":
+            maps = self.service.list_available_maps()
+            self._send_json(maps)
+            return
+
+        if path == "/api/analytics/heatmap":
+            map_param = query.get("map", ["Ascent"])[0]
+            player_param = query.get("player", [None])[0]
+            type_param = query.get("type", ["death"])[0]
+            side_param = query.get("side", ["all"])[0]
+            limit_param = int(query.get("limit", [20])[0])
+
+            result = self.service.get_map_aggregate_heatmap(
+                map_id_or_name=map_param,
+                player_puuid=player_param,
+                event_type=type_param,
+                side=side_param,
+                limit_matches=limit_param,
+            )
+            self._send_json(result.to_dict())
+            return
+
+
         # Account detection endpoint
         if path == "/api/account/detect":
             from vallens.riot.account import AccountConnector

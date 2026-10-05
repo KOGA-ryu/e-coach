@@ -203,3 +203,135 @@ class MatchRepository:
                 }
                 for r in rows
             ]
+
+    def list_distinct_maps(self) -> list[dict[str, Any]]:
+        """List distinct maps stored in matches, along with match and event counts."""
+        sql = """
+        SELECT 
+            m.map_id,
+            COUNT(DISTINCT m.match_id) as match_count,
+            COUNT(e.event_id) as event_count,
+            MAX(m.timestamp) as latest_timestamp
+        FROM matches m
+        LEFT JOIN match_events e ON m.match_id = e.match_id
+        GROUP BY m.map_id
+        ORDER BY latest_timestamp DESC;
+        """
+        with self.db.connection() as conn:
+            rows = conn.execute(sql).fetchall()
+            return [
+                {
+                    "map_id": r["map_id"],
+                    "map_name": r["map_id"].strip("/").split("/")[-1] if r["map_id"] else "Unknown",
+                    "match_count": r["match_count"],
+                    "event_count": r["event_count"],
+                    "latest_timestamp": r["latest_timestamp"],
+                }
+                for r in rows
+            ]
+
+    def get_multi_match_events(
+        self,
+        map_identifiers: list[str] | str,
+        player_puuid: Optional[str] = None,
+        event_type: Optional[str] = None,
+        side: str = "all",
+        limit_matches: int = 20,
+    ) -> tuple[list[dict[str, Any]], list[VodTag], list[str]]:
+        """Query spatial events and tags across multiple recent matches on a given map."""
+        if isinstance(map_identifiers, str):
+            map_list = [map_identifiers]
+        else:
+            map_list = list(map_identifiers)
+
+        where_clauses = []
+        m_params: list[Any] = []
+        for m_id in map_list:
+            clean = m_id.strip()
+            where_clauses.append("(map_id = ? OR LOWER(map_id) LIKE ?)")
+            m_params.extend([clean, f"%{clean.lower()}%"])
+
+        or_conditions = " OR ".join(where_clauses) if where_clauses else "1=1"
+
+        with self.db.connection() as conn:
+            m_sql = f"""
+            SELECT match_id, map_id, timestamp
+            FROM matches
+            WHERE ({or_conditions})
+            ORDER BY timestamp DESC
+            LIMIT ?;
+            """
+            m_params.append(limit_matches)
+            m_rows = conn.execute(m_sql, m_params).fetchall()
+            if not m_rows:
+                return [], [], []
+
+
+            match_ids = [r["match_id"] for r in m_rows]
+            placeholders = ",".join("?" for _ in match_ids)
+
+            e_query = [
+                f"""
+                SELECT event_id, match_id, round_number, event_type, event_time_ms,
+                       player_puuid, pos_x, pos_y, metadata
+                FROM match_events
+                WHERE match_id IN ({placeholders})
+                  AND pos_x IS NOT NULL AND pos_y IS NOT NULL
+                """
+            ]
+            e_params: list[Any] = list(match_ids)
+
+            if event_type and event_type != "all":
+                e_query.append("AND event_type = ?")
+                e_params.append(event_type)
+
+            if player_puuid:
+                e_query.append("AND player_puuid = ?")
+                e_params.append(player_puuid)
+
+            if side == "attack":
+                e_query.append("AND round_number < 12")
+            elif side == "defense":
+                e_query.append("AND round_number >= 12")
+
+            e_query.append("ORDER BY round_number ASC, event_time_ms ASC;")
+            e_sql = " ".join(e_query)
+
+            e_rows = conn.execute(e_sql, e_params).fetchall()
+            events = []
+            for r in e_rows:
+                meta = json.loads(r["metadata"]) if r["metadata"] else {}
+                events.append({
+                    "event_id": r["event_id"],
+                    "match_id": r["match_id"],
+                    "round_number": r["round_number"],
+                    "event_type": r["event_type"],
+                    "event_time_ms": r["event_time_ms"],
+                    "player_puuid": r["player_puuid"],
+                    "norm_x": r["pos_x"],
+                    "norm_y": r["pos_y"],
+                    "metadata": meta,
+                })
+
+            t_sql = f"""
+            SELECT tag_id, match_id, event_id, timestamp_ms, tag_category, tag_name, author_type
+            FROM vod_tags
+            WHERE match_id IN ({placeholders})
+            ORDER BY timestamp_ms ASC;
+            """
+            t_rows = conn.execute(t_sql, match_ids).fetchall()
+            tags = [
+                VodTag(
+                    tag_id=r["tag_id"],
+                    match_id=r["match_id"],
+                    event_id=r["event_id"],
+                    timestamp_ms=r["timestamp_ms"],
+                    tag_category=r["tag_category"],
+                    tag_name=r["tag_name"],
+                    author_type=r["author_type"],
+                )
+                for r in t_rows
+            ]
+
+            return events, tags, match_ids
+

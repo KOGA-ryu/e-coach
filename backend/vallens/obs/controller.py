@@ -4,13 +4,15 @@ import logging
 from pathlib import Path
 import threading
 import time
-from typing import Any, Callable, Optional
+from typing import Any, Callable, Optional, TYPE_CHECKING
 
 from vallens.obs.client import MockObsClient, ObsWebSocketClient
 from vallens.obs.exporter import EdlExporter
 from vallens.obs.local_client import GameState, LocalClient, MockLocalClient
 from vallens.obs.sync import TimelineSynchronizer
-from vallens.service import ValLensService
+
+if TYPE_CHECKING:
+    from vallens.service import ValLensService
 
 logger = logging.getLogger(__name__)
 
@@ -22,12 +24,16 @@ class CaptureController:
         self,
         local_client: Optional[LocalClient | MockLocalClient] = None,
         obs_client: Optional[ObsWebSocketClient | MockObsClient] = None,
-        service: Optional[ValLensService] = None,
+        service: Optional["ValLensService"] = None,
         poll_interval: float = 1.0,
     ):
+        if service is None:
+            from vallens.service import ValLensService
+            service = ValLensService()
+
         self.local_client = local_client or LocalClient()
         self.obs_client = obs_client or MockObsClient()
-        self.service = service or ValLensService()
+        self.service = service
         self.poll_interval = poll_interval
 
         self.last_state = GameState.DISCONNECTED

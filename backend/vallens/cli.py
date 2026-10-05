@@ -82,6 +82,14 @@ def main() -> None:
     sync_parser.add_argument("--api-key", default=None, help="Riot Developer Portal API Key (RGAPI-...)")
     sync_parser.add_argument("--limit", type=int, default=5, help="Number of recent matches to sync")
 
+    # Heatmap aggregate command
+    agg_parser = subparsers.add_parser("heatmap-aggregate", help="Multi-match spatial heatmap aggregation across maps")
+    agg_parser.add_argument("map", help="Map name or ID (e.g. Ascent, Haven, Bind)")
+    agg_parser.add_argument("--type", default="death", choices=["kill", "death", "all"], help="Event type")
+    agg_parser.add_argument("--side", default="all", choices=["all", "attack", "defense"], help="Round half filter")
+    agg_parser.add_argument("--puuid", default=None, help="Filter by player PUUID")
+    agg_parser.add_argument("--limit", type=int, default=20, help="Number of recent matches to aggregate")
+
     args = parser.parse_args()
 
     db = Database(args.db)
@@ -256,6 +264,38 @@ def main() -> None:
             print(f"Successfully synced {len(matches)} matches.")
         else:
             print("Please specify --detect, or --puuid with --api-key, or --name and --tag.")
+
+    elif args.command == "heatmap-aggregate":
+        res = service.get_map_aggregate_heatmap(
+            map_id_or_name=args.map,
+            player_puuid=args.puuid,
+            event_type=args.type,
+            side=args.side,
+            limit_matches=args.limit,
+        )
+        print("=" * 70)
+        print(f"VAL-LENS MULTI-MATCH SPATIAL HEATMAP: {res.map_name.upper()}")
+        print("=" * 70)
+        print(f"Matches Analyzed: {res.match_count} | Event Type: {res.event_type.upper()} | Filter: {res.side.upper()}")
+        print(f"Total Telemetry Points: {res.total_events}")
+        print("-" * 70)
+        print("IDENTIFIED HOTSPOT CLUSTERS & HABIT FLAWS:")
+        if not res.clusters:
+            print("  No concentrated clusters identified for this filter.")
+        for c in res.clusters:
+            tags_summary = ", ".join(f"'{t['name']}' (x{t['count']})" for t in c.correlated_tags) if c.correlated_tags else "No manual review tags"
+            print(f"\n  [HOTSPOT #{c.cluster_id}] {c.zone_name.upper()} ({c.super_region})")
+            print(f"  Coordinates: ({c.center_x:.3f}, {c.center_y:.3f}) | Radius: {c.radius:.3f}")
+            print(f"  Concentration: {c.event_count} events ({c.percentage:.1f}% of total)")
+            print(f"  Correlated Tags: {tags_summary}")
+            print(f"  Tactical Analysis: {c.tactical_summary}")
+
+        print("\n" + "-" * 70)
+        print("MACRO COACHING INSIGHTS:")
+        for insight in res.tactical_insights:
+            print(f"  • {insight}")
+        print("=" * 70)
+
 
 
 if __name__ == "__main__":

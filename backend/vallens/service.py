@@ -4,6 +4,7 @@ import json
 from pathlib import Path
 from typing import Any, Optional
 
+from vallens.analytics.heatmap import HeatmapAggregationEngine, HeatmapAggregationResult
 from vallens.analytics.projection import CoordinateProjector
 from vallens.db.database import Database
 from vallens.db.repository import MatchRepository
@@ -26,6 +27,7 @@ class ValLensService:
         self.projector = CoordinateProjector(data_file=maps_file)
         self.parser = MatchParser(projector=self.projector)
         self.client = RiotApiClient(api_key=riot_api_key)
+        self.heatmap_engine = HeatmapAggregationEngine(maps_file=maps_file)
 
     def ingest_match_payload(
         self, raw_data: dict[str, Any], video_filepath: Optional[str] = None
@@ -122,3 +124,56 @@ class ValLensService:
             author_type=author_type,
         )
         return self.repo.create_tag(tag)
+
+    def list_available_maps(self) -> list[dict[str, Any]]:
+        """List all maps with matches stored in the local database, with calibrated display names."""
+        raw_maps = self.repo.list_distinct_maps()
+        results = []
+        for m in raw_maps:
+            cal = self.projector.get_calibration(m["map_id"])
+            display_name = cal.display_name if cal else m["map_name"]
+            results.append({
+                "map_id": m["map_id"],
+                "map_name": display_name,
+                "match_count": m["match_count"],
+                "event_count": m["event_count"],
+                "latest_timestamp": m["latest_timestamp"],
+            })
+        return results
+
+    def get_map_aggregate_heatmap(
+        self,
+        map_id_or_name: str,
+        player_puuid: Optional[str] = None,
+        event_type: str = "death",
+        side: str = "all",
+        limit_matches: int = 20,
+    ) -> HeatmapAggregationResult:
+        """Query and aggregate telemetry coordinates across matches for a map."""
+        cal = self.projector.get_calibration(map_id_or_name)
+        display_name = cal.display_name if cal else map_id_or_name.strip("/").split("/")[-1].capitalize()
+        map_url = cal.map_url if cal else map_id_or_name
+
+        identifiers = [map_id_or_name]
+        if cal:
+            identifiers.extend([cal.map_url, cal.display_name])
+
+        events, tags, match_ids = self.repo.get_multi_match_events(
+            map_identifiers=identifiers,
+            player_puuid=player_puuid,
+            event_type=event_type,
+            side=side,
+            limit_matches=limit_matches,
+        )
+
+        return self.heatmap_engine.build_aggregation_result(
+            map_id=map_url,
+            map_name=display_name,
+            match_ids=match_ids,
+            points=events,
+            tags=tags,
+            event_type=event_type,
+            side=side,
+        )
+
+

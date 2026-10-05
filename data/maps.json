@@ -7,7 +7,163 @@
     "xScalarToAdd": 0.813895,
     "yScalarToAdd": 0.573242,
     "displayIcon": "https://media.valorant-api.com/maps/7eaecc1b-4337-bbf6-6ab9-04b8f06b3319/displayicon.png",
-    "listViewIcon": "https://media.valorant-api.com/maps/7eaecc1b-4337-bbf6-6ab9-04b8f06b3319/listviewicon.png"
+    "listViewIcon": "https://media.valorant-api.com/maps/7eaecc1b-4337-bbf6-6ab9-04b8f06b3319/listviewicon.png",
+    "callouts": [
+      {
+        "superRegionName": "A",
+        "regionName": "Tree",
+        "fullName": "A Tree",
+        "norm_x": 0.3982,
+        "norm_y": 0.2946
+      },
+      {
+        "superRegionName": "A",
+        "regionName": "Lobby",
+        "fullName": "A Lobby",
+        "norm_x": 0.6029,
+        "norm_y": 0.259
+      },
+      {
+        "superRegionName": "A",
+        "regionName": "Main",
+        "fullName": "A Main",
+        "norm_x": 0.4842,
+        "norm_y": 0.2007
+      },
+      {
+        "superRegionName": "A",
+        "regionName": "Window",
+        "fullName": "A Window",
+        "norm_x": 0.2412,
+        "norm_y": 0.2916
+      },
+      {
+        "superRegionName": "A",
+        "regionName": "Site",
+        "fullName": "A Site",
+        "norm_x": 0.3501,
+        "norm_y": 0.1425
+      },
+      {
+        "superRegionName": "Attacker Side",
+        "regionName": "Spawn",
+        "fullName": "Attacker Side Spawn",
+        "norm_x": 0.8174,
+        "norm_y": 0.569
+      },
+      {
+        "superRegionName": "B",
+        "regionName": "Lobby",
+        "fullName": "B Lobby",
+        "norm_x": 0.7166,
+        "norm_y": 0.6776
+      },
+      {
+        "superRegionName": "B",
+        "regionName": "Main",
+        "fullName": "B Main",
+        "norm_x": 0.405,
+        "norm_y": 0.7121
+      },
+      {
+        "superRegionName": "B",
+        "regionName": "Boat House",
+        "fullName": "B Boat House",
+        "norm_x": 0.2705,
+        "norm_y": 0.8872
+      },
+      {
+        "superRegionName": "Mid",
+        "regionName": "Bottom",
+        "fullName": "Mid Bottom",
+        "norm_x": 0.3973,
+        "norm_y": 0.4947
+      },
+      {
+        "superRegionName": "B",
+        "regionName": "Site",
+        "fullName": "B Site",
+        "norm_x": 0.2855,
+        "norm_y": 0.7373
+      },
+      {
+        "superRegionName": "Mid",
+        "regionName": "Catwalk",
+        "fullName": "Mid Catwalk",
+        "norm_x": 0.525,
+        "norm_y": 0.4111
+      },
+      {
+        "superRegionName": "Mid",
+        "regionName": "Cubby",
+        "fullName": "Mid Cubby",
+        "norm_x": 0.4548,
+        "norm_y": 0.3361
+      },
+      {
+        "superRegionName": "Defender Side",
+        "regionName": "Spawn",
+        "fullName": "Defender Side Spawn",
+        "norm_x": 0.1318,
+        "norm_y": 0.4336
+      },
+      {
+        "superRegionName": "A",
+        "regionName": "Garden",
+        "fullName": "A Garden",
+        "norm_x": 0.2853,
+        "norm_y": 0.3091
+      },
+      {
+        "superRegionName": "Mid",
+        "regionName": "Market",
+        "fullName": "Mid Market",
+        "norm_x": 0.2985,
+        "norm_y": 0.497
+      },
+      {
+        "superRegionName": "Mid",
+        "regionName": "Courtyard",
+        "fullName": "Mid Courtyard",
+        "norm_x": 0.4928,
+        "norm_y": 0.4877
+      },
+      {
+        "superRegionName": "Mid",
+        "regionName": "Link",
+        "fullName": "Mid Link",
+        "norm_x": 0.5143,
+        "norm_y": 0.6175
+      },
+      {
+        "superRegionName": "Mid",
+        "regionName": "Pizza",
+        "fullName": "Mid Pizza",
+        "norm_x": 0.3055,
+        "norm_y": 0.4471
+      },
+      {
+        "superRegionName": "A",
+        "regionName": "Rafters",
+        "fullName": "A Rafters",
+        "norm_x": 0.2392,
+        "norm_y": 0.1441
+      },
+      {
+        "superRegionName": "Mid",
+        "regionName": "Top",
+        "fullName": "Mid Top",
+        "norm_x": 0.6648,
+        "norm_y": 0.3805
+      },
+      {
+        "superRegionName": "A",
+        "regionName": "Wine",
+        "fullName": "A Wine",
+        "norm_x": 0.4856,
+        "norm_y": 0.0581
+      }
+    ]
   },
   "/Game/Maps/Bonsai/Bonsai": {
     "displayName": "Split",
@@ -17,7 +173,177 @@
     "xScalarToAdd": 0.842188,
     "yScalarToAdd": 0.697578,
     "displayIcon": "https://media.valorant-api.com/maps/d960549e-485c-e861-8d71-aa9d1aed12a2/displayicon.png",
-    "listViewIcon": "https://media.valorant-api.com/maps/d960549e-485c-e861-8d71-aa9d1aed12a2/listviewicon.png"
+    "listViewIcon": "https://media.valorant-api.com/maps/d960549e-485c-e861-8d71-aa9d1aed12a2/listviewicon.png",
+    "callouts": [
+      {
+        "superRegionName": "A",
+        "regionName": "Back",
+        "fullName": "A Back",
+        "norm_x": 0.2293,
+        "norm_y": 0.1247
+      },
+      {
+        "superRegionName": "A",
+        "regionName": "Lobby",
+        "fullName": "A Lobby",
+        "norm_x": 0.6505,
+        "norm_y": 0.1661
+      },
+      {
+        "superRegionName": "A",
+        "regionName": "Main",
+        "fullName": "A Main",
+        "norm_x": 0.4917,
+        "norm_y": 0.2077
+      },
+      {
+        "superRegionName": "A",
+        "regionName": "Rafters",
+        "fullName": "A Rafters",
+        "norm_x": 0.354,
+        "norm_y": 0.2737
+      },
+      {
+        "superRegionName": "A",
+        "regionName": "Ramps",
+        "fullName": "A Ramps",
+        "norm_x": 0.4717,
+        "norm_y": 0.3598
+      },
+      {
+        "superRegionName": "A",
+        "regionName": "Screens",
+        "fullName": "A Screens",
+        "norm_x": 0.1504,
+        "norm_y": 0.257
+      },
+      {
+        "superRegionName": "A",
+        "regionName": "Sewer",
+        "fullName": "A Sewer",
+        "norm_x": 0.6575,
+        "norm_y": 0.3183
+      },
+      {
+        "superRegionName": "A",
+        "regionName": "Site",
+        "fullName": "A Site",
+        "norm_x": 0.3148,
+        "norm_y": 0.1837
+      },
+      {
+        "superRegionName": "A",
+        "regionName": "Tower",
+        "fullName": "A Tower",
+        "norm_x": 0.3158,
+        "norm_y": 0.3359
+      },
+      {
+        "superRegionName": "Attacker Side",
+        "regionName": "Spawn",
+        "fullName": "Attacker Side Spawn",
+        "norm_x": 0.8468,
+        "norm_y": 0.5492
+      },
+      {
+        "superRegionName": "B",
+        "regionName": "Alley",
+        "fullName": "B Alley",
+        "norm_x": 0.213,
+        "norm_y": 0.7879
+      },
+      {
+        "superRegionName": "B",
+        "regionName": "Back",
+        "fullName": "B Back",
+        "norm_x": 0.2636,
+        "norm_y": 0.9399
+      },
+      {
+        "superRegionName": "B",
+        "regionName": "Link",
+        "fullName": "B Link",
+        "norm_x": 0.6573,
+        "norm_y": 0.6997
+      },
+      {
+        "superRegionName": "B",
+        "regionName": "Garage",
+        "fullName": "B Garage",
+        "norm_x": 0.542,
+        "norm_y": 0.8685
+      },
+      {
+        "superRegionName": "B",
+        "regionName": "Rafters",
+        "fullName": "B Rafters",
+        "norm_x": 0.3687,
+        "norm_y": 0.7473
+      },
+      {
+        "superRegionName": "B",
+        "regionName": "Site",
+        "fullName": "B Site",
+        "norm_x": 0.3535,
+        "norm_y": 0.8666
+      },
+      {
+        "superRegionName": "B",
+        "regionName": "Stairs",
+        "fullName": "B Stairs",
+        "norm_x": 0.3148,
+        "norm_y": 0.6148
+      },
+      {
+        "superRegionName": "B",
+        "regionName": "Tower",
+        "fullName": "B Tower",
+        "norm_x": 0.4296,
+        "norm_y": 0.6844
+      },
+      {
+        "superRegionName": "B",
+        "regionName": "Lobby",
+        "fullName": "B Lobby",
+        "norm_x": 0.6875,
+        "norm_y": 0.7968
+      },
+      {
+        "superRegionName": "Defender Side",
+        "regionName": "Spawn",
+        "fullName": "Defender Side Spawn",
+        "norm_x": 0.1429,
+        "norm_y": 0.5305
+      },
+      {
+        "superRegionName": "Mid",
+        "regionName": "Bottom",
+        "fullName": "Mid Bottom",
+        "norm_x": 0.616,
+        "norm_y": 0.5476
+      },
+      {
+        "superRegionName": "Mid",
+        "regionName": "Mail",
+        "fullName": "Mid Mail",
+        "norm_x": 0.4671,
+        "norm_y": 0.6075
+      },
+      {
+        "superRegionName": "Mid",
+        "regionName": "Top",
+        "fullName": "Mid Top",
+        "norm_x": 0.4836,
+        "norm_y": 0.5399
+      },
+      {
+        "superRegionName": "Mid",
+        "regionName": "Vent",
+        "fullName": "Mid Vent",
+        "norm_x": 0.4258,
+        "norm_y": 0.4515
+      }
+    ]
   },
   "/Game/Maps/Canyon/Canyon": {
     "displayName": "Fracture",
@@ -27,7 +353,163 @@
     "xScalarToAdd": 0.556952,
     "yScalarToAdd": 1.155886,
     "displayIcon": "https://media.valorant-api.com/maps/b529448b-4d60-346e-e89e-00a4c527a405/displayicon.png",
-    "listViewIcon": "https://media.valorant-api.com/maps/b529448b-4d60-346e-e89e-00a4c527a405/listviewicon.png"
+    "listViewIcon": "https://media.valorant-api.com/maps/b529448b-4d60-346e-e89e-00a4c527a405/listviewicon.png",
+    "callouts": [
+      {
+        "superRegionName": "Attacker Side",
+        "regionName": "Bridge",
+        "fullName": "Attacker Side Bridge",
+        "norm_x": 0.498,
+        "norm_y": 0.126
+      },
+      {
+        "superRegionName": "B",
+        "regionName": "Bench",
+        "fullName": "B Bench",
+        "norm_x": 0.331,
+        "norm_y": 0.261
+      },
+      {
+        "superRegionName": "B",
+        "regionName": "Arcade",
+        "fullName": "B Arcade",
+        "norm_x": 0.231,
+        "norm_y": 0.3618
+      },
+      {
+        "superRegionName": "B",
+        "regionName": "Tower",
+        "fullName": "B Tower",
+        "norm_x": 0.1201,
+        "norm_y": 0.4418
+      },
+      {
+        "superRegionName": "B",
+        "regionName": "Site",
+        "fullName": "B Site",
+        "norm_x": 0.0935,
+        "norm_y": 0.518
+      },
+      {
+        "superRegionName": "B",
+        "regionName": "Generator",
+        "fullName": "B Generator",
+        "norm_x": 0.2933,
+        "norm_y": 0.5036
+      },
+      {
+        "superRegionName": "B",
+        "regionName": "Link",
+        "fullName": "B Link",
+        "norm_x": 0.3432,
+        "norm_y": 0.4384
+      },
+      {
+        "superRegionName": "B",
+        "regionName": "Canteen",
+        "fullName": "B Canteen",
+        "norm_x": 0.3122,
+        "norm_y": 0.6012
+      },
+      {
+        "superRegionName": "A",
+        "regionName": "Link",
+        "fullName": "A Link",
+        "norm_x": 0.6585,
+        "norm_y": 0.4868
+      },
+      {
+        "superRegionName": "Defender Side",
+        "regionName": "Spawn",
+        "fullName": "Defender Side Spawn",
+        "norm_x": 0.5041,
+        "norm_y": 0.4417
+      },
+      {
+        "superRegionName": "B",
+        "regionName": "Main",
+        "fullName": "B Main",
+        "norm_x": 0.1402,
+        "norm_y": 0.6905
+      },
+      {
+        "superRegionName": "B",
+        "regionName": "Tree",
+        "fullName": "B Tree",
+        "norm_x": 0.2364,
+        "norm_y": 0.7686
+      },
+      {
+        "superRegionName": "B",
+        "regionName": "Tunnel",
+        "fullName": "B Tunnel",
+        "norm_x": 0.2404,
+        "norm_y": 0.5785
+      },
+      {
+        "superRegionName": "A",
+        "regionName": "Hall",
+        "fullName": "A Hall",
+        "norm_x": 0.7174,
+        "norm_y": 0.7609
+      },
+      {
+        "superRegionName": "A",
+        "regionName": "Door",
+        "fullName": "A Door",
+        "norm_x": 0.7083,
+        "norm_y": 0.7029
+      },
+      {
+        "superRegionName": "A",
+        "regionName": "Rope",
+        "fullName": "A Rope",
+        "norm_x": 0.6391,
+        "norm_y": 0.6381
+      },
+      {
+        "superRegionName": "A",
+        "regionName": "Main",
+        "fullName": "A Main",
+        "norm_x": 0.8261,
+        "norm_y": 0.6973
+      },
+      {
+        "superRegionName": "A",
+        "regionName": "Site",
+        "fullName": "A Site",
+        "norm_x": 0.8201,
+        "norm_y": 0.5221
+      },
+      {
+        "superRegionName": "A",
+        "regionName": "Drop",
+        "fullName": "A Drop",
+        "norm_x": 0.7774,
+        "norm_y": 0.43
+      },
+      {
+        "superRegionName": "A",
+        "regionName": "Dish",
+        "fullName": "A Dish",
+        "norm_x": 0.6655,
+        "norm_y": 0.2747
+      },
+      {
+        "superRegionName": "A",
+        "regionName": "Gate",
+        "fullName": "A Gate",
+        "norm_x": 0.679,
+        "norm_y": 0.1448
+      },
+      {
+        "superRegionName": "Attacker Side",
+        "regionName": "Spawn",
+        "fullName": "Attacker Side Spawn",
+        "norm_x": 0.483,
+        "norm_y": 0.8169
+      }
+    ]
   },
   "/Game/Maps/Duality/Duality": {
     "displayName": "Bind",
@@ -37,7 +519,177 @@
     "xScalarToAdd": 0.576941,
     "yScalarToAdd": 0.967566,
     "displayIcon": "https://media.valorant-api.com/maps/2c9d57ec-4431-9c5e-2939-8f9ef6dd5cba/displayicon.png",
-    "listViewIcon": "https://media.valorant-api.com/maps/2c9d57ec-4431-9c5e-2939-8f9ef6dd5cba/listviewicon.png"
+    "listViewIcon": "https://media.valorant-api.com/maps/2c9d57ec-4431-9c5e-2939-8f9ef6dd5cba/listviewicon.png",
+    "callouts": [
+      {
+        "superRegionName": "A",
+        "regionName": "Exit",
+        "fullName": "A Exit",
+        "norm_x": 0.9235,
+        "norm_y": 0.5221
+      },
+      {
+        "superRegionName": "A",
+        "regionName": "Link",
+        "fullName": "A Link",
+        "norm_x": 0.5175,
+        "norm_y": 0.592
+      },
+      {
+        "superRegionName": "A",
+        "regionName": "Lobby",
+        "fullName": "A Lobby",
+        "norm_x": 0.7633,
+        "norm_y": 0.6069
+      },
+      {
+        "superRegionName": "A",
+        "regionName": "Short",
+        "fullName": "A Short",
+        "norm_x": 0.6244,
+        "norm_y": 0.4965
+      },
+      {
+        "superRegionName": "A",
+        "regionName": "Site",
+        "fullName": "A Site",
+        "norm_x": 0.7341,
+        "norm_y": 0.3334
+      },
+      {
+        "superRegionName": "A",
+        "regionName": "Teleporter",
+        "fullName": "A Teleporter",
+        "norm_x": 0.6058,
+        "norm_y": 0.4111
+      },
+      {
+        "superRegionName": "Attacker Side",
+        "regionName": "Spawn",
+        "fullName": "Attacker Side Spawn",
+        "norm_x": 0.5815,
+        "norm_y": 0.958
+      },
+      {
+        "superRegionName": "B",
+        "regionName": "Exit",
+        "fullName": "B Exit",
+        "norm_x": 0.4729,
+        "norm_y": 0.4412
+      },
+      {
+        "superRegionName": "B",
+        "regionName": "Hall",
+        "fullName": "B Hall",
+        "norm_x": 0.2854,
+        "norm_y": 0.2016
+      },
+      {
+        "superRegionName": "B",
+        "regionName": "Link",
+        "fullName": "B Link",
+        "norm_x": 0.4223,
+        "norm_y": 0.5922
+      },
+      {
+        "superRegionName": "B",
+        "regionName": "Fountain",
+        "fullName": "B Fountain",
+        "norm_x": 0.2589,
+        "norm_y": 0.6291
+      },
+      {
+        "superRegionName": "B",
+        "regionName": "Long",
+        "fullName": "B Long",
+        "norm_x": 0.1927,
+        "norm_y": 0.5152
+      },
+      {
+        "superRegionName": "B",
+        "regionName": "Short",
+        "fullName": "B Short",
+        "norm_x": 0.3966,
+        "norm_y": 0.5295
+      },
+      {
+        "superRegionName": "B",
+        "regionName": "Site",
+        "fullName": "B Site",
+        "norm_x": 0.2919,
+        "norm_y": 0.3122
+      },
+      {
+        "superRegionName": "B",
+        "regionName": "Teleporter",
+        "fullName": "B Teleporter",
+        "norm_x": 0.1507,
+        "norm_y": 0.4349
+      },
+      {
+        "superRegionName": "B",
+        "regionName": "Window",
+        "fullName": "B Window",
+        "norm_x": 0.3227,
+        "norm_y": 0.4468
+      },
+      {
+        "superRegionName": "A",
+        "regionName": "Bath",
+        "fullName": "A Bath",
+        "norm_x": 0.8395,
+        "norm_y": 0.4303
+      },
+      {
+        "superRegionName": "Attacker Side",
+        "regionName": "Cave",
+        "fullName": "Attacker Side Cave",
+        "norm_x": 0.5921,
+        "norm_y": 0.7363
+      },
+      {
+        "superRegionName": "A",
+        "regionName": "Cubby",
+        "fullName": "A Cubby",
+        "norm_x": 0.5873,
+        "norm_y": 0.4599
+      },
+      {
+        "superRegionName": "Defender Side",
+        "regionName": "Spawn",
+        "fullName": "Defender Side Spawn",
+        "norm_x": 0.5169,
+        "norm_y": 0.1037
+      },
+      {
+        "superRegionName": "B",
+        "regionName": "Elbow",
+        "fullName": "B Elbow",
+        "norm_x": 0.1583,
+        "norm_y": 0.306
+      },
+      {
+        "superRegionName": "B",
+        "regionName": "Garden",
+        "fullName": "B Garden",
+        "norm_x": 0.2467,
+        "norm_y": 0.4281
+      },
+      {
+        "superRegionName": "A",
+        "regionName": "Lamps",
+        "fullName": "A Lamps",
+        "norm_x": 0.5817,
+        "norm_y": 0.3392
+      },
+      {
+        "superRegionName": "A",
+        "regionName": "Tower",
+        "fullName": "A Tower",
+        "norm_x": 0.7278,
+        "norm_y": 0.2081
+      }
+    ]
   },
   "/Game/Maps/Foxtrot/Foxtrot": {
     "displayName": "Breeze",
@@ -47,7 +699,170 @@
     "xScalarToAdd": 0.465123,
     "yScalarToAdd": 0.833078,
     "displayIcon": "https://media.valorant-api.com/maps/2fb9a4fd-47b8-4e7d-a969-74b4046ebd53/displayicon.png",
-    "listViewIcon": "https://media.valorant-api.com/maps/2fb9a4fd-47b8-4e7d-a969-74b4046ebd53/listviewicon.png"
+    "listViewIcon": "https://media.valorant-api.com/maps/2fb9a4fd-47b8-4e7d-a969-74b4046ebd53/listviewicon.png",
+    "callouts": [
+      {
+        "superRegionName": "Mid",
+        "regionName": "Hall",
+        "fullName": "Mid Hall",
+        "norm_x": 0.6395,
+        "norm_y": 0.5351
+      },
+      {
+        "superRegionName": "A",
+        "regionName": "Bridge",
+        "fullName": "A Bridge",
+        "norm_x": 0.7119,
+        "norm_y": 0.2451
+      },
+      {
+        "superRegionName": "Defender Side",
+        "regionName": "Spawn",
+        "fullName": "Defender Side Spawn",
+        "norm_x": 0.7119,
+        "norm_y": 0.2101
+      },
+      {
+        "superRegionName": "Defender Side",
+        "regionName": "Arches",
+        "fullName": "Defender Side Arches",
+        "norm_x": 0.3741,
+        "norm_y": 0.1751
+      },
+      {
+        "superRegionName": "Mid",
+        "regionName": "Wood Doors",
+        "fullName": "Mid Wood Doors",
+        "norm_x": 0.6436,
+        "norm_y": 0.4953
+      },
+      {
+        "superRegionName": "Mid",
+        "regionName": "Pillar",
+        "fullName": "Mid Pillar",
+        "norm_x": 0.4984,
+        "norm_y": 0.5408
+      },
+      {
+        "superRegionName": "Mid",
+        "regionName": "Top",
+        "fullName": "Mid Top",
+        "norm_x": 0.5019,
+        "norm_y": 0.4008
+      },
+      {
+        "superRegionName": "Mid",
+        "regionName": "Nest",
+        "fullName": "Mid Nest",
+        "norm_x": 0.4844,
+        "norm_y": 0.2276
+      },
+      {
+        "superRegionName": "B",
+        "regionName": "Window",
+        "fullName": "B Window",
+        "norm_x": 0.1729,
+        "norm_y": 0.6773
+      },
+      {
+        "superRegionName": "B",
+        "regionName": "Main",
+        "fullName": "B Main",
+        "norm_x": 0.1536,
+        "norm_y": 0.5846
+      },
+      {
+        "superRegionName": "B",
+        "regionName": "Elbow",
+        "fullName": "B Elbow",
+        "norm_x": 0.2621,
+        "norm_y": 0.5058
+      },
+      {
+        "superRegionName": "B",
+        "regionName": "Site",
+        "fullName": "B Site",
+        "norm_x": 0.0696,
+        "norm_y": 0.3816
+      },
+      {
+        "superRegionName": "B",
+        "regionName": "Tunnel",
+        "fullName": "B Tunnel",
+        "norm_x": 0.3636,
+        "norm_y": 0.3816
+      },
+      {
+        "superRegionName": "A",
+        "regionName": "Ramp",
+        "fullName": "A Ramp",
+        "norm_x": 0.6559,
+        "norm_y": 0.3221
+      },
+      {
+        "superRegionName": "B",
+        "regionName": "Back",
+        "fullName": "B Back",
+        "norm_x": 0.0679,
+        "norm_y": 0.3046
+      },
+      {
+        "superRegionName": "B",
+        "regionName": "Wall",
+        "fullName": "B Wall",
+        "norm_x": 0.2551,
+        "norm_y": 0.2346
+      },
+      {
+        "superRegionName": "Mid",
+        "regionName": "Cannon",
+        "fullName": "Mid Cannon",
+        "norm_x": 0.3356,
+        "norm_y": 0.6301
+      },
+      {
+        "superRegionName": "Mid",
+        "regionName": "Bottom",
+        "fullName": "Mid Bottom",
+        "norm_x": 0.4984,
+        "norm_y": 0.7228
+      },
+      {
+        "superRegionName": "A",
+        "regionName": "Lobby",
+        "fullName": "A Lobby",
+        "norm_x": 0.7031,
+        "norm_y": 0.9206
+      },
+      {
+        "superRegionName": "A",
+        "regionName": "Shop",
+        "fullName": "A Shop",
+        "norm_x": 0.7626,
+        "norm_y": 0.6826
+      },
+      {
+        "superRegionName": "A",
+        "regionName": "Site",
+        "fullName": "A Site",
+        "norm_x": 0.9079,
+        "norm_y": 0.4953
+      },
+      {
+        "superRegionName": "A",
+        "regionName": "Pyramids",
+        "fullName": "A Pyramids",
+        "norm_x": 0.8466,
+        "norm_y": 0.4691
+      },
+      {
+        "superRegionName": "Attacker Side",
+        "regionName": "Spawn",
+        "fullName": "Attacker Side Spawn",
+        "norm_x": 0.4336,
+        "norm_y": 0.8733
+      }
+    ]
   },
   "/Game/Maps/Infinity/Infinity": {
     "displayName": "Abyss",
@@ -57,7 +872,170 @@
     "xScalarToAdd": 0.5,
     "yScalarToAdd": 0.5,
     "displayIcon": "https://media.valorant-api.com/maps/224b0a95-48b9-f703-1bd8-67aca101a61f/displayicon.png",
-    "listViewIcon": "https://media.valorant-api.com/maps/224b0a95-48b9-f703-1bd8-67aca101a61f/listviewicon.png"
+    "listViewIcon": "https://media.valorant-api.com/maps/224b0a95-48b9-f703-1bd8-67aca101a61f/listviewicon.png",
+    "callouts": [
+      {
+        "superRegionName": "A",
+        "regionName": "Bridge",
+        "fullName": "A Bridge",
+        "norm_x": 0.4696,
+        "norm_y": 0.0383
+      },
+      {
+        "superRegionName": "A",
+        "regionName": "Link",
+        "fullName": "A Link",
+        "norm_x": 0.3015,
+        "norm_y": 0.2732
+      },
+      {
+        "superRegionName": "A",
+        "regionName": "Lobby",
+        "fullName": "A Lobby",
+        "norm_x": 0.7754,
+        "norm_y": 0.2367
+      },
+      {
+        "superRegionName": "A",
+        "regionName": "Main",
+        "fullName": "A Main",
+        "norm_x": 0.6337,
+        "norm_y": 0.1922
+      },
+      {
+        "superRegionName": "A",
+        "regionName": "Site",
+        "fullName": "A Site",
+        "norm_x": 0.4838,
+        "norm_y": 0.1517
+      },
+      {
+        "superRegionName": "Attacker Side",
+        "regionName": "Spawn",
+        "fullName": "Attacker Side Spawn",
+        "norm_x": 0.901,
+        "norm_y": 0.423
+      },
+      {
+        "superRegionName": "A",
+        "regionName": "Tower",
+        "fullName": "A Tower",
+        "norm_x": 0.4899,
+        "norm_y": 0.255
+      },
+      {
+        "superRegionName": "Mid",
+        "regionName": "Bend",
+        "fullName": "Mid Bend",
+        "norm_x": 0.5871,
+        "norm_y": 0.6377
+      },
+      {
+        "superRegionName": "B",
+        "regionName": "Link",
+        "fullName": "B Link",
+        "norm_x": 0.3096,
+        "norm_y": 0.662
+      },
+      {
+        "superRegionName": "B",
+        "regionName": "Lobby",
+        "fullName": "B Lobby",
+        "norm_x": 0.826,
+        "norm_y": 0.7956
+      },
+      {
+        "superRegionName": "B",
+        "regionName": "Main",
+        "fullName": "B Main",
+        "norm_x": 0.6235,
+        "norm_y": 0.8604
+      },
+      {
+        "superRegionName": "B",
+        "regionName": "Nest",
+        "fullName": "B Nest",
+        "norm_x": 0.6742,
+        "norm_y": 0.903
+      },
+      {
+        "superRegionName": "Mid",
+        "regionName": "Bottom",
+        "fullName": "Mid Bottom",
+        "norm_x": 0.5466,
+        "norm_y": 0.5324
+      },
+      {
+        "superRegionName": "B",
+        "regionName": "Site",
+        "fullName": "B Site",
+        "norm_x": 0.4048,
+        "norm_y": 0.8584
+      },
+      {
+        "superRegionName": "Mid",
+        "regionName": "Catwalk",
+        "fullName": "Mid Catwalk",
+        "norm_x": 0.5425,
+        "norm_y": 0.4514
+      },
+      {
+        "superRegionName": "B",
+        "regionName": "Danger",
+        "fullName": "B Danger",
+        "norm_x": 0.5567,
+        "norm_y": 0.9739
+      },
+      {
+        "superRegionName": "Defender Side",
+        "regionName": "Spawn",
+        "fullName": "Defender Side Spawn",
+        "norm_x": 0.0727,
+        "norm_y": 0.423
+      },
+      {
+        "superRegionName": "Mid",
+        "regionName": "Library",
+        "fullName": "Mid Library",
+        "norm_x": 0.4514,
+        "norm_y": 0.5263
+      },
+      {
+        "superRegionName": "A",
+        "regionName": "Secret",
+        "fullName": "A Secret",
+        "norm_x": 0.1881,
+        "norm_y": 0.1942
+      },
+      {
+        "superRegionName": "A",
+        "regionName": "Security",
+        "fullName": "A Security",
+        "norm_x": 0.259,
+        "norm_y": 0.1031
+      },
+      {
+        "superRegionName": "Mid",
+        "regionName": "Top",
+        "fullName": "Mid Top",
+        "norm_x": 0.3076,
+        "norm_y": 0.4372
+      },
+      {
+        "superRegionName": "B",
+        "regionName": "Tower",
+        "fullName": "B Tower",
+        "norm_x": 0.2975,
+        "norm_y": 0.8179
+      },
+      {
+        "superRegionName": "A",
+        "regionName": "Vent",
+        "fullName": "A Vent",
+        "norm_x": 0.4737,
+        "norm_y": 0.3623
+      }
+    ]
   },
   "/Game/Maps/Jam/Jam": {
     "displayName": "Lotus",
@@ -67,7 +1045,205 @@
     "xScalarToAdd": 0.454789,
     "yScalarToAdd": 0.917752,
     "displayIcon": "https://media.valorant-api.com/maps/2fe4ed3a-450a-948b-6d6b-e89a78e680a9/displayicon.png",
-    "listViewIcon": "https://media.valorant-api.com/maps/2fe4ed3a-450a-948b-6d6b-e89a78e680a9/listviewicon.png"
+    "listViewIcon": "https://media.valorant-api.com/maps/2fe4ed3a-450a-948b-6d6b-e89a78e680a9/listviewicon.png",
+    "callouts": [
+      {
+        "superRegionName": "A",
+        "regionName": "Top",
+        "fullName": "A Top",
+        "norm_x": 0.8181,
+        "norm_y": 0.251
+      },
+      {
+        "superRegionName": "A",
+        "regionName": "Drop",
+        "fullName": "A Drop",
+        "norm_x": 0.8935,
+        "norm_y": 0.2326
+      },
+      {
+        "superRegionName": "A",
+        "regionName": "Site",
+        "fullName": "A Site",
+        "norm_x": 0.8549,
+        "norm_y": 0.3608
+      },
+      {
+        "superRegionName": "A",
+        "regionName": "Hut",
+        "fullName": "A Hut",
+        "norm_x": 0.8549,
+        "norm_y": 0.3477
+      },
+      {
+        "superRegionName": "A",
+        "regionName": "Tree",
+        "fullName": "A Tree",
+        "norm_x": 0.8549,
+        "norm_y": 0.475
+      },
+      {
+        "superRegionName": "A",
+        "regionName": "Door",
+        "fullName": "A Door",
+        "norm_x": 0.8295,
+        "norm_y": 0.5139
+      },
+      {
+        "superRegionName": "A",
+        "regionName": "Main",
+        "fullName": "A Main",
+        "norm_x": 0.7543,
+        "norm_y": 0.537
+      },
+      {
+        "superRegionName": "A",
+        "regionName": "Rubble",
+        "fullName": "A Rubble",
+        "norm_x": 0.8089,
+        "norm_y": 0.6009
+      },
+      {
+        "superRegionName": "A",
+        "regionName": "Root",
+        "fullName": "A Root",
+        "norm_x": 0.692,
+        "norm_y": 0.6009
+      },
+      {
+        "superRegionName": "A",
+        "regionName": "Lobby",
+        "fullName": "A Lobby",
+        "norm_x": 0.6655,
+        "norm_y": 0.7244
+      },
+      {
+        "superRegionName": "C",
+        "regionName": "Lobby",
+        "fullName": "C Lobby",
+        "norm_x": 0.3413,
+        "norm_y": 0.8167
+      },
+      {
+        "superRegionName": "B",
+        "regionName": "Pillars",
+        "fullName": "B Pillars",
+        "norm_x": 0.5029,
+        "norm_y": 0.661
+      },
+      {
+        "superRegionName": "B",
+        "regionName": "Main",
+        "fullName": "B Main",
+        "norm_x": 0.4513,
+        "norm_y": 0.5666
+      },
+      {
+        "superRegionName": "C",
+        "regionName": "Door",
+        "fullName": "C Door",
+        "norm_x": 0.3286,
+        "norm_y": 0.5708
+      },
+      {
+        "superRegionName": "B",
+        "regionName": "Site",
+        "fullName": "B Site",
+        "norm_x": 0.5029,
+        "norm_y": 0.4593
+      },
+      {
+        "superRegionName": "A",
+        "regionName": "Link",
+        "fullName": "A Link",
+        "norm_x": 0.6051,
+        "norm_y": 0.485
+      },
+      {
+        "superRegionName": "B",
+        "regionName": "Upper",
+        "fullName": "B Upper",
+        "norm_x": 0.564,
+        "norm_y": 0.3646
+      },
+      {
+        "superRegionName": "C",
+        "regionName": "Waterfall",
+        "fullName": "C Waterfall",
+        "norm_x": 0.3112,
+        "norm_y": 0.4339
+      },
+      {
+        "superRegionName": "C",
+        "regionName": "Link",
+        "fullName": "C Link",
+        "norm_x": 0.3556,
+        "norm_y": 0.3775
+      },
+      {
+        "superRegionName": "A",
+        "regionName": "Stairs",
+        "fullName": "A Stairs",
+        "norm_x": 0.7328,
+        "norm_y": 0.3232
+      },
+      {
+        "superRegionName": "C",
+        "regionName": "Mound",
+        "fullName": "C Mound",
+        "norm_x": 0.3413,
+        "norm_y": 0.6396
+      },
+      {
+        "superRegionName": "C",
+        "regionName": "Main",
+        "fullName": "C Main",
+        "norm_x": 0.2281,
+        "norm_y": 0.5353
+      },
+      {
+        "superRegionName": "C",
+        "regionName": "Bend",
+        "fullName": "C Bend",
+        "norm_x": 0.0745,
+        "norm_y": 0.5104
+      },
+      {
+        "superRegionName": "C",
+        "regionName": "Site",
+        "fullName": "C Site",
+        "norm_x": 0.1476,
+        "norm_y": 0.437
+      },
+      {
+        "superRegionName": "C",
+        "regionName": "Hall",
+        "fullName": "C Hall",
+        "norm_x": 0.1476,
+        "norm_y": 0.3488
+      },
+      {
+        "superRegionName": "C",
+        "regionName": "Gravel",
+        "fullName": "C Gravel",
+        "norm_x": 0.3286,
+        "norm_y": 0.2743
+      },
+      {
+        "superRegionName": "Defender Side",
+        "regionName": "Spawn",
+        "fullName": "Defender Side Spawn",
+        "norm_x": 0.577,
+        "norm_y": 0.2203
+      },
+      {
+        "superRegionName": "Attacker Side",
+        "regionName": "Spawn",
+        "fullName": "Attacker Side Spawn",
+        "norm_x": 0.5108,
+        "norm_y": 0.8169
+      }
+    ]
   },
   "/Game/Maps/Juliett/Juliett": {
     "displayName": "Sunset",
@@ -77,7 +1253,128 @@
     "xScalarToAdd": 0.5,
     "yScalarToAdd": 0.515625,
     "displayIcon": "https://media.valorant-api.com/maps/92584fbe-486a-b1b2-9faa-39b0f486b498/displayicon.png",
-    "listViewIcon": "https://media.valorant-api.com/maps/92584fbe-486a-b1b2-9faa-39b0f486b498/listviewicon.png"
+    "listViewIcon": "https://media.valorant-api.com/maps/92584fbe-486a-b1b2-9faa-39b0f486b498/listviewicon.png",
+    "callouts": [
+      {
+        "superRegionName": "B",
+        "regionName": "Boba",
+        "fullName": "B Boba",
+        "norm_x": 0.1256,
+        "norm_y": 0.344
+      },
+      {
+        "superRegionName": "Mid",
+        "regionName": "Tiles",
+        "fullName": "Mid Tiles",
+        "norm_x": 0.5312,
+        "norm_y": 0.656
+      },
+      {
+        "superRegionName": "B",
+        "regionName": "Market",
+        "fullName": "B Market",
+        "norm_x": 0.2348,
+        "norm_y": 0.5312
+      },
+      {
+        "superRegionName": "B",
+        "regionName": "Site",
+        "fullName": "B Site",
+        "norm_x": 0.0437,
+        "norm_y": 0.5624
+      },
+      {
+        "superRegionName": "B",
+        "regionName": "Main",
+        "fullName": "B Main",
+        "norm_x": 0.0593,
+        "norm_y": 0.6716
+      },
+      {
+        "superRegionName": "B",
+        "regionName": "Lobby",
+        "fullName": "B Lobby",
+        "norm_x": 0.2972,
+        "norm_y": 0.7808
+      },
+      {
+        "superRegionName": "Mid",
+        "regionName": "Bottom",
+        "fullName": "Mid Bottom",
+        "norm_x": 0.342,
+        "norm_y": 0.656
+      },
+      {
+        "superRegionName": "Mid",
+        "regionName": "Courtyard",
+        "fullName": "Mid Courtyard",
+        "norm_x": 0.4064,
+        "norm_y": 0.5624
+      },
+      {
+        "superRegionName": "A",
+        "regionName": "Lobby",
+        "fullName": "A Lobby",
+        "norm_x": 0.656,
+        "norm_y": 0.656
+      },
+      {
+        "superRegionName": "A",
+        "regionName": "Main",
+        "fullName": "A Main",
+        "norm_x": 0.6716,
+        "norm_y": 0.5468
+      },
+      {
+        "superRegionName": "A",
+        "regionName": "Link",
+        "fullName": "A Link",
+        "norm_x": 0.734,
+        "norm_y": 0.344
+      },
+      {
+        "superRegionName": "A",
+        "regionName": "Site",
+        "fullName": "A Site",
+        "norm_x": 0.7496,
+        "norm_y": 0.4376
+      },
+      {
+        "superRegionName": "A",
+        "regionName": "Elbow",
+        "fullName": "A Elbow",
+        "norm_x": 0.8276,
+        "norm_y": 0.5
+      },
+      {
+        "superRegionName": "A",
+        "regionName": "Alley",
+        "fullName": "A Alley",
+        "norm_x": 0.7808,
+        "norm_y": 0.2504
+      },
+      {
+        "superRegionName": "Defender Side",
+        "regionName": "Spawn",
+        "fullName": "Defender Side Spawn",
+        "norm_x": 0.3449,
+        "norm_y": 0.2188
+      },
+      {
+        "superRegionName": "Mid",
+        "regionName": "Top",
+        "fullName": "Mid Top",
+        "norm_x": 0.344,
+        "norm_y": 0.3596
+      },
+      {
+        "superRegionName": "Attacker Side",
+        "regionName": "Spawn",
+        "fullName": "Attacker Side Spawn",
+        "norm_x": 0.4688,
+        "norm_y": 0.9856
+      }
+    ]
   },
   "/Game/Maps/Pitt/Pitt": {
     "displayName": "Pearl",
@@ -87,7 +1384,191 @@
     "xScalarToAdd": 0.480469,
     "yScalarToAdd": 0.916016,
     "displayIcon": "https://media.valorant-api.com/maps/fd267378-4d1d-484f-ff52-77821ed10dc2/displayicon.png",
-    "listViewIcon": "https://media.valorant-api.com/maps/fd267378-4d1d-484f-ff52-77821ed10dc2/listviewicon.png"
+    "listViewIcon": "https://media.valorant-api.com/maps/fd267378-4d1d-484f-ff52-77821ed10dc2/listviewicon.png",
+    "callouts": [
+      {
+        "superRegionName": "B",
+        "regionName": "Hall",
+        "fullName": "B Hall",
+        "norm_x": 0.094,
+        "norm_y": 0.3314
+      },
+      {
+        "superRegionName": "Mid",
+        "regionName": "Doors",
+        "fullName": "Mid Doors",
+        "norm_x": 0.5271,
+        "norm_y": 0.5493
+      },
+      {
+        "superRegionName": "Mid",
+        "regionName": "Connector",
+        "fullName": "Mid Connector",
+        "norm_x": 0.6209,
+        "norm_y": 0.4443
+      },
+      {
+        "superRegionName": "Defender Side",
+        "regionName": "Water",
+        "fullName": "Defender Side Water",
+        "norm_x": 0.6209,
+        "norm_y": 0.307
+      },
+      {
+        "superRegionName": "Defender Side",
+        "regionName": "Spawn",
+        "fullName": "Defender Side Spawn",
+        "norm_x": 0.51,
+        "norm_y": 0.0508
+      },
+      {
+        "superRegionName": "A",
+        "regionName": "Flowers",
+        "fullName": "A Flowers",
+        "norm_x": 0.676,
+        "norm_y": 0.1934
+      },
+      {
+        "superRegionName": "A",
+        "regionName": "Secret",
+        "fullName": "A Secret",
+        "norm_x": 0.7793,
+        "norm_y": 0.1003
+      },
+      {
+        "superRegionName": "A",
+        "regionName": "Dugout",
+        "fullName": "A Dugout",
+        "norm_x": 0.9371,
+        "norm_y": 0.3185
+      },
+      {
+        "superRegionName": "A",
+        "regionName": "Site",
+        "fullName": "A Site",
+        "norm_x": 0.9149,
+        "norm_y": 0.4001
+      },
+      {
+        "superRegionName": "Defender Side",
+        "regionName": "Records",
+        "fullName": "Defender Side Records",
+        "norm_x": 0.3658,
+        "norm_y": 0.2161
+      },
+      {
+        "superRegionName": "Mid",
+        "regionName": "Top",
+        "fullName": "Mid Top",
+        "norm_x": 0.537,
+        "norm_y": 0.7542
+      },
+      {
+        "superRegionName": "B",
+        "regionName": "Tunnel",
+        "fullName": "B Tunnel",
+        "norm_x": 0.3124,
+        "norm_y": 0.2161
+      },
+      {
+        "superRegionName": "B",
+        "regionName": "Tower",
+        "fullName": "B Tower",
+        "norm_x": 0.2581,
+        "norm_y": 0.2504
+      },
+      {
+        "superRegionName": "A",
+        "regionName": "Main",
+        "fullName": "A Main",
+        "norm_x": 0.7788,
+        "norm_y": 0.4193
+      },
+      {
+        "superRegionName": "A",
+        "regionName": "Restaurant",
+        "fullName": "A Restaurant",
+        "norm_x": 0.6999,
+        "norm_y": 0.5704
+      },
+      {
+        "superRegionName": "B",
+        "regionName": "Link",
+        "fullName": "B Link",
+        "norm_x": 0.4343,
+        "norm_y": 0.5648
+      },
+      {
+        "superRegionName": "A",
+        "regionName": "Art",
+        "fullName": "A Art",
+        "norm_x": 0.7462,
+        "norm_y": 0.5602
+      },
+      {
+        "superRegionName": "A",
+        "regionName": "Link",
+        "fullName": "A Link",
+        "norm_x": 0.7755,
+        "norm_y": 0.4437
+      },
+      {
+        "superRegionName": "Mid",
+        "regionName": "Plaza",
+        "fullName": "Mid Plaza",
+        "norm_x": 0.4551,
+        "norm_y": 0.7015
+      },
+      {
+        "superRegionName": "Mid",
+        "regionName": "Shops",
+        "fullName": "Mid Shops",
+        "norm_x": 0.3674,
+        "norm_y": 0.8536
+      },
+      {
+        "superRegionName": "B",
+        "regionName": "Club",
+        "fullName": "B Club",
+        "norm_x": 0.3674,
+        "norm_y": 0.8536
+      },
+      {
+        "superRegionName": "B",
+        "regionName": "Ramp",
+        "fullName": "B Ramp",
+        "norm_x": 0.1841,
+        "norm_y": 0.7795
+      },
+      {
+        "superRegionName": "B",
+        "regionName": "Main",
+        "fullName": "B Main",
+        "norm_x": 0.1392,
+        "norm_y": 0.6001
+      },
+      {
+        "superRegionName": "B",
+        "regionName": "Site",
+        "fullName": "B Site",
+        "norm_x": 0.2582,
+        "norm_y": 0.4636
+      },
+      {
+        "superRegionName": "B",
+        "regionName": "Screen",
+        "fullName": "B Screen",
+        "norm_x": 0.0904,
+        "norm_y": 0.4277
+      },
+      {
+        "superRegionName": "Attacker Side",
+        "regionName": "Spawn",
+        "fullName": "Attacker Side Spawn",
+        "norm_x": 0.4337,
+        "norm_y": 0.9589
+      }
+    ]
   },
   "/Game/Maps/Plummet/Plummet": {
     "displayName": "Summit",
@@ -97,7 +1578,177 @@
     "xScalarToAdd": 0.047401,
     "yScalarToAdd": 0.978891,
     "displayIcon": "https://media.valorant-api.com/maps/756da597-416b-c0f2-f47b-afbdf28670bc/displayicon.png",
-    "listViewIcon": "https://media.valorant-api.com/maps/756da597-416b-c0f2-f47b-afbdf28670bc/listviewicon.png"
+    "listViewIcon": "https://media.valorant-api.com/maps/756da597-416b-c0f2-f47b-afbdf28670bc/listviewicon.png",
+    "callouts": [
+      {
+        "superRegionName": "Mid",
+        "regionName": "Bottom",
+        "fullName": "Mid Bottom",
+        "norm_x": 0.4843,
+        "norm_y": 0.4164
+      },
+      {
+        "superRegionName": "Mid",
+        "regionName": "Top",
+        "fullName": "Mid Top",
+        "norm_x": 0.5368,
+        "norm_y": 0.677
+      },
+      {
+        "superRegionName": "A",
+        "regionName": "Lobby",
+        "fullName": "A Lobby",
+        "norm_x": 0.6943,
+        "norm_y": 0.7408
+      },
+      {
+        "superRegionName": "A",
+        "regionName": "Main",
+        "fullName": "A Main",
+        "norm_x": 0.6943,
+        "norm_y": 0.5664
+      },
+      {
+        "superRegionName": "A",
+        "regionName": "Garden",
+        "fullName": "A Garden",
+        "norm_x": 0.7918,
+        "norm_y": 0.4033
+      },
+      {
+        "superRegionName": "A",
+        "regionName": "Site",
+        "fullName": "A Site",
+        "norm_x": 0.9174,
+        "norm_y": 0.4033
+      },
+      {
+        "superRegionName": "A",
+        "regionName": "Art",
+        "fullName": "A Art",
+        "norm_x": 0.7918,
+        "norm_y": 0.2645
+      },
+      {
+        "superRegionName": "A",
+        "regionName": "Cave",
+        "fullName": "A Cave",
+        "norm_x": 0.9568,
+        "norm_y": 0.2645
+      },
+      {
+        "superRegionName": "A",
+        "regionName": "Hall",
+        "fullName": "A Hall",
+        "norm_x": 0.6924,
+        "norm_y": 0.2645
+      },
+      {
+        "superRegionName": "A",
+        "regionName": "Link",
+        "fullName": "A Link",
+        "norm_x": 0.6512,
+        "norm_y": 0.3601
+      },
+      {
+        "superRegionName": "B",
+        "regionName": "Lobby",
+        "fullName": "B Lobby",
+        "norm_x": 0.2893,
+        "norm_y": 0.5945
+      },
+      {
+        "superRegionName": "Defender Side",
+        "regionName": "Spawn",
+        "fullName": "Defender Side Spawn",
+        "norm_x": 0.5105,
+        "norm_y": 0.0733
+      },
+      {
+        "superRegionName": "Mid",
+        "regionName": "Window",
+        "fullName": "Mid Window",
+        "norm_x": 0.4843,
+        "norm_y": 0.3264
+      },
+      {
+        "superRegionName": "B",
+        "regionName": "Gym",
+        "fullName": "B Gym",
+        "norm_x": 0.2799,
+        "norm_y": 0.1895
+      },
+      {
+        "superRegionName": "B",
+        "regionName": "Trophy",
+        "fullName": "B Trophy",
+        "norm_x": 0.323,
+        "norm_y": 0.2983
+      },
+      {
+        "superRegionName": "B",
+        "regionName": "Tower",
+        "fullName": "B Tower",
+        "norm_x": 0.1562,
+        "norm_y": 0.2158
+      },
+      {
+        "superRegionName": "B",
+        "regionName": "Drop",
+        "fullName": "B Drop",
+        "norm_x": 0.053,
+        "norm_y": 0.2401
+      },
+      {
+        "superRegionName": "B",
+        "regionName": "Site",
+        "fullName": "B Site",
+        "norm_x": 0.1505,
+        "norm_y": 0.3376
+      },
+      {
+        "superRegionName": "B",
+        "regionName": "Link",
+        "fullName": "B Link",
+        "norm_x": 0.3305,
+        "norm_y": 0.4164
+      },
+      {
+        "superRegionName": "Mid",
+        "regionName": "Fountain",
+        "fullName": "Mid Fountain",
+        "norm_x": 0.5105,
+        "norm_y": 0.5533
+      },
+      {
+        "superRegionName": "Mid",
+        "regionName": "Bend",
+        "fullName": "Mid Bend",
+        "norm_x": 0.6362,
+        "norm_y": 0.4933
+      },
+      {
+        "superRegionName": "Mid",
+        "regionName": "Tiles",
+        "fullName": "Mid Tiles",
+        "norm_x": 0.3649,
+        "norm_y": 0.6068
+      },
+      {
+        "superRegionName": "B",
+        "regionName": "Main",
+        "fullName": "B Main",
+        "norm_x": 0.1862,
+        "norm_y": 0.4914
+      },
+      {
+        "superRegionName": "Attacker Side",
+        "regionName": "Spawn",
+        "fullName": "Attacker Side Spawn",
+        "norm_x": 0.0399,
+        "norm_y": 0.8964
+      }
+    ]
   },
   "/Game/Maps/Port/Port": {
     "displayName": "Icebox",
@@ -107,7 +1758,184 @@
     "xScalarToAdd": 0.460214,
     "yScalarToAdd": 0.304687,
     "displayIcon": "https://media.valorant-api.com/maps/e2ad5c54-4114-a870-9641-8ea21279579a/displayicon.png",
-    "listViewIcon": "https://media.valorant-api.com/maps/e2ad5c54-4114-a870-9641-8ea21279579a/listviewicon.png"
+    "listViewIcon": "https://media.valorant-api.com/maps/e2ad5c54-4114-a870-9641-8ea21279579a/listviewicon.png",
+    "callouts": [
+      {
+        "superRegionName": "B",
+        "regionName": "Garage",
+        "fullName": "B Garage",
+        "norm_x": 0.3576,
+        "norm_y": 0.3947
+      },
+      {
+        "superRegionName": "A",
+        "regionName": "Belt",
+        "fullName": "A Belt",
+        "norm_x": 0.399,
+        "norm_y": 0.8231
+      },
+      {
+        "superRegionName": "A",
+        "regionName": "Nest",
+        "fullName": "A Nest",
+        "norm_x": 0.525,
+        "norm_y": 0.7835
+      },
+      {
+        "superRegionName": "A",
+        "regionName": "Pipes",
+        "fullName": "A Pipes",
+        "norm_x": 0.4926,
+        "norm_y": 0.7475
+      },
+      {
+        "superRegionName": "A",
+        "regionName": "Rafters",
+        "fullName": "A Rafters",
+        "norm_x": 0.7662,
+        "norm_y": 0.7691
+      },
+      {
+        "superRegionName": "A",
+        "regionName": "Screen",
+        "fullName": "A Screen",
+        "norm_x": 0.6996,
+        "norm_y": 0.6719
+      },
+      {
+        "superRegionName": "A",
+        "regionName": "Site",
+        "fullName": "A Site",
+        "norm_x": 0.6906,
+        "norm_y": 0.7655
+      },
+      {
+        "superRegionName": "Attacker Side",
+        "regionName": "Spawn",
+        "fullName": "Attacker Side Spawn",
+        "norm_x": 0.1398,
+        "norm_y": 0.5873
+      },
+      {
+        "superRegionName": "B",
+        "regionName": "Yellow",
+        "fullName": "B Yellow",
+        "norm_x": 0.4584,
+        "norm_y": 0.1571
+      },
+      {
+        "superRegionName": "B",
+        "regionName": "Back",
+        "fullName": "B Back",
+        "norm_x": 0.7676,
+        "norm_y": 0.2866
+      },
+      {
+        "superRegionName": "B",
+        "regionName": "Cubby",
+        "fullName": "B Cubby",
+        "norm_x": 0.39,
+        "norm_y": 0.2291
+      },
+      {
+        "superRegionName": "B",
+        "regionName": "Green",
+        "fullName": "B Green",
+        "norm_x": 0.4098,
+        "norm_y": 0.3371
+      },
+      {
+        "superRegionName": "B",
+        "regionName": "Hall",
+        "fullName": "B Hall",
+        "norm_x": 0.6798,
+        "norm_y": 0.2831
+      },
+      {
+        "superRegionName": "B",
+        "regionName": "Hut",
+        "fullName": "B Hut",
+        "norm_x": 0.777,
+        "norm_y": 0.4073
+      },
+      {
+        "superRegionName": "B",
+        "regionName": "Kitchen",
+        "fullName": "B Kitchen",
+        "norm_x": 0.7053,
+        "norm_y": 0.4646
+      },
+      {
+        "superRegionName": "B",
+        "regionName": "Orange",
+        "fullName": "B Orange",
+        "norm_x": 0.5826,
+        "norm_y": 0.3502
+      },
+      {
+        "superRegionName": "B",
+        "regionName": "Site",
+        "fullName": "B Site",
+        "norm_x": 0.6456,
+        "norm_y": 0.1805
+      },
+      {
+        "superRegionName": "B",
+        "regionName": "Snowman",
+        "fullName": "B Snowman",
+        "norm_x": 0.7454,
+        "norm_y": 0.1427
+      },
+      {
+        "superRegionName": "B",
+        "regionName": "Snow Pile",
+        "fullName": "B Snow Pile",
+        "norm_x": 0.6402,
+        "norm_y": 0.4325
+      },
+      {
+        "superRegionName": "B",
+        "regionName": "Tube",
+        "fullName": "B Tube",
+        "norm_x": 0.552,
+        "norm_y": 0.4703
+      },
+      {
+        "superRegionName": "Defender Side",
+        "regionName": "Spawn",
+        "fullName": "Defender Side Spawn",
+        "norm_x": 0.9696,
+        "norm_y": 0.5747
+      },
+      {
+        "superRegionName": "Mid",
+        "regionName": "Blue",
+        "fullName": "Mid Blue",
+        "norm_x": 0.5304,
+        "norm_y": 0.5081
+      },
+      {
+        "superRegionName": "Mid",
+        "regionName": "Boiler",
+        "fullName": "Mid Boiler",
+        "norm_x": 0.6708,
+        "norm_y": 0.5477
+      },
+      {
+        "superRegionName": "Mid",
+        "regionName": "Pallet",
+        "fullName": "Mid Pallet",
+        "norm_x": 0.588,
+        "norm_y": 0.6251
+      },
+      {
+        "superRegionName": "B",
+        "regionName": "Fence",
+        "fullName": "B Fence",
+        "norm_x": 0.7191,
+        "norm_y": 0.2786
+      }
+    ]
   },
   "/Game/Maps/Rook/Rook": {
     "displayName": "Corrode",
@@ -117,7 +1945,156 @@
     "xScalarToAdd": 0.526158,
     "yScalarToAdd": 0.5,
     "displayIcon": "https://media.valorant-api.com/maps/1c18ab1f-420d-0d8b-71d0-77ad3c439115/displayicon.png",
-    "listViewIcon": "https://media.valorant-api.com/maps/1c18ab1f-420d-0d8b-71d0-77ad3c439115/listviewicon.png"
+    "listViewIcon": "https://media.valorant-api.com/maps/1c18ab1f-420d-0d8b-71d0-77ad3c439115/listviewicon.png",
+    "callouts": [
+      {
+        "superRegionName": "A",
+        "regionName": "Crane",
+        "fullName": "A Crane",
+        "norm_x": 0.2462,
+        "norm_y": 0.1879
+      },
+      {
+        "superRegionName": "A",
+        "regionName": "Elbow",
+        "fullName": "A Elbow",
+        "norm_x": 0.3809,
+        "norm_y": 0.1092
+      },
+      {
+        "superRegionName": "A",
+        "regionName": "Link",
+        "fullName": "A Link",
+        "norm_x": 0.4527,
+        "norm_y": 0.3752
+      },
+      {
+        "superRegionName": "A",
+        "regionName": "Lobby",
+        "fullName": "A Lobby",
+        "norm_x": 0.7082,
+        "norm_y": 0.1967
+      },
+      {
+        "superRegionName": "A",
+        "regionName": "Main",
+        "fullName": "A Main",
+        "norm_x": 0.6119,
+        "norm_y": 0.0847
+      },
+      {
+        "superRegionName": "A",
+        "regionName": "Pocket",
+        "fullName": "A Pocket",
+        "norm_x": 0.4702,
+        "norm_y": 0.1092
+      },
+      {
+        "superRegionName": "A",
+        "regionName": "Site",
+        "fullName": "A Site",
+        "norm_x": 0.3984,
+        "norm_y": 0.2579
+      },
+      {
+        "superRegionName": "Attacker Side",
+        "regionName": "Spawn",
+        "fullName": "Attacker Side Spawn",
+        "norm_x": 0.9234,
+        "norm_y": 0.5018
+      },
+      {
+        "superRegionName": "A",
+        "regionName": "Yard",
+        "fullName": "A Yard",
+        "norm_x": 0.4702,
+        "norm_y": 0.1967
+      },
+      {
+        "superRegionName": "B",
+        "regionName": "Arch",
+        "fullName": "B Arch",
+        "norm_x": 0.2182,
+        "norm_y": 0.7252
+      },
+      {
+        "superRegionName": "B",
+        "regionName": "Elbow",
+        "fullName": "B Elbow",
+        "norm_x": 0.3214,
+        "norm_y": 0.8914
+      },
+      {
+        "superRegionName": "B",
+        "regionName": "Link",
+        "fullName": "B Link",
+        "norm_x": 0.3984,
+        "norm_y": 0.5904
+      },
+      {
+        "superRegionName": "B",
+        "regionName": "Lobby",
+        "fullName": "B Lobby",
+        "norm_x": 0.7204,
+        "norm_y": 0.6167
+      },
+      {
+        "superRegionName": "B",
+        "regionName": "Main",
+        "fullName": "B Main",
+        "norm_x": 0.5787,
+        "norm_y": 0.6902
+      },
+      {
+        "superRegionName": "Mid",
+        "regionName": "Bottom",
+        "fullName": "Mid Bottom",
+        "norm_x": 0.5384,
+        "norm_y": 0.4907
+      },
+      {
+        "superRegionName": "B",
+        "regionName": "Site",
+        "fullName": "B Site",
+        "norm_x": 0.4439,
+        "norm_y": 0.6902
+      },
+      {
+        "superRegionName": "B",
+        "regionName": "Tower",
+        "fullName": "B Tower",
+        "norm_x": 0.3214,
+        "norm_y": 0.7462
+      },
+      {
+        "superRegionName": "Defender Side",
+        "regionName": "Spawn",
+        "fullName": "Defender Side Spawn",
+        "norm_x": 0.1237,
+        "norm_y": 0.4994
+      },
+      {
+        "superRegionName": "Mid",
+        "regionName": "Stairs",
+        "fullName": "Mid Stairs",
+        "norm_x": 0.4229,
+        "norm_y": 0.4907
+      },
+      {
+        "superRegionName": "Mid",
+        "regionName": "Window",
+        "fullName": "Mid Window",
+        "norm_x": 0.3092,
+        "norm_y": 0.4907
+      },
+      {
+        "superRegionName": "Mid",
+        "regionName": "Top",
+        "fullName": "Mid Top",
+        "norm_x": 0.3984,
+        "norm_y": 0.4907
+      }
+    ]
   },
   "/Game/Maps/Triad/Triad": {
     "displayName": "Haven",
@@ -127,6 +2104,155 @@
     "xScalarToAdd": 1.09345,
     "yScalarToAdd": 0.642728,
     "displayIcon": "https://media.valorant-api.com/maps/2bee0dc9-4ffe-519b-1cbd-7fbe763a6047/displayicon.png",
-    "listViewIcon": "https://media.valorant-api.com/maps/2bee0dc9-4ffe-519b-1cbd-7fbe763a6047/listviewicon.png"
+    "listViewIcon": "https://media.valorant-api.com/maps/2bee0dc9-4ffe-519b-1cbd-7fbe763a6047/listviewicon.png",
+    "callouts": [
+      {
+        "superRegionName": "A",
+        "regionName": "Garden",
+        "fullName": "A Garden",
+        "norm_x": 0.7422,
+        "norm_y": 0.4102
+      },
+      {
+        "superRegionName": "A",
+        "regionName": "Link",
+        "fullName": "A Link",
+        "norm_x": 0.2898,
+        "norm_y": 0.3244
+      },
+      {
+        "superRegionName": "A",
+        "regionName": "Lobby",
+        "fullName": "A Lobby",
+        "norm_x": 0.6239,
+        "norm_y": 0.3848
+      },
+      {
+        "superRegionName": "A",
+        "regionName": "Long",
+        "fullName": "A Long",
+        "norm_x": 0.5759,
+        "norm_y": 0.177
+      },
+      {
+        "superRegionName": "A",
+        "regionName": "Sewer",
+        "fullName": "A Sewer",
+        "norm_x": 0.4998,
+        "norm_y": 0.3838
+      },
+      {
+        "superRegionName": "A",
+        "regionName": "Site",
+        "fullName": "A Site",
+        "norm_x": 0.4015,
+        "norm_y": 0.1695
+      },
+      {
+        "superRegionName": "Attacker Side",
+        "regionName": "Spawn",
+        "fullName": "Attacker Side Spawn",
+        "norm_x": 0.8952,
+        "norm_y": 0.5121
+      },
+      {
+        "superRegionName": "B",
+        "regionName": "Back",
+        "fullName": "B Back",
+        "norm_x": 0.2936,
+        "norm_y": 0.4953
+      },
+      {
+        "superRegionName": "B",
+        "regionName": "Site",
+        "fullName": "B Site",
+        "norm_x": 0.4011,
+        "norm_y": 0.5014
+      },
+      {
+        "superRegionName": "C",
+        "regionName": "Link",
+        "fullName": "C Link",
+        "norm_x": 0.3431,
+        "norm_y": 0.6493
+      },
+      {
+        "superRegionName": "C",
+        "regionName": "Lobby",
+        "fullName": "C Lobby",
+        "norm_x": 0.6644,
+        "norm_y": 0.7659
+      },
+      {
+        "superRegionName": "C",
+        "regionName": "Long",
+        "fullName": "C Long",
+        "norm_x": 0.6441,
+        "norm_y": 0.8945
+      },
+      {
+        "superRegionName": "C",
+        "regionName": "Garage",
+        "fullName": "C Garage",
+        "norm_x": 0.4935,
+        "norm_y": 0.6292
+      },
+      {
+        "superRegionName": "C",
+        "regionName": "Window",
+        "fullName": "C Window",
+        "norm_x": 0.419,
+        "norm_y": 0.6435
+      },
+      {
+        "superRegionName": "C",
+        "regionName": "Site",
+        "fullName": "C Site",
+        "norm_x": 0.4177,
+        "norm_y": 0.8211
+      },
+      {
+        "superRegionName": "C",
+        "regionName": "Cubby",
+        "fullName": "C Cubby",
+        "norm_x": 0.6013,
+        "norm_y": 0.8017
+      },
+      {
+        "superRegionName": "Defender Side",
+        "regionName": "Spawn",
+        "fullName": "Defender Side Spawn",
+        "norm_x": 0.1398,
+        "norm_y": 0.4218
+      },
+      {
+        "superRegionName": "Mid",
+        "regionName": "Doors",
+        "fullName": "Mid Doors",
+        "norm_x": 0.6237,
+        "norm_y": 0.6314
+      },
+      {
+        "superRegionName": "Mid",
+        "regionName": "Courtyard",
+        "fullName": "Mid Courtyard",
+        "norm_x": 0.59,
+        "norm_y": 0.5061
+      },
+      {
+        "superRegionName": "Mid",
+        "regionName": "Window",
+        "fullName": "Mid Window",
+        "norm_x": 0.6759,
+        "norm_y": 0.4965
+      },
+      {
+        "superRegionName": "A",
+        "regionName": "Tower",
+        "fullName": "A Tower",
+        "norm_x": 0.308,
+        "norm_y": 0.1386
+      }
+    ]
   }
 }

@@ -18,6 +18,16 @@ const state = {
   mapLoaded: false,
   hoveredEvent: null,
 
+  // Multi-Match Heatmap Aggregate State
+  viewMode: 'match', // 'match' or 'aggregate'
+  aggMap: 'Ascent',
+  aggSide: 'all', // 'all', 'attack', 'defense'
+  aggType: 'death', // 'death', 'kill'
+  heatStyle: 'gradient', // 'gradient' or 'points'
+  aggregateData: null,
+  activeHotspotId: null,
+  availableMaps: [],
+
   // Undo Tag Buffer Stack
   tagHistoryStack: [], // Array of { tag_id, name }
 
@@ -51,12 +61,28 @@ const ctx = minimapCanvas.getContext('2d');
 const mapTooltip = document.getElementById('map-tooltip');
 const btnRadarMode = document.getElementById('btn-radar-mode');
 
+// Multi-Match Aggregate DOM Elements
+const btnViewMatch = document.getElementById('btn-view-match');
+const btnViewAggregate = document.getElementById('btn-view-aggregate');
+const matchMinimapToggles = document.getElementById('match-minimap-toggles');
+const aggControlsBar = document.getElementById('agg-controls-bar');
+const aggMapSelect = document.getElementById('agg-map-select');
+const btnHeatGradient = document.getElementById('btn-heat-gradient');
+const matchMinimapLegend = document.getElementById('match-minimap-legend');
+const aggMinimapLegend = document.getElementById('agg-minimap-legend');
+const aggHotspotsContainer = document.getElementById('agg-hotspots-container');
+const aggClusterCount = document.getElementById('agg-cluster-count');
+const aggMatchesBadge = document.getElementById('agg-matches-badge');
+const aggInsightsBanner = document.getElementById('agg-insights-banner');
+const hotspotsList = document.getElementById('hotspots-list');
+
 const tagGrid = document.getElementById('tag-grid');
 const tagToast = document.getElementById('tag-toast');
 const tagHistoryList = document.getElementById('tag-history-list');
 const tagCountEl = document.getElementById('tag-count');
 const habitBars = document.getElementById('habit-bars');
 const btnUndoTag = document.getElementById('btn-undo-tag');
+
 
 const btnPlayPause = document.getElementById('btn-play-pause');
 const btnPrevFrame = document.getElementById('btn-prev-frame');
@@ -89,8 +115,11 @@ const TAG_MAP = {
 async function init() {
   setupEventListeners();
   setupTelestrator();
+  setupAggregateControls();
+  await loadAvailableMaps();
   await loadMatchList();
 }
+
 
 async function loadMatchList() {
   try {
@@ -297,6 +326,13 @@ function renderMinimap() {
     ctx.fillText('Loading Map Asset...', w / 2, h / 2);
   }
 
+  // If in Multi-Match Aggregate Mode, render aggregated spatial telemetry
+  if (state.viewMode === 'aggregate') {
+    renderAggregateMinimap(w, h);
+    return;
+  }
+
+
   const currentVideoMs = Math.round((videoPlayer.currentTime || 0) * 1000);
 
   // 2. Filter events for current view
@@ -372,8 +408,305 @@ function renderMinimap() {
 }
 
 // -------------------------------------------------------------
+// Multi-Match Aggregate Minimap Rendering & Engine
+// -------------------------------------------------------------
+function renderAggregateMinimap(w, h) {
+  if (!state.aggregateData) {
+    ctx.fillStyle = '#ece8e1';
+    ctx.font = '16px Rajdhani';
+    ctx.textAlign = 'center';
+    ctx.fillText('Loading Multi-Match Heatmap Telemetry...', w / 2, h / 2);
+    return;
+  }
+
+  const isDeath = state.aggType === 'death';
+  const points = state.aggregateData.points || [];
+  const clusters = state.aggregateData.clusters || [];
+
+  // 1. Draw Heat Glow (Smooth Radial Gradients)
+  if (state.heatStyle === 'gradient' && points.length > 0) {
+    points.forEach((p) => {
+      const px = p.norm_x * w;
+      const py = p.norm_y * h;
+      const grad = ctx.createRadialGradient(px, py, 0, px, py, 34);
+
+      if (isDeath) {
+        grad.addColorStop(0, 'rgba(255, 70, 85, 0.45)');
+        grad.addColorStop(0.4, 'rgba(255, 120, 0, 0.22)');
+        grad.addColorStop(1, 'rgba(255, 200, 0, 0)');
+      } else {
+        grad.addColorStop(0, 'rgba(6, 214, 160, 0.45)');
+        grad.addColorStop(0.4, 'rgba(0, 180, 216, 0.22)');
+        grad.addColorStop(1, 'rgba(0, 245, 212, 0)');
+      }
+
+      ctx.fillStyle = grad;
+      ctx.beginPath();
+      ctx.arc(px, py, 34, 0, Math.PI * 2);
+      ctx.fill();
+    });
+  }
+
+  // 2. Draw Individual Event Points
+  points.forEach((p) => {
+    const px = p.norm_x * w;
+    const py = p.norm_y * h;
+    ctx.save();
+    ctx.fillStyle = isDeath ? 'rgba(255, 70, 85, 0.9)' : 'rgba(6, 214, 160, 0.9)';
+    ctx.strokeStyle = '#ffffff';
+    ctx.lineWidth = 1;
+    ctx.beginPath();
+    ctx.arc(px, py, 3.5, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.stroke();
+    ctx.restore();
+  });
+
+  // 3. Draw Hotspot Cluster Enclosures & Centroid Badges
+  clusters.forEach((c) => {
+    const cx = c.center_x * w;
+    const cy = c.center_y * h;
+    const isSelected = state.activeHotspotId === c.cluster_id;
+    const radiusPx = Math.max(26, c.radius * w);
+
+    ctx.save();
+
+    // Outer cluster perimeter ring
+    ctx.beginPath();
+    ctx.arc(cx, cy, radiusPx, 0, Math.PI * 2);
+    if (isSelected) {
+      ctx.strokeStyle = '#00f5d4';
+      ctx.lineWidth = 3;
+      ctx.setLineDash([6, 4]);
+      ctx.stroke();
+
+      // Outer glow circle
+      ctx.strokeStyle = 'rgba(0, 245, 212, 0.25)';
+      ctx.lineWidth = 8;
+      ctx.setLineDash([]);
+      ctx.stroke();
+    } else {
+      ctx.strokeStyle = isDeath ? 'rgba(255, 70, 85, 0.7)' : 'rgba(6, 214, 160, 0.7)';
+      ctx.lineWidth = 1.5;
+      ctx.setLineDash([4, 4]);
+      ctx.stroke();
+    }
+
+    // Centroid Badge
+    ctx.setLineDash([]);
+    ctx.beginPath();
+    ctx.arc(cx, cy, 12, 0, Math.PI * 2);
+    ctx.fillStyle = isSelected ? '#00f5d4' : (isDeath ? '#ff4655' : '#06d6a0');
+    ctx.fill();
+    ctx.strokeStyle = '#ffffff';
+    ctx.lineWidth = 2;
+    ctx.stroke();
+
+    // Centroid Text (#1, #2...)
+    ctx.fillStyle = isSelected ? '#0b1118' : '#ffffff';
+    ctx.font = 'bold 11px Rajdhani';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillText(`#${c.cluster_id}`, cx, cy);
+
+    // Callout Label Pill
+    const labelText = `${c.zone_name.toUpperCase()} (${c.event_count}x • ${c.percentage}%)`;
+    ctx.font = 'bold 11px Rajdhani';
+    const textWidth = ctx.measureText(labelText).width;
+    const pillW = textWidth + 12;
+    const pillH = 18;
+    const pillX = cx - pillW / 2;
+    const pillY = cy - 28;
+
+    ctx.fillStyle = 'rgba(11, 17, 24, 0.9)';
+    ctx.strokeStyle = isSelected ? '#00f5d4' : 'rgba(255, 255, 255, 0.35)';
+    ctx.lineWidth = 1;
+    ctx.fillRect(pillX, pillY, pillW, pillH);
+    ctx.strokeRect(pillX, pillY, pillW, pillH);
+
+    ctx.fillStyle = isSelected ? '#00f5d4' : '#ffffff';
+    ctx.textBaseline = 'middle';
+    ctx.fillText(labelText, cx, pillY + pillH / 2);
+
+    ctx.restore();
+  });
+}
+
+async function loadAvailableMaps() {
+  try {
+    const res = await fetch('/api/analytics/maps');
+    const maps = await res.json();
+    state.availableMaps = maps || [];
+
+    aggMapSelect.innerHTML = '';
+    if (state.availableMaps.length === 0) {
+      aggMapSelect.innerHTML = '<option value="Ascent">Ascent</option>';
+      return;
+    }
+
+    state.availableMaps.forEach((m) => {
+      const opt = document.createElement('option');
+      opt.value = m.map_name;
+      opt.textContent = `${m.map_name.toUpperCase()} (${m.match_count} match${m.match_count > 1 ? 'es' : ''})`;
+      if (m.map_name.toLowerCase() === state.aggMap.toLowerCase()) {
+        opt.selected = true;
+      }
+      aggMapSelect.appendChild(opt);
+    });
+
+    if (state.availableMaps.length > 0) {
+      state.aggMap = state.availableMaps[0].map_name;
+    }
+  } catch (err) {
+    console.error('Failed to load available maps:', err);
+  }
+}
+
+async function loadAggregateHeatmap() {
+  try {
+    const url = `/api/analytics/heatmap?map=${encodeURIComponent(state.aggMap)}&type=${state.aggType}&side=${state.aggSide}&limit=20`;
+    const res = await fetch(url);
+    const data = await res.json();
+    state.aggregateData = data;
+    state.activeHotspotId = null;
+
+    // Load map image asset
+    const cleanMapName = state.aggMap.toLowerCase();
+    loadMapImage(cleanMapName);
+
+    // Update UI headers & badges
+    aggClusterCount.textContent = data.clusters ? data.clusters.length : 0;
+    aggMatchesBadge.textContent = `${data.match_count} MATCH${data.match_count === 1 ? '' : 'ES'} (${data.total_events} ${data.event_type.toUpperCase()}S)`;
+
+    // Render insights banner
+    if (data.tactical_insights && data.tactical_insights.length > 0) {
+      aggInsightsBanner.style.display = 'block';
+      aggInsightsBanner.innerHTML = `<strong>TACTICAL FOCUS:</strong> ${data.tactical_insights[0]}`;
+    } else {
+      aggInsightsBanner.style.display = 'none';
+    }
+
+    // Render hotspot list
+    renderHotspotCards(data.clusters || []);
+
+    // Re-draw minimap
+    renderMinimap();
+  } catch (err) {
+    console.error('Failed to load aggregate heatmap:', err);
+  }
+}
+
+function renderHotspotCards(clusters) {
+  hotspotsList.innerHTML = '';
+  if (!clusters || clusters.length === 0) {
+    hotspotsList.innerHTML = '<div class="empty-tags">No concentrated hotspots found for this filter.</div>';
+    return;
+  }
+
+  clusters.forEach((c) => {
+    const card = document.createElement('div');
+    card.className = `hotspot-card ${state.activeHotspotId === c.cluster_id ? 'selected' : ''}`;
+    card.dataset.clusterId = c.cluster_id;
+
+    const tagsHtml = (c.correlated_tags || [])
+      .map((t) => `<span class="hotspot-tag-pill">${t.name} (x${t.count})</span>`)
+      .join('');
+
+    card.innerHTML = `
+      <div class="hotspot-header">
+        <div class="hotspot-title-group">
+          <span class="hotspot-badge">#${c.cluster_id}</span>
+          <span class="hotspot-zone">${c.zone_name.toUpperCase()}</span>
+        </div>
+        <div class="hotspot-stats">
+          <strong>${c.event_count}</strong> ${state.aggType.toUpperCase()}S (${c.percentage}%)
+        </div>
+      </div>
+      <div class="hotspot-summary">${c.tactical_summary}</div>
+      ${tagsHtml ? `<div class="hotspot-tags">${tagsHtml}</div>` : ''}
+    `;
+
+    card.addEventListener('click', () => {
+      if (state.activeHotspotId === c.cluster_id) {
+        state.activeHotspotId = null;
+      } else {
+        state.activeHotspotId = c.cluster_id;
+      }
+      document.querySelectorAll('.hotspot-card').forEach((el) => {
+        el.classList.toggle('selected', parseInt(el.dataset.clusterId) === state.activeHotspotId);
+      });
+      renderMinimap();
+    });
+
+    hotspotsList.appendChild(card);
+  });
+}
+
+function setupAggregateControls() {
+  btnViewMatch.addEventListener('click', () => {
+    state.viewMode = 'match';
+    btnViewMatch.classList.add('active');
+    btnViewAggregate.classList.remove('active');
+    matchMinimapToggles.style.display = 'flex';
+    aggControlsBar.style.display = 'none';
+    matchMinimapLegend.style.display = 'flex';
+    aggMinimapLegend.style.display = 'none';
+    aggHotspotsContainer.style.display = 'none';
+
+    if (state.matchMetadata) {
+      loadMapImage(getMapNameFromPath(state.matchMetadata.map_id));
+    }
+    renderMinimap();
+  });
+
+  btnViewAggregate.addEventListener('click', () => {
+    state.viewMode = 'aggregate';
+    btnViewAggregate.classList.add('active');
+    btnViewMatch.classList.remove('active');
+    matchMinimapToggles.style.display = 'none';
+    aggControlsBar.style.display = 'flex';
+    matchMinimapLegend.style.display = 'none';
+    aggMinimapLegend.style.display = 'flex';
+    aggHotspotsContainer.style.display = 'flex';
+
+    loadAggregateHeatmap();
+  });
+
+  aggMapSelect.addEventListener('change', (e) => {
+    state.aggMap = e.target.value;
+    loadAggregateHeatmap();
+  });
+
+  document.querySelectorAll('.segment-btn[data-agg-side]').forEach((btn) => {
+    btn.addEventListener('click', () => {
+      document.querySelectorAll('.segment-btn[data-agg-side]').forEach((b) => b.classList.remove('active'));
+      btn.classList.add('active');
+      state.aggSide = btn.dataset.aggSide;
+      loadAggregateHeatmap();
+    });
+  });
+
+  document.querySelectorAll('.segment-btn[data-agg-type]').forEach((btn) => {
+    btn.addEventListener('click', () => {
+      document.querySelectorAll('.segment-btn[data-agg-type]').forEach((b) => b.classList.remove('active'));
+      btn.classList.add('active');
+      state.aggType = btn.dataset.aggType;
+      loadAggregateHeatmap();
+    });
+  });
+
+  btnHeatGradient.addEventListener('click', () => {
+    state.heatStyle = state.heatStyle === 'gradient' ? 'points' : 'gradient';
+    btnHeatGradient.classList.toggle('active', state.heatStyle === 'gradient');
+    btnHeatGradient.textContent = state.heatStyle === 'gradient' ? 'HEAT GLOW' : 'POINTS ONLY';
+    renderMinimap();
+  });
+}
+
+// -------------------------------------------------------------
 // Hotkey Review Tagging & Undo Stack
 // -------------------------------------------------------------
+
 async function logTag(key) {
   const mapping = TAG_MAP[key];
   if (!mapping || !state.currentMatchId) return;
@@ -887,7 +1220,40 @@ function setupEventListeners() {
     const mx = (e.clientX - rect.left) / rect.width;
     const my = (e.clientY - rect.top) / rect.height;
 
-    // Detect hovered event within 0.04 normalized radius
+    if (state.viewMode === 'aggregate') {
+      if (!state.aggregateData) return;
+      const clusters = state.aggregateData.clusters || [];
+      const hitCluster = clusters.find((c) => Math.hypot(c.center_x - mx, c.center_y - my) < 0.05);
+
+      if (hitCluster) {
+        mapTooltip.style.display = 'block';
+        mapTooltip.style.left = `${e.clientX - rect.left + 15}px`;
+        mapTooltip.style.top = `${e.clientY - rect.top}px`;
+        const tags = (hitCluster.correlated_tags || []).map((t) => `${t.name} (x${t.count})`).join(', ');
+        mapTooltip.innerHTML = `
+          <strong>HOTSPOT #${hitCluster.cluster_id}: ${hitCluster.zone_name.toUpperCase()}</strong><br>
+          ${hitCluster.event_count} ${state.aggType.toUpperCase()}S (${hitCluster.percentage}%)<br>
+          ${tags ? `<em>Tags: ${tags}</em>` : ''}
+        `;
+        return;
+      }
+
+      const points = state.aggregateData.points || [];
+      const hitPt = points.find((p) => Math.hypot(p.norm_x - mx, p.norm_y - my) < 0.03);
+      if (hitPt) {
+        mapTooltip.style.display = 'block';
+        mapTooltip.style.left = `${e.clientX - rect.left + 15}px`;
+        mapTooltip.style.top = `${e.clientY - rect.top}px`;
+        mapTooltip.innerHTML = `
+          <strong>${hitPt.event_type.toUpperCase()}</strong>: Rnd ${hitPt.round_number + 1} (${hitPt.match_id.slice(0, 8)})
+        `;
+        return;
+      }
+      mapTooltip.style.display = 'none';
+      return;
+    }
+
+    // Single-match mode hover
     const hit = state.events.find((ev) => {
       if (ev.round_number !== state.activeRound || ev.pos_x === null) return false;
       const dx = ev.pos_x - mx;
@@ -915,6 +1281,24 @@ function setupEventListeners() {
     const mx = (e.clientX - rect.left) / rect.width;
     const my = (e.clientY - rect.top) / rect.height;
 
+    if (state.viewMode === 'aggregate') {
+      if (!state.aggregateData) return;
+      const clusters = state.aggregateData.clusters || [];
+      const hitCluster = clusters.find((c) => Math.hypot(c.center_x - mx, c.center_y - my) < 0.06);
+      if (hitCluster) {
+        state.activeHotspotId = state.activeHotspotId === hitCluster.cluster_id ? null : hitCluster.cluster_id;
+        document.querySelectorAll('.hotspot-card').forEach((el) => {
+          el.classList.toggle('selected', parseInt(el.dataset.clusterId) === state.activeHotspotId);
+        });
+        const selectedCard = document.querySelector(`.hotspot-card[data-cluster-id="${hitCluster.cluster_id}"]`);
+        if (selectedCard) {
+          selectedCard.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+        }
+        renderMinimap();
+      }
+      return;
+    }
+
     const hit = state.events.find((ev) => {
       if (ev.round_number !== state.activeRound || ev.pos_x === null) return false;
       const dx = ev.pos_x - mx;
@@ -926,6 +1310,7 @@ function setupEventListeners() {
       seekToEventWithPreRoll(hit.event_time_ms);
     }
   });
+
 
   // Tag Grid Card Clicks
   document.querySelectorAll('.tag-card').forEach((card) => {
