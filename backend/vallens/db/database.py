@@ -49,3 +49,7 @@ class Database:
 
         with self.connection() as conn:
             conn.executescript(schema_sql)
+            try:
+                conn.execute("ALTER TABLE matches ADD COLUMN video_offset_ms INTEGER DEFAULT 0;")
+            except Exception:
+                pass

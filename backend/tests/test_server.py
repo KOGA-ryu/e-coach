@@ -450,6 +450,55 @@ class TestValLensServer(unittest.TestCase):
         self.assertGreaterEqual(len(rec), 1)
         self.assertEqual(rec[0]["player"], "TenZ")
 
+    def test_video_frame_sync_endpoints(self):
+        # 1. Test GET /api/matches/{id}/sync-status
+        status, body, _ = self._get(f"/api/matches/{self.match.match_id}/sync-status")
+        self.assertEqual(status, 200)
+        res = json.loads(body.decode("utf-8"))
+        self.assertEqual(res["match_id"], self.match.match_id)
+        self.assertIn("video_offset_ms", res)
+
+        # 2. Test manual offset assignment POST /api/matches/{id}/sync-video
+        status, res = self._post_json(
+            f"/api/matches/{self.match.match_id}/sync-video",
+            {"offset_ms": 14500},
+        )
+        self.assertEqual(status, 200)
+        self.assertEqual(res["offset_ms"], 14500)
+        self.assertEqual(res["offset_sec"], 14.5)
+
+        # Verify updated offset in match overview
+        status, body, _ = self._get(f"/api/matches/{self.match.match_id}")
+        self.assertEqual(status, 200)
+        overview = json.loads(body.decode("utf-8"))
+        self.assertEqual(overview["metadata"]["video_offset_ms"], 14500)
+
+        # 3. Test interactive point calibration
+        status, res = self._post_json(
+            f"/api/matches/{self.match.match_id}/sync-video",
+            {"video_time_ms": 28000, "align_to": "round_1_start"},
+        )
+        self.assertEqual(status, 200)
+        self.assertEqual(res["strategy_used"], "manual_landmark_calibration")
+        self.assertGreaterEqual(res["confidence"], 0.99)
+
+        # 4. Test target_event_time_ms point calibration
+        status, res = self._post_json(
+            f"/api/matches/{self.match.match_id}/sync-video",
+            {"video_time_ms": 32000, "target_event_time_ms": 10000, "align_to": "Round 2 Start"},
+        )
+        self.assertEqual(status, 200)
+        self.assertEqual(res["suggested_offset_ms"], 22000)
+
+        # 5. Test auto-sync fallback when video file is synthetic/empty
+        status, res = self._post_json(
+            f"/api/matches/{self.match.match_id}/sync-video",
+            {"auto": True},
+        )
+        self.assertEqual(status, 200)
+        self.assertIn("suggested_offset_ms", res)
+        self.assertIn("strategy_used", res)
+
 
 if __name__ == "__main__":
     unittest.main()

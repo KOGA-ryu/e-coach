@@ -73,6 +73,7 @@ class ValLensRequestHandler(BaseHTTPRequestHandler):
                     "match_duration": m.match_duration,
                     "timestamp": m.timestamp,
                     "video_filepath": m.video_filepath,
+                    "video_offset_ms": getattr(m, "video_offset_ms", 0) or 0,
                 }
                 for m in matches
             ])
@@ -426,6 +427,16 @@ class ValLensRequestHandler(BaseHTTPRequestHandler):
             self._send_json(analysis)
             return
 
+        # Video Frame Synchronization Status API
+        if path.startswith("/api/matches/") and path.endswith("/sync-status"):
+            match_id = path.split("/")[3]
+            status_data = self.service.get_match_sync_status(match_id)
+            if not status_data:
+                self._send_error("Match not found", status=404)
+                return
+            self._send_json(status_data)
+            return
+
         # 8. Match Overview
         if path.startswith("/api/matches/"):
             match_id = path.split("/")[3]
@@ -442,6 +453,7 @@ class ValLensRequestHandler(BaseHTTPRequestHandler):
                     "match_duration": m.match_duration,
                     "timestamp": m.timestamp,
                     "video_filepath": m.video_filepath,
+                    "video_offset_ms": getattr(m, "video_offset_ms", 0) or 0,
                 },
                 "total_events": overview["total_events"],
                 "rounds_count": overview["rounds_count"],
@@ -647,6 +659,60 @@ class ValLensRequestHandler(BaseHTTPRequestHandler):
                 audio_data=audio_data,
             )
             self._send_json(created, status=201)
+            return
+
+        # Video Frame Alignment & Calibration API
+        if path.startswith("/api/matches/") and path.endswith("/sync-video"):
+            match_id = path.split("/")[3]
+            content_length = int(self.headers.get("Content-Length", 0))
+            body = self.rfile.read(content_length).decode("utf-8") if content_length > 0 else "{}"
+            try:
+                data = json.loads(body) if body else {}
+            except Exception:
+                data = {}
+
+            if "offset_ms" in data and "video_time_ms" not in data:
+                offset_ms = int(data.get("offset_ms", 0))
+                self.service.set_match_video_offset(match_id, offset_ms)
+                self._send_json({
+                    "match_id": match_id,
+                    "offset_ms": offset_ms,
+                    "offset_sec": round(offset_ms / 1000.0, 3),
+                    "success": True,
+                    "strategy_used": "manual_offset_assignment",
+                })
+                return
+
+            if "video_time_ms" in data:
+                video_time_ms = int(data.get("video_time_ms", 0))
+                target_event_id = data.get("event_id")
+                align_to = data.get("align_to")
+                target_event_time_ms = data.get("target_event_time_ms")
+                if target_event_time_ms is not None:
+                    try:
+                        target_event_time_ms = int(target_event_time_ms)
+                    except (ValueError, TypeError):
+                        target_event_time_ms = None
+                res = self.service.calibrate_match_video_offset(
+                    match_id=match_id,
+                    video_time_ms=video_time_ms,
+                    target_event_id=target_event_id,
+                    align_to=align_to,
+                    target_event_time_ms=target_event_time_ms,
+                )
+                if not res:
+                    self._send_error("Match not found", status=404)
+                    return
+                self._send_json(res)
+                return
+
+            # Default: Run automated visual/acoustic cross-correlation
+            video_filepath = data.get("video_filepath")
+            res = self.service.auto_align_match_video(match_id, video_filepath=video_filepath)
+            if not res:
+                self._send_error("Match not found", status=404)
+                return
+            self._send_json(res)
             return
 
         # Voice Transcription & Speech-to-Text Flaw Extraction API

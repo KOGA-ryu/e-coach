@@ -17,8 +17,8 @@ class MatchRepository:
         """Insert or replace a match record."""
         sql = """
         INSERT OR REPLACE INTO matches (
-            match_id, map_id, game_mode, match_duration, timestamp, video_filepath
-        ) VALUES (?, ?, ?, ?, ?, ?);
+            match_id, map_id, game_mode, match_duration, timestamp, video_filepath, video_offset_ms
+        ) VALUES (?, ?, ?, ?, ?, ?, ?);
         """
         with self.db.connection() as conn:
             conn.execute(sql, match.to_tuple())
@@ -30,9 +30,16 @@ class MatchRepository:
             cursor = conn.execute(sql, (video_filepath, match_id))
             return cursor.rowcount > 0
 
+    def update_video_offset(self, match_id: str, offset_ms: int) -> bool:
+        """Update the timeline alignment offset (in milliseconds) for a match video."""
+        sql = "UPDATE matches SET video_offset_ms = ? WHERE match_id = ?;"
+        with self.db.connection() as conn:
+            cursor = conn.execute(sql, (offset_ms, match_id))
+            return cursor.rowcount > 0
+
     def get_match(self, match_id: str) -> Optional[MatchMetadata]:
         """Fetch a match by its ID."""
-        sql = "SELECT match_id, map_id, game_mode, match_duration, timestamp, video_filepath FROM matches WHERE match_id = ?;"
+        sql = "SELECT match_id, map_id, game_mode, match_duration, timestamp, video_filepath, COALESCE(video_offset_ms, 0) as video_offset_ms FROM matches WHERE match_id = ?;"
         with self.db.connection() as conn:
             row = conn.execute(sql, (match_id,)).fetchone()
             if not row:
@@ -44,11 +51,12 @@ class MatchRepository:
                 match_duration=row["match_duration"],
                 timestamp=row["timestamp"],
                 video_filepath=row["video_filepath"],
+                video_offset_ms=row["video_offset_ms"],
             )
 
     def list_matches(self, limit: int = 50, offset: int = 0) -> list[MatchMetadata]:
         """List recent matches ordered by timestamp descending."""
-        sql = "SELECT match_id, map_id, game_mode, match_duration, timestamp, video_filepath FROM matches ORDER BY timestamp DESC LIMIT ? OFFSET ?;"
+        sql = "SELECT match_id, map_id, game_mode, match_duration, timestamp, video_filepath, COALESCE(video_offset_ms, 0) as video_offset_ms FROM matches ORDER BY timestamp DESC LIMIT ? OFFSET ?;"
         with self.db.connection() as conn:
             rows = conn.execute(sql, (limit, offset)).fetchall()
             return [
@@ -59,6 +67,7 @@ class MatchRepository:
                     match_duration=r["match_duration"],
                     timestamp=r["timestamp"],
                     video_filepath=r["video_filepath"],
+                    video_offset_ms=r["video_offset_ms"],
                 )
                 for r in rows
             ]

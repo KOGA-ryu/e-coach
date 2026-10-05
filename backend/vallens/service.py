@@ -7,6 +7,7 @@ from typing import Any, Optional
 from vallens.analytics.agent_profile import AgentMatrixResult, AgentProfilingEngine
 from vallens.analytics.drills import TrainingRoutineEngine, TrainingRoutineResult
 from vallens.analytics.economy import EconomyAnalysisResult, EconomyCorrelationEngine
+from vallens.analytics.frame_sync import FrameSyncEngine, FrameSyncResult
 from vallens.analytics.heatmap import HeatmapAggregationEngine, HeatmapAggregationResult
 from vallens.analytics.perspective import PerspectiveDiffEngine, PerspectiveDiffResult
 from vallens.analytics.projection import CoordinateProjector
@@ -41,6 +42,7 @@ class ValLensService:
         self.economy_engine = EconomyCorrelationEngine()
         self.transcriber = CoachVoiceTranscriber()
         self.reference_catalog = ProReferenceCatalog()
+        self.sync_engine = FrameSyncEngine()
         self.capture_controller = capture_controller or CaptureController(service=self)
 
     def ingest_match_payload(
@@ -600,6 +602,92 @@ class ValLensService:
     ) -> list[dict[str, Any]]:
         """Recommend pro reference clips targeted to a specific tactical flaw."""
         return self.reference_catalog.recommend_for_flaw(flaw_tag=flaw_tag, map_name=map_name)
+
+    def auto_align_match_video(
+        self, match_id: str, video_filepath: Optional[str] = None
+    ) -> Optional[dict[str, Any]]:
+        """Run automated visual and acoustic cross-correlation to synchronize video timeline."""
+        match = self.repo.get_match(match_id)
+        if not match:
+            return None
+
+        events = self.repo.get_events(match_id)
+        result = self.sync_engine.analyze_and_align(
+            metadata=match, events=events, video_filepath=video_filepath
+        )
+
+        # Automatically update match record with suggested offset
+        self.repo.update_video_offset(match_id, result.suggested_offset_ms)
+        if video_filepath:
+            self.repo.update_video_path(match_id, str(video_filepath))
+
+        return result.to_dict()
+
+    def calibrate_match_video_offset(
+        self,
+        match_id: str,
+        video_time_ms: int,
+        target_event_id: Optional[int] = None,
+        align_to: Optional[str] = None,
+        target_event_time_ms: Optional[int] = None,
+    ) -> Optional[dict[str, Any]]:
+        """Calibrate offset directly by locking a specific video frame to an event landmark."""
+        match = self.repo.get_match(match_id)
+        if not match:
+            return None
+
+        events = self.repo.get_events(match_id)
+        target_event = None
+        event_name = align_to or "Round 1 Start"
+        chosen_time_ms = target_event_time_ms
+
+        if target_event_id:
+            for e in events:
+                if e.event_id == target_event_id:
+                    target_event = e
+                    event_name = f"{e.event_type.replace('_', ' ').title()} (Round {e.round_number + 1})"
+                    chosen_time_ms = e.event_time_ms
+                    break
+
+        if chosen_time_ms is None:
+            # Default to Round 1 Start
+            for e in events:
+                if e.event_type == "round_start" and e.round_number == 0:
+                    chosen_time_ms = e.event_time_ms
+                    event_name = "Round 1 Start"
+                    break
+            if chosen_time_ms is None:
+                chosen_time_ms = 0
+
+        result = self.sync_engine.calibrate_from_point(
+            match_id=match_id,
+            video_time_ms=video_time_ms,
+            target_event_time_ms=chosen_time_ms,
+            event_name=event_name,
+        )
+
+        self.repo.update_video_offset(match_id, result.suggested_offset_ms)
+        return result.to_dict()
+
+    def set_match_video_offset(self, match_id: str, offset_ms: int) -> bool:
+        """Set video offset directly in milliseconds."""
+        return self.repo.update_video_offset(match_id, offset_ms)
+
+    def get_match_sync_status(self, match_id: str) -> Optional[dict[str, Any]]:
+        """Fetch current video alignment offset and telemetry sync state."""
+        match = self.repo.get_match(match_id)
+        if not match:
+            return None
+
+        events = self.repo.get_events(match_id)
+        return {
+            "match_id": match.match_id,
+            "video_filepath": match.video_filepath,
+            "video_offset_ms": getattr(match, "video_offset_ms", 0) or 0,
+            "video_offset_sec": round((getattr(match, "video_offset_ms", 0) or 0) / 1000.0, 3),
+            "events_count": len(events),
+            "calibrated": (getattr(match, "video_offset_ms", 0) or 0) != 0,
+        }
 
 
 

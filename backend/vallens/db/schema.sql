@@ -1,11 +1,11 @@
--- Matches table storing metadata per match
 CREATE TABLE IF NOT EXISTS matches (
     match_id TEXT PRIMARY KEY,
     map_id TEXT,
     game_mode TEXT,
     match_duration INTEGER,
     timestamp INTEGER,
-    video_filepath TEXT
+    video_filepath TEXT,
+    video_offset_ms INTEGER DEFAULT 0
 );
 
 -- Objective event logs pulled from Riot API

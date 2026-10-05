@@ -14,6 +14,7 @@ class MatchMetadata:
     match_duration: int  # in milliseconds
     timestamp: int       # epoch millisecond timestamp
     video_filepath: Optional[str] = None
+    video_offset_ms: int = 0
 
     def to_tuple(self) -> tuple:
         return (
@@ -23,6 +24,7 @@ class MatchMetadata:
             self.match_duration,
             self.timestamp,
             self.video_filepath,
+            self.video_offset_ms,
         )
 
 

@@ -208,6 +208,7 @@
           </div>
 
           <div class="right-controls">
+            <button id="btn-open-sync-modal" class="ctrl-btn sync-tool-btn" title="Automated VOD-to-API Frame Alignment & Zero-Drift Calibration">🎯 SYNC [<span id="btn-sync-offset-label">0.0s</span>]</button>
             <button id="btn-quick-clip" class="ctrl-btn clip-btn" title="Quick Trim: Export MP4 clip of current moment (-3s to +2s) [C]">✂ CLIP [C]</button>
             <button id="btn-prev-round" class="ctrl-btn nav-btn" title="Previous Round">◀ PREV RND</button>
             <button id="btn-next-round" class="ctrl-btn nav-btn" title="Next Round">NEXT RND ▶</button>
@@ -901,6 +902,105 @@
             <!-- Dynamically populated insights -->
           </div>
         </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Automated VOD-to-API Frame Alignment & Zero-Drift Calibration Modal -->
+  <div class="modal-overlay" id="frame-sync-modal" style="display: none;">
+    <div class="modal-card sync-modal-card">
+      <div class="modal-header">
+        <div class="modal-title-group">
+          <div class="modal-title">AUTOMATED VOD-TO-API FRAME ALIGNMENT ENGINE</div>
+          <div class="modal-subtitle">Zero-Drift Millisecond Synchronization between MP4 Video and Riot API Telemetry</div>
+        </div>
+        <button id="btn-close-sync" class="modal-close-btn">&times;</button>
+      </div>
+
+      <div class="modal-body sync-modal-body">
+        <!-- Top Status KPIs -->
+        <div class="sync-kpi-grid">
+          <div class="sync-kpi-card">
+            <span class="sync-kpi-label">CALIBRATED OFFSET</span>
+            <span class="sync-kpi-val highlight" id="sync-kpi-offset">0.00s</span>
+            <span class="sync-kpi-sub" id="sync-kpi-offset-ms">0 ms delta</span>
+          </div>
+          <div class="sync-kpi-card">
+            <span class="sync-kpi-label">CONFIDENCE SCORE</span>
+            <span class="sync-kpi-val success" id="sync-kpi-confidence">100%</span>
+            <span class="sync-kpi-sub" id="sync-kpi-status">STATUS: UNALIGNED</span>
+          </div>
+          <div class="sync-kpi-card">
+            <span class="sync-kpi-label">STRATEGY</span>
+            <span class="sync-kpi-val neutral" id="sync-kpi-strategy">NONE</span>
+            <span class="sync-kpi-sub" id="sync-kpi-anchors">0 landmarks correlated</span>
+          </div>
+        </div>
+
+        <!-- 1. One-Click Automated AI Alignment Scan -->
+        <div class="sync-section-card">
+          <div class="sync-section-header">
+            <span class="sync-section-title">⚡ 1. AUTOMATED ACOUSTIC & VISUAL CROSS-CORRELATION SCAN</span>
+          </div>
+          <p class="sync-section-desc">
+            Scans the MP4 video using FFmpeg for visual scene transitions (barrier drops, buy phase exit) and acoustic transients (round horn, gunshots) to cross-correlate against the Riot API event timeline.
+          </p>
+          <div class="sync-action-row">
+            <button id="btn-run-auto-sync" class="btn-primary sync-run-btn">⚡ RUN AUTO-ALIGNMENT SCAN</button>
+            <span id="sync-scan-status-text" class="sync-status-indicator">READY TO SCAN</span>
+          </div>
+        </div>
+
+        <!-- 2. Interactive Frame-Lock Calibration -->
+        <div class="sync-section-card">
+          <div class="sync-section-header">
+            <span class="sync-section-title">📌 2. INTERACTIVE FRAME-LOCK CALIBRATION</span>
+          </div>
+          <p class="sync-section-desc">
+            Pause the video at a visible landmark (e.g. Round 1 barrier drop or first kill) and lock that exact frame to the corresponding Riot API event.
+          </p>
+          <div class="sync-lock-controls-row">
+            <div class="sync-field-group">
+              <label class="sync-field-label">CURRENT VIDEO FRAME</label>
+              <div class="sync-frame-badge" id="sync-current-frame-badge">00:00:00.00 (0 ms)</div>
+            </div>
+            <div class="sync-field-group" style="flex: 1;">
+              <label class="sync-field-label" for="sync-anchor-select">TELEMETRY EVENT ANCHOR</label>
+              <select id="sync-anchor-select" class="dropdown-select sync-select"></select>
+            </div>
+            <button id="btn-lock-current-frame" class="mini-btn sync-lock-action-btn">📌 LOCK FRAME</button>
+          </div>
+        </div>
+
+        <!-- 3. Manual Micro-Adjustment Slider & Steppers -->
+        <div class="sync-section-card">
+          <div class="sync-section-header">
+            <span class="sync-section-title">🎛️ 3. MILLISECOND FINE-TUNING & LIVE NUDGE</span>
+          </div>
+          <div class="sync-stepper-row">
+            <button class="mini-btn step-btn" data-step="-1000">-1.0s</button>
+            <button class="mini-btn step-btn" data-step="-200">-0.2s</button>
+            <button class="mini-btn step-btn" data-step="-50">-50ms</button>
+            <input type="range" id="sync-slider" class="sync-range-slider" min="-60000" max="60000" step="50" value="0">
+            <button class="mini-btn step-btn" data-step="50">+50ms</button>
+            <button class="mini-btn step-btn" data-step="200">+0.2s</button>
+            <button class="mini-btn step-btn" data-step="1000">+1.0s</button>
+            <button id="btn-reset-sync-zero" class="mini-btn reset-btn">RESET (0s)</button>
+          </div>
+        </div>
+
+        <!-- Diagnostic Log & Candidate Offsets -->
+        <div class="sync-log-card">
+          <div class="sub-header">📋 DIAGNOSTIC ALIGNMENT LOG & LANDMARK TELEMETRY</div>
+          <div class="sync-log-content" id="sync-diagnostic-log">
+            <div class="log-line">Frame alignment engine initialized. Click 'Run Auto-Alignment Scan' or lock to a visible event frame.</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="modal-footer" style="display: flex; justify-content: space-between; padding: 14px 20px;">
+        <button id="btn-cancel-sync" class="btn-sync">CLOSE</button>
+        <button id="btn-save-sync" class="btn-primary">APPLY & SAVE ALIGNMENT</button>
       </div>
     </div>
   </div>

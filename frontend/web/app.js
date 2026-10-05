@@ -98,6 +98,10 @@ const state = {
   splitPanesSwapped: false,
   proReferences: [],
   activeReferenceVod: null,
+
+  // Automated VOD-to-API Frame Alignment State
+  videoOffsetMs: 0,
+  syncStatus: null,
 };
 
 // DOM Elements
@@ -256,8 +260,29 @@ const btnOffsetMinus = document.getElementById('btn-offset-minus');
 const btnOffsetPlus = document.getElementById('btn-offset-plus');
 const btnOffsetReset = document.getElementById('btn-offset-reset');
 const syncOffsetVal = document.getElementById('sync-offset-val');
-const btnSwapPanes = document.getElementById('btn-swap-panes');
 const splitAudioSegmented = document.getElementById('split-audio-segmented');
+
+// Automated VOD-to-API Frame Alignment DOM Elements
+const btnOpenSyncModal = document.getElementById('btn-open-sync-modal');
+const btnSyncOffsetLabel = document.getElementById('btn-sync-offset-label');
+const frameSyncModal = document.getElementById('frame-sync-modal');
+const btnCloseSync = document.getElementById('btn-close-sync');
+const btnCancelSync = document.getElementById('btn-cancel-sync');
+const btnSaveSync = document.getElementById('btn-save-sync');
+const syncKpiOffset = document.getElementById('sync-kpi-offset');
+const syncKpiOffsetMs = document.getElementById('sync-kpi-offset-ms');
+const syncKpiConfidence = document.getElementById('sync-kpi-confidence');
+const syncKpiStatus = document.getElementById('sync-kpi-status');
+const syncKpiStrategy = document.getElementById('sync-kpi-strategy');
+const syncKpiAnchors = document.getElementById('sync-kpi-anchors');
+const btnRunAutoSync = document.getElementById('btn-run-auto-sync');
+const syncScanStatusText = document.getElementById('sync-scan-status-text');
+const syncCurrentFrameBadge = document.getElementById('sync-current-frame-badge');
+const syncAnchorSelect = document.getElementById('sync-anchor-select');
+const btnLockCurrentFrame = document.getElementById('btn-lock-current-frame');
+const syncSlider = document.getElementById('sync-slider');
+const btnResetSyncZero = document.getElementById('btn-reset-sync-zero');
+const syncDiagnosticLog = document.getElementById('sync-diagnostic-log');
 
 // Tag Mapping for 1-9 Hotkeys
 const TAG_MAP = {
@@ -281,6 +306,7 @@ async function init() {
   setupAggregateControls();
   setupObsControls();
   setupRiotControls();
+  setupFrameSyncControls();
   await loadAvailableMaps();
   await loadMatchList();
   await loadProReferenceCatalog();
@@ -327,6 +353,8 @@ async function loadMatch(matchId) {
     const overviewRes = await fetch(`/api/matches/${matchId}`);
     const overview = await overviewRes.json();
     state.matchMetadata = overview.metadata;
+    state.videoOffsetMs = (overview.metadata && overview.metadata.video_offset_ms) || 0;
+    updateSyncOffsetButtonLabel();
 
     updateMatchHeader(overview);
     const reportBtn = document.getElementById('btn-view-report');
@@ -440,7 +468,7 @@ function loadMapImage(mapName) {
 // -3s Pre-Roll Event Seek & Auto-Play
 // -------------------------------------------------------------
 function seekToEventWithPreRoll(eventTimeMs, bufferSeconds = 3.0) {
-  const targetSec = Math.max(0, (eventTimeMs - bufferSeconds * 1000) / 1000);
+  const targetSec = Math.max(0, (eventTimeMs + (state.videoOffsetMs || 0) - bufferSeconds * 1000) / 1000);
   videoPlayer.currentTime = targetSec;
 
   if (videoPlayer.duration && !isNaN(videoPlayer.duration)) {
@@ -538,7 +566,7 @@ function selectRound(roundNum, shouldSeek = true) {
   if (shouldSeek) {
     const chap = state.chapters.find((c) => c.round_num === roundNum);
     if (chap && videoPlayer.duration) {
-      videoPlayer.currentTime = chap.start_ms / 1000;
+      videoPlayer.currentTime = Math.max(0, (chap.start_ms + (state.videoOffsetMs || 0)) / 1000);
     }
   }
 
@@ -782,6 +810,7 @@ function renderMinimap() {
 
 
   const currentVideoMs = Math.round((videoPlayer.currentTime || 0) * 1000);
+  const currentTelemetryMs = currentVideoMs - (state.videoOffsetMs || 0);
 
   // 2. Filter events for current view
   const currentEvents = state.events.filter((e) => {
@@ -792,20 +821,20 @@ function renderMinimap() {
 
     // Temporal Live Radar mode check
     if (state.radarMode && (videoPlayer.duration || videoPlayer.currentTime > 0)) {
-      return e.event_time_ms <= currentVideoMs;
+      return e.event_time_ms <= currentTelemetryMs;
     }
     return true;
   });
 
   // 2.5 Draw Movement & Rotation Trajectories
-  drawMovementTrajectories(w, h, currentVideoMs);
+  drawMovementTrajectories(w, h, currentTelemetryMs);
 
   // 3. Draw Telemetry Points
   currentEvents.forEach((e) => {
     const coords = getEventNormCoords(e);
     const px = coords.x * w;
     const py = coords.y * h;
-    const deltaMs = currentVideoMs - e.event_time_ms;
+    const deltaMs = currentTelemetryMs - e.event_time_ms;
     const isRecent = state.radarMode && deltaMs >= 0 && deltaMs <= 4000;
     const isPast = state.radarMode && deltaMs > 4000;
 
@@ -882,7 +911,7 @@ function renderMinimap() {
   });
 }
 
-function drawMovementTrajectories(w, h, currentVideoMs) {
+function drawMovementTrajectories(w, h, currentTelemetryMs) {
   if (!state.showTrails) return;
 
   // 1. Gather all events for active round with valid coordinates
@@ -918,7 +947,7 @@ function drawMovementTrajectories(w, h, currentVideoMs) {
 
     let started = false;
     for (let i = 0; i < points.length; i++) {
-      if (points[i].timeMs >= currentVideoMs || i === 0) {
+      if (points[i].timeMs >= currentTelemetryMs || i === 0) {
         if (!started) {
           ctx.moveTo(points[i].x, points[i].y);
           started = true;
@@ -934,7 +963,7 @@ function drawMovementTrajectories(w, h, currentVideoMs) {
   }
 
   // 3. Draw active/traversed trajectory up to current time (or full if not live)
-  const traversed = isLive ? points.filter((p) => p.timeMs <= currentVideoMs) : points;
+  const traversed = isLive ? points.filter((p) => p.timeMs <= currentTelemetryMs) : points;
 
   if (traversed.length >= 2) {
     for (let i = 0; i < traversed.length - 1; i++) {
@@ -1335,7 +1364,8 @@ async function logTag(key) {
   const mapping = TAG_MAP[key];
   if (!mapping || !state.currentMatchId) return;
 
-  const currentMs = Math.round((videoPlayer.currentTime || 0) * 1000);
+  const currentVideoMs = Math.round((videoPlayer.currentTime || 0) * 1000);
+  const currentMs = currentVideoMs - (state.videoOffsetMs || 0);
 
   // Visual card click animation
   const card = document.querySelector(`.tag-card[data-key="${key}"]`);
@@ -1842,7 +1872,7 @@ function buildScrubberMarkers() {
 
   const totalDur = videoPlayer.duration;
   state.chapters.forEach((ch) => {
-    const sec = ch.start_ms / 1000;
+    const sec = Math.max(0, (ch.start_ms + (state.videoOffsetMs || 0)) / 1000);
     const pct = (sec / totalDur) * 100;
     const marker = document.createElement('div');
     marker.className = 'round-marker';
@@ -1860,9 +1890,9 @@ function updateScrubber() {
   timecodeDisplay.textContent = formatTimecode(videoPlayer.currentTime);
 
   // Sync active round with video playback position
-  const currentMs = videoPlayer.currentTime * 1000;
+  const telemetryMs = (videoPlayer.currentTime * 1000) - (state.videoOffsetMs || 0);
   for (let i = state.chapters.length - 1; i >= 0; i--) {
-    if (currentMs >= state.chapters[i].start_ms) {
+    if (telemetryMs >= state.chapters[i].start_ms) {
       if (state.activeRound !== state.chapters[i].round_num) {
         selectRound(state.chapters[i].round_num, false);
       }
@@ -1873,6 +1903,12 @@ function updateScrubber() {
   // Update dynamic minimap in real time as video plays
   if (state.radarMode) {
     renderMinimap();
+  }
+
+  // Update frame alignment badge if sync modal is active
+  if (frameSyncModal && frameSyncModal.style.display !== 'none' && syncCurrentFrameBadge) {
+    const curMs = Math.round((videoPlayer.currentTime || 0) * 1000);
+    syncCurrentFrameBadge.textContent = `${formatTimecode(videoPlayer.currentTime || 0)} (${curMs} ms)`;
   }
 }
 
@@ -4512,6 +4548,394 @@ function onRefFileInputChange(e) {
 
   showToast(`Loaded Custom Reference: ${file.name}`);
   syncReferencePlayback();
+}
+
+// -------------------------------------------------------------
+// Automated VOD-to-API Frame Alignment Engine & Zero-Drift Calibration
+// -------------------------------------------------------------
+
+function updateSyncOffsetButtonLabel() {
+  if (!btnSyncOffsetLabel) return;
+  const off = state.videoOffsetMs || 0;
+  const sec = (off / 1000).toFixed(2);
+  const sign = off > 0 ? '+' : '';
+  btnSyncOffsetLabel.textContent = `${sign}${sec}s`;
+}
+
+function updateSyncKpiDisplay(offsetMs, confidence = 1.0, strategy = 'manual', landmarksCount = 0, statusText = null) {
+  if (syncKpiOffset) {
+    const sec = (offsetMs / 1000).toFixed(2);
+    const sign = offsetMs > 0 ? '+' : '';
+    syncKpiOffset.textContent = `${sign}${sec}s`;
+  }
+  if (syncKpiOffsetMs) {
+    const sign = offsetMs > 0 ? '+' : '';
+    syncKpiOffsetMs.textContent = `${sign}${offsetMs} ms delta`;
+  }
+  if (syncKpiConfidence) {
+    syncKpiConfidence.textContent = `${Math.round(confidence * 100)}%`;
+    if (confidence >= 0.8) {
+      syncKpiConfidence.className = 'sync-kpi-val success';
+    } else if (confidence >= 0.5) {
+      syncKpiConfidence.className = 'sync-kpi-val warning';
+    } else {
+      syncKpiConfidence.className = 'sync-kpi-val highlight';
+    }
+  }
+  if (syncKpiStatus) {
+    if (statusText) {
+      syncKpiStatus.textContent = `STATUS: ${statusText.toUpperCase()}`;
+    } else if (offsetMs !== 0) {
+      syncKpiStatus.textContent = 'STATUS: CALIBRATED';
+    } else {
+      syncKpiStatus.textContent = 'STATUS: UNALIGNED';
+    }
+  }
+  if (syncKpiStrategy) {
+    syncKpiStrategy.textContent = (strategy || 'NONE').replace(/_/g, ' ').toUpperCase();
+  }
+  if (syncKpiAnchors) {
+    syncKpiAnchors.textContent = `${landmarksCount} landmark${landmarksCount === 1 ? '' : 's'} correlated`;
+  }
+  if (syncSlider) {
+    syncSlider.value = offsetMs;
+  }
+}
+
+function appendSyncLog(msg, isError = false) {
+  if (!syncDiagnosticLog) return;
+  const line = document.createElement('div');
+  line.className = isError ? 'log-line error' : 'log-line';
+  const now = new Date().toTimeString().split(' ')[0];
+  line.textContent = `[${now}] ${msg}`;
+  syncDiagnosticLog.appendChild(line);
+  syncDiagnosticLog.scrollTop = syncDiagnosticLog.scrollHeight;
+}
+
+function populateSyncAnchors() {
+  if (!syncAnchorSelect) return;
+  syncAnchorSelect.innerHTML = '';
+
+  const candidates = [];
+
+  // 1. Round Start anchors for every round
+  if (state.chapters && state.chapters.length > 0) {
+    state.chapters.forEach((ch) => {
+      candidates.push({
+        id: `round_start_${ch.round_num}`,
+        eventId: null,
+        label: `Round ${ch.round_num + 1} Start (API: ${formatTime(ch.start_ms / 1000)})`,
+        timeMs: ch.start_ms,
+      });
+    });
+  }
+
+  // 2. Telemetry event anchors (Round starts, barrier drops, kills, plant, defuse)
+  if (state.events && state.events.length > 0) {
+    state.events.forEach((ev) => {
+      const rnd = (ev.round_number || 0) + 1;
+      const tSec = formatTime(ev.event_time_ms / 1000);
+      let desc = null;
+      if (ev.event_type === 'round_start') {
+        desc = `Round ${rnd} Start (00:00)`;
+      } else if (ev.event_type === 'kill') {
+        const killer = (ev.metadata && ev.metadata.killer_name) || 'Player';
+        const victim = (ev.metadata && ev.metadata.victim_name) || 'Enemy';
+        desc = `Round ${rnd} Kill: ${killer} ➔ ${victim} (${tSec})`;
+      } else if (ev.event_type === 'plant') {
+        desc = `Round ${rnd} Spike Planted (${tSec})`;
+      } else if (ev.event_type === 'defuse') {
+        desc = `Round ${rnd} Spike Defused (${tSec})`;
+      }
+
+      if (desc) {
+        candidates.push({
+          id: `ev_${ev.event_id}`,
+          eventId: ev.event_id,
+          label: desc,
+          timeMs: ev.event_time_ms,
+        });
+      }
+    });
+  }
+
+  // Fallback if no events loaded
+  if (candidates.length === 0) {
+    const opt = document.createElement('option');
+    opt.value = '';
+    opt.textContent = 'Round 1 Start (00:00.000)';
+    syncAnchorSelect.appendChild(opt);
+    return;
+  }
+
+  // Deduplicate and populate up to 40 primary landmarks
+  candidates.slice(0, 40).forEach((cand) => {
+    const opt = document.createElement('option');
+    opt.value = cand.eventId ? String(cand.eventId) : cand.id;
+    opt.textContent = cand.label;
+    opt.dataset.timeMs = cand.timeMs;
+    syncAnchorSelect.appendChild(opt);
+  });
+}
+
+async function openFrameSyncModal() {
+  if (!state.currentMatchId) {
+    showToast('Please select a match first');
+    return;
+  }
+
+  if (frameSyncModal) {
+    frameSyncModal.style.display = 'flex';
+  }
+
+  // Update current frame badge
+  const curMs = Math.round((videoPlayer.currentTime || 0) * 1000);
+  if (syncCurrentFrameBadge) {
+    syncCurrentFrameBadge.textContent = `${formatTimecode(videoPlayer.currentTime || 0)} (${curMs} ms)`;
+  }
+
+  // Populate anchor dropdown
+  populateSyncAnchors();
+
+  // Fetch current status from server
+  await fetchAndRenderSyncStatus();
+}
+
+function closeFrameSyncModal() {
+  if (frameSyncModal) {
+    frameSyncModal.style.display = 'none';
+  }
+}
+
+async function fetchAndRenderSyncStatus() {
+  if (!state.currentMatchId) return;
+  try {
+    const res = await fetch(`/api/matches/${state.currentMatchId}/sync-status`);
+    if (!res.ok) return;
+    const data = await res.json();
+    state.syncStatus = data;
+    state.videoOffsetMs = data.offset_ms || 0;
+    updateSyncOffsetButtonLabel();
+    updateSyncKpiDisplay(
+      data.offset_ms,
+      data.confidence,
+      data.strategy,
+      data.landmarks_matched,
+      data.status
+    );
+    if (syncScanStatusText) {
+      syncScanStatusText.textContent = data.status === 'calibrated' ? 'CALIBRATED & VERIFIED' : 'READY TO SCAN';
+      syncScanStatusText.className = data.status === 'calibrated' ? 'sync-status-indicator active' : 'sync-status-indicator';
+    }
+  } catch (err) {
+    console.error('Failed to fetch sync status:', err);
+  }
+}
+
+async function runAutoSyncScan() {
+  if (!state.currentMatchId) return;
+
+  if (btnRunAutoSync) {
+    btnRunAutoSync.disabled = true;
+    btnRunAutoSync.textContent = 'SCANNING FRAMES & AUDIO...';
+  }
+  if (syncScanStatusText) {
+    syncScanStatusText.textContent = 'ANALYZING SCENE CUTS & AUDIO SPIKES...';
+    syncScanStatusText.className = 'sync-status-indicator scanning';
+  }
+
+  appendSyncLog('Initiating automated acoustic & visual cross-correlation scan...');
+
+  try {
+    const res = await fetch(`/api/matches/${state.currentMatchId}/sync-video`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ auto: true }),
+    });
+
+    const data = await res.json();
+    if (!res.ok) {
+      appendSyncLog(`Scan failed: ${data.error || 'Server error'}`, true);
+      showToast('Auto-sync scan failed');
+      return;
+    }
+
+    const offsetMs = data.suggested_offset_ms !== undefined ? data.suggested_offset_ms : (data.offset_ms || 0);
+    const confidence = data.confidence !== undefined ? data.confidence : 1.0;
+    const strategy = data.strategy_used || 'visual_acoustic_correlation';
+    const landmarks = data.landmarks_matched !== undefined ? data.landmarks_matched : 0;
+
+    state.videoOffsetMs = offsetMs;
+    updateSyncOffsetButtonLabel();
+    updateSyncKpiDisplay(offsetMs, confidence, strategy, landmarks, 'calibrated');
+
+    if (data.diagnostic_log && Array.isArray(data.diagnostic_log)) {
+      data.diagnostic_log.forEach((line) => appendSyncLog(line));
+    } else {
+      appendSyncLog(`Scan complete! Calibrated offset: ${offsetMs >= 0 ? '+' : ''}${offsetMs} ms (${strategy}, confidence: ${Math.round(confidence * 100)}%)`);
+    }
+
+    if (syncScanStatusText) {
+      syncScanStatusText.textContent = `SYNC COMPLETE (${strategy.toUpperCase()})`;
+      syncScanStatusText.className = 'sync-status-indicator active';
+    }
+
+    buildScrubberMarkers();
+    if (state.radarMode) renderMinimap();
+    showToast(`VOD Synchronized: ${offsetMs >= 0 ? '+' : ''}${offsetMs}ms (${strategy})`);
+
+  } catch (err) {
+    console.error('Auto sync error:', err);
+    appendSyncLog(`Network/execution error during scan: ${err.message}`, true);
+    showToast('Failed to run auto sync');
+  } finally {
+    if (btnRunAutoSync) {
+      btnRunAutoSync.disabled = false;
+      btnRunAutoSync.textContent = '⚡ RUN AUTO-ALIGNMENT SCAN';
+    }
+  }
+}
+
+async function lockCurrentFrameToAnchor() {
+  if (!state.currentMatchId) return;
+
+  const videoTimeMs = Math.round((videoPlayer.currentTime || 0) * 1000);
+  const selectedOpt = syncAnchorSelect && syncAnchorSelect.selectedOptions && syncAnchorSelect.selectedOptions[0];
+  const eventIdVal = selectedOpt ? selectedOpt.value : null;
+  const isNumericEventId = eventIdVal && !isNaN(parseInt(eventIdVal, 10)) && !eventIdVal.startsWith('round_start_');
+
+  appendSyncLog(`Locking video frame at ${formatTimecode(videoPlayer.currentTime || 0)} (${videoTimeMs} ms) to anchor "${selectedOpt ? selectedOpt.textContent : 'Round 1 Start'}"...`);
+
+  try {
+    const payload = {
+      video_time_ms: videoTimeMs,
+    };
+    if (isNumericEventId) {
+      payload.event_id = parseInt(eventIdVal, 10);
+    } else if (selectedOpt && selectedOpt.dataset && selectedOpt.dataset.timeMs) {
+      payload.target_event_time_ms = parseInt(selectedOpt.dataset.timeMs, 10);
+      payload.align_to = selectedOpt.textContent;
+    }
+
+    const res = await fetch(`/api/matches/${state.currentMatchId}/sync-video`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload),
+    });
+
+    const data = await res.json();
+    if (!res.ok) {
+      appendSyncLog(`Frame lock failed: ${data.error || 'Server error'}`, true);
+      showToast('Frame lock calibration failed');
+      return;
+    }
+
+    const offsetMs = data.suggested_offset_ms !== undefined ? data.suggested_offset_ms : (data.offset_ms || 0);
+    state.videoOffsetMs = offsetMs;
+    updateSyncOffsetButtonLabel();
+    updateSyncKpiDisplay(offsetMs, 1.0, data.strategy_used || 'point_lock_calibration', 1, 'calibrated');
+
+    appendSyncLog(`Frame locked! Calibrated offset: ${offsetMs >= 0 ? '+' : ''}${offsetMs} ms.`);
+    buildScrubberMarkers();
+    if (state.radarMode) renderMinimap();
+    showToast(`Frame Locked! Offset: ${offsetMs >= 0 ? '+' : ''}${offsetMs}ms`);
+
+  } catch (err) {
+    console.error('Frame lock error:', err);
+    appendSyncLog(`Error locking frame: ${err.message}`, true);
+    showToast('Failed to lock frame');
+  }
+}
+
+function applyOffsetDelta(deltaMs) {
+  const newOffset = Math.min(60000, Math.max(-60000, (state.videoOffsetMs || 0) + deltaMs));
+  setLiveOffset(newOffset);
+  appendSyncLog(`Nudged offset by ${deltaMs >= 0 ? '+' : ''}${deltaMs} ms ➔ ${newOffset >= 0 ? '+' : ''}${newOffset} ms`);
+}
+
+function setLiveOffset(offsetMs) {
+  state.videoOffsetMs = offsetMs;
+  updateSyncOffsetButtonLabel();
+  updateSyncKpiDisplay(offsetMs, 1.0, 'fine_tuning_nudge', 1, 'calibrated');
+  buildScrubberMarkers();
+  if (state.radarMode) renderMinimap();
+}
+
+async function saveSyncOffset() {
+  if (!state.currentMatchId) {
+    closeFrameSyncModal();
+    return;
+  }
+
+  try {
+    const res = await fetch(`/api/matches/${state.currentMatchId}/sync-video`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ offset_ms: state.videoOffsetMs }),
+    });
+
+    if (res.ok) {
+      showToast(`Alignment Saved: ${state.videoOffsetMs >= 0 ? '+' : ''}${state.videoOffsetMs}ms`);
+      closeFrameSyncModal();
+    } else {
+      const err = await res.json();
+      showToast(`Failed to save alignment: ${err.error || 'Unknown error'}`);
+    }
+  } catch (err) {
+    console.error('Failed to save sync offset:', err);
+    showToast('Network error saving alignment');
+  }
+}
+
+function setupFrameSyncControls() {
+  if (btnOpenSyncModal) {
+    btnOpenSyncModal.addEventListener('click', openFrameSyncModal);
+  }
+  if (btnCloseSync) {
+    btnCloseSync.addEventListener('click', closeFrameSyncModal);
+  }
+  if (btnCancelSync) {
+    btnCancelSync.addEventListener('click', closeFrameSyncModal);
+  }
+  if (btnSaveSync) {
+    btnSaveSync.addEventListener('click', saveSyncOffset);
+  }
+  if (btnRunAutoSync) {
+    btnRunAutoSync.addEventListener('click', runAutoSyncScan);
+  }
+  if (btnLockCurrentFrame) {
+    btnLockCurrentFrame.addEventListener('click', lockCurrentFrameToAnchor);
+  }
+  if (syncSlider) {
+    syncSlider.addEventListener('input', (e) => {
+      setLiveOffset(parseInt(e.target.value, 10));
+    });
+  }
+  if (btnResetSyncZero) {
+    btnResetSyncZero.addEventListener('click', () => {
+      setLiveOffset(0);
+      appendSyncLog('Reset offset to 0 ms.');
+    });
+  }
+
+  // Micro-adjustment step buttons
+  document.querySelectorAll('.step-btn').forEach((btn) => {
+    btn.addEventListener('click', () => {
+      const step = parseInt(btn.dataset.step, 10);
+      if (!isNaN(step)) {
+        applyOffsetDelta(step);
+      }
+    });
+  });
+
+  // Close modal when clicking outside modal-card
+  if (frameSyncModal) {
+    frameSyncModal.addEventListener('click', (e) => {
+      if (e.target === frameSyncModal) {
+        closeFrameSyncModal();
+      }
+    });
+  }
 }
 
 // Start application
