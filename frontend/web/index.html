@@ -72,13 +72,30 @@
           <svg class="icon" viewBox="0 0 24 24"><polygon points="5 3 19 12 5 21 5 3"></polygon></svg>
           VOD PLAYER
         </div>
-        <div class="timecode-display" id="timecode-display">00:00:00.00</div>
+        <div class="header-right-group">
+          <div class="telestrator-bar" id="telestrator-bar">
+            <button id="btn-telestrator-toggle" class="mini-btn tele-btn" title="Toggle Telestrator Draw Mode [T]">
+              DRAW [T]
+            </button>
+            <div class="tele-tools" id="tele-tools" style="display: none;">
+              <button class="color-dot active" data-color="#ff4655" style="background: #ff4655;"></button>
+              <button class="color-dot" data-color="#00f5d4" style="background: #00f5d4;"></button>
+              <button class="color-dot" data-color="#ffd166" style="background: #ffd166;"></button>
+              <button id="btn-tool-pen" class="mini-btn tool-btn active" data-tool="pen" title="Freehand Pen">✎</button>
+              <button id="btn-tool-arrow" class="mini-btn tool-btn" data-tool="arrow" title="Arrow Tool">➔</button>
+              <button id="btn-tool-circle" class="mini-btn tool-btn" data-tool="circle" title="Circle Tool">◯</button>
+              <button id="btn-tool-clear" class="mini-btn tool-btn clear-btn" title="Clear Drawing">CLEAR</button>
+            </div>
+          </div>
+          <div class="timecode-display" id="timecode-display">00:00:00.00</div>
+        </div>
       </div>
 
       <div class="video-container" id="video-wrapper">
         <video id="video-player" playsinline>
           Your browser does not support the video tag.
         </video>
+        <canvas id="telestrator-canvas"></canvas>
         <div class="video-placeholder" id="video-placeholder">
           <svg class="placeholder-icon" viewBox="0 0 24 24"><polygon points="5 3 19 12 5 21 5 3"></polygon></svg>
           <p>No Video Loaded</p>
@@ -141,6 +158,7 @@
           SPATIAL HEATMAP & TELEMETRY
         </div>
         <div class="minimap-toggles">
+          <button id="btn-radar-mode" class="mini-btn radar-btn active" data-mode="radar" title="Show events dynamically as video plays">LIVE RADAR</button>
           <button id="btn-filter-all" class="mini-btn active" data-filter="all">ALL</button>
           <button id="btn-filter-kills" class="mini-btn kill-btn" data-filter="kill">KILLS</button>
           <button id="btn-filter-deaths" class="mini-btn death-btn" data-filter="death">DEATHS</button>
@@ -166,7 +184,10 @@
           <svg class="icon" viewBox="0 0 24 24"><path d="M20.59 13.41l-7.17 7.17a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82z"></path><line x1="7" y1="7" x2="7.01" y2="7"></line></svg>
           HOTKEY TAGGING GRID
         </div>
-        <span class="hotkey-hint">PRESS [1-9] TO TAG</span>
+        <div class="tag-header-actions">
+          <button id="btn-undo-tag" class="mini-btn undo-btn" title="Undo Last Tag (Ctrl+Z)">UNDO [^Z]</button>
+          <span class="hotkey-hint">KEYS [1-9]</span>
+        </div>
       </div>
 
       <!-- Action Grid -->

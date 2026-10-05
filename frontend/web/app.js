@@ -1,6 +1,6 @@
 /**
  * ValLens Review Interface Engine
- * Synchronizes video playback, top-down minimap telemetry, and hotkey review tags.
+ * Synchronizes video playback, dynamic minimap telemetry, hotkey review tagging, and telestrator overlays.
  */
 
 // Application State
@@ -13,9 +13,22 @@ const state = {
   authorType: 'solo', // 'solo' or 'coach'
   activeRound: 0,
   minimapFilter: 'all', // 'all', 'kill', 'death'
+  radarMode: true, // true: dynamic temporal playback; false: static round
   mapImage: new Image(),
   mapLoaded: false,
   hoveredEvent: null,
+
+  // Undo Tag Buffer Stack
+  tagHistoryStack: [], // Array of { tag_id, name }
+
+  // Telestrator State
+  telestratorActive: false,
+  teleTool: 'pen', // 'pen', 'arrow', 'circle'
+  teleColor: '#ff4655',
+  isDrawing: false,
+  drawStartX: 0,
+  drawStartY: 0,
+  savedCanvasImage: null,
 };
 
 // DOM Elements
@@ -36,18 +49,26 @@ const roundEventsList = document.getElementById('round-events-list');
 const minimapCanvas = document.getElementById('minimap-canvas');
 const ctx = minimapCanvas.getContext('2d');
 const mapTooltip = document.getElementById('map-tooltip');
+const btnRadarMode = document.getElementById('btn-radar-mode');
 
 const tagGrid = document.getElementById('tag-grid');
 const tagToast = document.getElementById('tag-toast');
 const tagHistoryList = document.getElementById('tag-history-list');
 const tagCountEl = document.getElementById('tag-count');
 const habitBars = document.getElementById('habit-bars');
+const btnUndoTag = document.getElementById('btn-undo-tag');
 
 const btnPlayPause = document.getElementById('btn-play-pause');
 const btnPrevFrame = document.getElementById('btn-prev-frame');
 const btnNextFrame = document.getElementById('btn-next-frame');
 const btnPrevRound = document.getElementById('btn-prev-round');
 const btnNextRound = document.getElementById('btn-next-round');
+
+// Telestrator Elements
+const teleCanvas = document.getElementById('telestrator-canvas');
+const teleCtx = teleCanvas.getContext('2d');
+const btnTeleToggle = document.getElementById('btn-telestrator-toggle');
+const teleTools = document.getElementById('tele-tools');
 
 // Tag Mapping for 1-9 Hotkeys
 const TAG_MAP = {
@@ -67,6 +88,7 @@ const TAG_MAP = {
 // -------------------------------------------------------------
 async function init() {
   setupEventListeners();
+  setupTelestrator();
   await loadMatchList();
 }
 
@@ -165,6 +187,17 @@ function loadMapImage(mapName) {
 }
 
 // -------------------------------------------------------------
+// -3s Pre-Roll Event Seek
+// -------------------------------------------------------------
+function seekToEventWithPreRoll(eventTimeMs) {
+  if (!videoPlayer.duration) return;
+  // Jump 3 seconds before event to analyze angle isolation and pre-aim
+  const targetSec = Math.max(0, (eventTimeMs - 3000) / 1000);
+  videoPlayer.currentTime = targetSec;
+  showToast(`Pre-roll (-3s) -> ${formatTime(targetSec)}`);
+}
+
+// -------------------------------------------------------------
 // Round Navigation & Events Feed
 // -------------------------------------------------------------
 function buildRoundPills() {
@@ -230,16 +263,13 @@ function renderRoundEventsFeed(events) {
       label = `SPIKE DEFUSED`;
     }
 
-    const timeSec = (e.event_time_ms / 1000).toFixed(1);
     item.innerHTML = `
       <span>${label}</span>
       <span class="feed-time">${formatTime(e.event_time_ms / 1000)}</span>
     `;
 
     item.addEventListener('click', () => {
-      if (videoPlayer.duration) {
-        videoPlayer.currentTime = e.event_time_ms / 1000;
-      }
+      seekToEventWithPreRoll(e.event_time_ms);
     });
 
     roundEventsList.appendChild(item);
@@ -247,7 +277,7 @@ function renderRoundEventsFeed(events) {
 }
 
 // -------------------------------------------------------------
-// Minimap & Spatial Heatmap Canvas
+// Temporal Dynamic Minimap Engine
 // -------------------------------------------------------------
 function renderMinimap() {
   const w = minimapCanvas.width;
@@ -267,20 +297,42 @@ function renderMinimap() {
     ctx.fillText('Loading Map Asset...', w / 2, h / 2);
   }
 
+  const currentVideoMs = Math.round((videoPlayer.currentTime || 0) * 1000);
+
   // 2. Filter events for current view
   const currentEvents = state.events.filter((e) => {
     if (e.round_number !== state.activeRound) return false;
     if (state.minimapFilter === 'kill' && e.event_type !== 'kill') return false;
     if (state.minimapFilter === 'death' && e.event_type !== 'death') return false;
-    return e.pos_x !== null && e.pos_y !== null;
+    if (e.pos_x === null || e.pos_y === null) return false;
+
+    // Temporal Live Radar mode check
+    if (state.radarMode && videoPlayer.duration) {
+      return e.event_time_ms <= currentVideoMs;
+    }
+    return true;
   });
 
   // 3. Draw Telemetry Points
   currentEvents.forEach((e) => {
     const px = e.pos_x * w;
     const py = e.pos_y * h;
+    const deltaMs = currentVideoMs - e.event_time_ms;
+    const isRecent = state.radarMode && deltaMs >= 0 && deltaMs <= 3000;
 
     ctx.save();
+
+    // Recent Event Pulsing Radar Shockwave
+    if (isRecent) {
+      const pulseRatio = (deltaMs % 1000) / 1000;
+      const pulseRadius = 10 + pulseRatio * 20;
+      ctx.strokeStyle = e.event_type === 'kill' ? `rgba(6, 214, 160, ${1 - pulseRatio})` : `rgba(255, 70, 85, ${1 - pulseRatio})`;
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      ctx.arc(px, py, pulseRadius, 0, Math.PI * 2);
+      ctx.stroke();
+    }
+
     if (e.event_type === 'kill') {
       // Green / Cyan Crosshair for Kills
       ctx.strokeStyle = '#06d6a0';
@@ -297,7 +349,7 @@ function renderMinimap() {
       ctx.stroke();
     } else if (e.event_type === 'death') {
       // Red Skull Marker for Deaths
-      ctx.fillStyle = 'rgba(255, 70, 85, 0.85)';
+      ctx.fillStyle = 'rgba(255, 70, 85, 0.9)';
       ctx.beginPath();
       ctx.arc(px, py, 8, 0, Math.PI * 2);
       ctx.fill();
@@ -320,7 +372,7 @@ function renderMinimap() {
 }
 
 // -------------------------------------------------------------
-// Hotkey Review Tagging System
+// Hotkey Review Tagging & Undo Stack
 // -------------------------------------------------------------
 async function logTag(key) {
   const mapping = TAG_MAP[key];
@@ -335,8 +387,6 @@ async function logTag(key) {
     setTimeout(() => card.classList.remove('active'), 150);
   }
 
-  showToast(`[${key}] ${mapping.name} logged at ${formatTime(currentMs / 1000)}`);
-
   try {
     const res = await fetch(`/api/matches/${state.currentMatchId}/tags`, {
       method: 'POST',
@@ -350,10 +400,31 @@ async function logTag(key) {
     });
 
     if (res.ok) {
+      const data = await res.json();
+      state.tagHistoryStack.push({ tag_id: data.tag_id, name: mapping.name });
+      showToast(`[${key}] ${mapping.name} logged at ${formatTime(currentMs / 1000)} (Ctrl+Z to Undo)`);
       await loadTags();
     }
   } catch (err) {
     console.error('Failed to log tag:', err);
+  }
+}
+
+async function undoLastTag() {
+  if (state.tagHistoryStack.length === 0) {
+    showToast('No tags to undo');
+    return;
+  }
+
+  const last = state.tagHistoryStack.pop();
+  try {
+    const res = await fetch(`/api/tags/${last.tag_id}`, { method: 'DELETE' });
+    if (res.ok) {
+      showToast(`Undid tag [${last.name}]`);
+      await loadTags();
+    }
+  } catch (err) {
+    console.error('Failed to undo tag:', err);
   }
 }
 
@@ -395,8 +466,8 @@ function renderTagHistory() {
     item.addEventListener('click', (e) => {
       if (e.target.classList.contains('tag-delete-btn')) {
         deleteTag(t.tag_id);
-      } else if (videoPlayer.duration) {
-        videoPlayer.currentTime = t.timestamp_ms / 1000;
+      } else {
+        seekToEventWithPreRoll(t.timestamp_ms);
       }
     });
 
@@ -453,7 +524,139 @@ function showToast(msg) {
   tagToast.style.display = 'block';
   setTimeout(() => {
     tagToast.style.display = 'none';
-  }, 1500);
+  }, 1800);
+}
+
+// -------------------------------------------------------------
+// Interactive Telestrator Drawing Engine
+// -------------------------------------------------------------
+function setupTelestrator() {
+  resizeTelestratorCanvas();
+  window.addEventListener('resize', resizeTelestratorCanvas);
+
+  btnTeleToggle.addEventListener('click', toggleTelestrator);
+
+  document.querySelectorAll('.color-dot').forEach((dot) => {
+    dot.addEventListener('click', () => {
+      document.querySelectorAll('.color-dot').forEach((d) => d.classList.remove('active'));
+      dot.classList.add('active');
+      state.teleColor = dot.dataset.color;
+    });
+  });
+
+  document.querySelectorAll('.tool-btn').forEach((btn) => {
+    if (btn.id === 'btn-tool-clear') {
+      btn.addEventListener('click', clearTelestrator);
+    } else {
+      btn.addEventListener('click', () => {
+        document.querySelectorAll('.tool-btn').forEach((b) => {
+          if (b.id !== 'btn-tool-clear') b.classList.remove('active');
+        });
+        btn.classList.add('active');
+        state.teleTool = btn.dataset.tool;
+      });
+    }
+  });
+
+  teleCanvas.addEventListener('mousedown', (e) => {
+    if (!state.telestratorActive) return;
+    state.isDrawing = true;
+    const rect = teleCanvas.getBoundingClientRect();
+    state.drawStartX = e.clientX - rect.left;
+    state.drawStartY = e.clientY - rect.top;
+
+    state.savedCanvasImage = teleCtx.getImageData(0, 0, teleCanvas.width, teleCanvas.height);
+
+    if (state.teleTool === 'pen') {
+      teleCtx.beginPath();
+      teleCtx.moveTo(state.drawStartX, state.drawStartY);
+      teleCtx.strokeStyle = state.teleColor;
+      teleCtx.lineWidth = 3;
+      teleCtx.lineCap = 'round';
+      teleCtx.lineJoin = 'round';
+    }
+  });
+
+  teleCanvas.addEventListener('mousemove', (e) => {
+    if (!state.telestratorActive || !state.isDrawing) return;
+    const rect = teleCanvas.getBoundingClientRect();
+    const currX = e.clientX - rect.left;
+    const currY = e.clientY - rect.top;
+
+    if (state.teleTool === 'pen') {
+      teleCtx.lineTo(currX, currY);
+      teleCtx.stroke();
+    } else if (state.teleTool === 'arrow') {
+      teleCtx.putImageData(state.savedCanvasImage, 0, 0);
+      drawArrow(state.drawStartX, state.drawStartY, currX, currY, state.teleColor);
+    } else if (state.teleTool === 'circle') {
+      teleCtx.putImageData(state.savedCanvasImage, 0, 0);
+      const rad = Math.sqrt(Math.pow(currX - state.drawStartX, 2) + Math.pow(currY - state.drawStartY, 2));
+      teleCtx.beginPath();
+      teleCtx.arc(state.drawStartX, state.drawStartY, rad, 0, Math.PI * 2);
+      teleCtx.strokeStyle = state.teleColor;
+      teleCtx.lineWidth = 3;
+      teleCtx.stroke();
+    }
+  });
+
+  window.addEventListener('mouseup', () => {
+    state.isDrawing = false;
+  });
+}
+
+function resizeTelestratorCanvas() {
+  const rect = videoWrapper.getBoundingClientRect();
+  teleCanvas.width = rect.width;
+  teleCanvas.height = rect.height;
+}
+
+function toggleTelestrator() {
+  state.telestratorActive = !state.telestratorActive;
+  if (state.telestratorActive) {
+    if (!videoPlayer.paused) {
+      videoPlayer.pause();
+      btnPlayPause.textContent = 'PLAY';
+    }
+    teleCanvas.classList.add('active');
+    btnTeleToggle.classList.add('active');
+    teleTools.style.display = 'flex';
+    resizeTelestratorCanvas();
+    showToast('Telestrator Active: Draw on video');
+  } else {
+    teleCanvas.classList.remove('active');
+    btnTeleToggle.classList.remove('active');
+    teleTools.style.display = 'none';
+  }
+}
+
+function clearTelestrator() {
+  teleCtx.clearRect(0, 0, teleCanvas.width, teleCanvas.height);
+}
+
+function drawArrow(fromx, fromy, tox, toy, color) {
+  const headlen = 14;
+  const angle = Math.atan2(toy - fromy, tox - fromx);
+
+  teleCtx.save();
+  teleCtx.strokeStyle = color;
+  teleCtx.fillStyle = color;
+  teleCtx.lineWidth = 3;
+
+  // Main line
+  teleCtx.beginPath();
+  teleCtx.moveTo(fromx, fromy);
+  teleCtx.lineTo(tox, toy);
+  teleCtx.stroke();
+
+  // Arrowhead
+  teleCtx.beginPath();
+  teleCtx.moveTo(tox, toy);
+  teleCtx.lineTo(tox - headlen * Math.cos(angle - Math.PI / 6), toy - headlen * Math.sin(angle - Math.PI / 6));
+  teleCtx.lineTo(tox - headlen * Math.cos(angle + Math.PI / 6), toy - headlen * Math.sin(angle + Math.PI / 6));
+  teleCtx.closePath();
+  teleCtx.fill();
+  teleCtx.restore();
 }
 
 // -------------------------------------------------------------
@@ -492,10 +695,14 @@ function updateScrubber() {
         document.querySelectorAll('.round-pill').forEach((p, idx) => {
           p.classList.toggle('active', idx === state.activeRound);
         });
-        renderMinimap();
       }
       break;
     }
+  }
+
+  // Update dynamic minimap in real time as video plays
+  if (state.radarMode) {
+    renderMinimap();
   }
 }
 
@@ -503,6 +710,11 @@ function togglePlay() {
   if (videoPlayer.paused) {
     videoPlayer.play();
     btnPlayPause.textContent = 'PAUSE';
+    // Clear telestrator drawings on playback resume
+    if (state.telestratorActive) {
+      toggleTelestrator();
+      clearTelestrator();
+    }
   } else {
     videoPlayer.pause();
     btnPlayPause.textContent = 'PLAY';
@@ -537,6 +749,20 @@ function setupEventListeners() {
     // If typing in input, ignore
     if (e.target.tagName === 'INPUT' || e.target.tagName === 'SELECT') return;
 
+    // Undo Hotkey: Ctrl+Z or Cmd+Z
+    if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'z') {
+      e.preventDefault();
+      undoLastTag();
+      return;
+    }
+
+    // Telestrator Toggle Hotkey: 'T'
+    if (e.key.toLowerCase() === 't' && !e.ctrlKey && !e.metaKey) {
+      e.preventDefault();
+      toggleTelestrator();
+      return;
+    }
+
     // 1-9 Hotkey Review Tags
     if (TAG_MAP[e.key]) {
       e.preventDefault();
@@ -558,6 +784,9 @@ function setupEventListeners() {
       videoPlayer.currentTime = Math.min(videoPlayer.duration || 0, videoPlayer.currentTime + 5);
     }
   });
+
+  // Undo button click
+  btnUndoTag.addEventListener('click', undoLastTag);
 
   // Match Selector
   matchSelect.addEventListener('change', (e) => {
@@ -584,6 +813,7 @@ function setupEventListeners() {
   videoPlayer.addEventListener('loadedmetadata', () => {
     buildScrubberMarkers();
     updateScrubber();
+    resizeTelestratorCanvas();
   });
 
   btnPlayPause.addEventListener('click', togglePlay);
@@ -633,10 +863,18 @@ function setupEventListeners() {
     videoPlayer.currentTime = pos * videoPlayer.duration;
   });
 
-  // Minimap Filters
-  document.querySelectorAll('.mini-btn').forEach((btn) => {
+  // Minimap Live Radar Toggle
+  btnRadarMode.addEventListener('click', () => {
+    state.radarMode = !state.radarMode;
+    btnRadarMode.classList.toggle('active', state.radarMode);
+    btnRadarMode.textContent = state.radarMode ? 'LIVE RADAR' : 'STATIC ROUND';
+    renderMinimap();
+  });
+
+  // Minimap Event Filters
+  document.querySelectorAll('.mini-btn[data-filter]').forEach((btn) => {
     btn.addEventListener('click', () => {
-      document.querySelectorAll('.mini-btn').forEach((b) => b.classList.remove('active'));
+      document.querySelectorAll('.mini-btn[data-filter]').forEach((b) => b.classList.remove('active'));
       btn.classList.add('active');
       state.minimapFilter = btn.dataset.filter;
       renderMinimap();
@@ -684,8 +922,8 @@ function setupEventListeners() {
       return Math.sqrt(dx * dx + dy * dy) < 0.035;
     });
 
-    if (hit && videoPlayer.duration) {
-      videoPlayer.currentTime = hit.event_time_ms / 1000;
+    if (hit) {
+      seekToEventWithPreRoll(hit.event_time_ms);
     }
   });
 
