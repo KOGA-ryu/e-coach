@@ -1,0 +1,66 @@
+# macOS
+.DS_Store
+.AppleDouble
+.LSOverride
+._*
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+.venv/
+venv/
+ENV/
+env/
+
+# C++ / CMake / Qt
+CMakeFiles/
+CMakeCache.txt
+cmake_install.cmake
+Makefile
+*.o
+*.obj
+*.dylib
+*.a
+bin/
+*.moc
+moc_*.cpp
+qrc_*.cpp
+ui_*.h
+*.user
+*.user.*
+.qt/
+.cmake/
+
+# SQLite / Database & VODs
+*.db
+*.sqlite
+*.sqlite3
+*.mp4
+*.mkv
+*.mov
+records/
+recordings/
+
+# IDE / Editor
+.vscode/
+.idea/
+*.swp
+*.swo
