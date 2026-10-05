@@ -216,6 +216,91 @@ class ValLensRequestHandler(BaseHTTPRequestHandler):
                 self.wfile.write(payload)
                 return
 
+        # 7.5. Perspective Diffing & Cognitive Blindspots
+        if path.startswith("/api/matches/") and path.endswith("/perspective-diff"):
+            parts = path.split("/")
+            match_id = parts[3]
+            tol_str = query.get("tolerance_ms", ["5000"])[0]
+            try:
+                tol_ms = int(tol_str)
+            except ValueError:
+                tol_ms = 5000
+
+            result = self.service.get_perspective_diff(match_id, tolerance_ms=tol_ms)
+            if not result:
+                self._send_error("Match not found", status=404)
+                return
+
+            self._send_json({
+                "match_id": result.match_id,
+                "agreement_score": result.agreement_score,
+                "alignment_status": result.alignment_status,
+                "total_solo_tags": result.total_solo_tags,
+                "total_coach_tags": result.total_coach_tags,
+                "agreed_count": result.agreed_count,
+                "blindspots_count": result.blindspots_count,
+                "self_criticisms_count": result.self_criticisms_count,
+                "blindspots": [
+                    {
+                        "tag_id": b.tag_id,
+                        "round_number": b.round_number,
+                        "timestamp_ms": b.timestamp_ms,
+                        "formatted_time": b.formatted_time,
+                        "round_rel_time": b.round_rel_time,
+                        "tag_category": b.tag_category,
+                        "tag_name": b.tag_name,
+                        "severity": b.severity,
+                        "related_event": b.related_event,
+                        "coaching_directive": b.coaching_directive,
+                    }
+                    for b in result.blindspots
+                ],
+                "self_criticisms": [
+                    {
+                        "tag_id": sc.tag_id,
+                        "round_number": sc.round_number,
+                        "timestamp_ms": sc.timestamp_ms,
+                        "formatted_time": sc.formatted_time,
+                        "round_rel_time": sc.round_rel_time,
+                        "tag_category": sc.tag_category,
+                        "tag_name": sc.tag_name,
+                        "related_event": sc.related_event,
+                        "evaluation": sc.evaluation,
+                    }
+                    for sc in result.self_criticisms
+                ],
+                "agreed_tags": [
+                    {
+                        "round_number": a.round_number,
+                        "timestamp_ms": a.timestamp_ms,
+                        "formatted_time": a.formatted_time,
+                        "round_rel_time": a.round_rel_time,
+                        "solo_tag_name": a.solo_tag_name,
+                        "coach_tag_name": a.coach_tag_name,
+                        "tag_category": a.tag_category,
+                        "time_delta_ms": a.time_delta_ms,
+                        "notes": a.notes,
+                    }
+                    for a in result.agreed_tags
+                ],
+                "category_divergence": [
+                    {
+                        "category": cd.category,
+                        "solo_count": cd.solo_count,
+                        "coach_count": cd.coach_count,
+                        "agreed_count": cd.agreed_count,
+                        "blindspots_count": cd.blindspots_count,
+                        "self_criticisms_count": cd.self_criticisms_count,
+                        "alignment_rate": cd.alignment_rate,
+                        "status": cd.status,
+                    }
+                    for cd in result.category_divergence
+                ],
+                "executive_takeaways": result.executive_takeaways,
+                "timeline_pips": result.timeline_pips,
+            })
+            return
+
         # 8. Match Overview
         if path.startswith("/api/matches/"):
             match_id = path.split("/")[3]

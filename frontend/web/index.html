@@ -35,6 +35,7 @@
       </div>
 
       <button id="btn-open-sync" class="btn-sync" title="Connect Riot Account">LINK ACCOUNT</button>
+      <button id="btn-open-diff" class="btn-diff" title="Coach vs Solo Perspective Diff & Blindspots">PERSPECTIVE DIFF</button>
       <button id="btn-open-matrix" class="btn-matrix" title="Agent Profiling Matrix">AGENT MATRIX</button>
       <a id="btn-view-report" class="btn-report" target="_blank" href="#">COACHING REPORT</a>
     </div>
@@ -455,6 +456,52 @@
         <div class="matrix-insights-card" id="matrix-insights-card">
           <div class="sub-header">MACRO POOL INSIGHTS & BENCHMARKS</div>
           <div class="matrix-insights-list" id="matrix-insights-list"></div>
+        </div>
+  <!-- Perspective Diff & Cognitive Blindspots Modal -->
+  <div class="modal-overlay" id="diff-modal" style="display: none;">
+    <div class="modal-card diff-modal-card">
+      <div class="modal-header">
+        <div class="modal-title-group">
+          <div class="modal-title">COGNITIVE BLINDSPOTS & PERSPECTIVE DIFF</div>
+          <div class="modal-subtitle">Cross-referencing Solo Player review tags with Coach tactical observations</div>
+        </div>
+        <button id="btn-close-diff" class="modal-close-btn">&times;</button>
+      </div>
+      <div class="modal-body diff-modal-body">
+        <!-- Top KPI Grid with Agreement Gauge -->
+        <div class="diff-kpi-grid" id="diff-kpi-grid">
+          <!-- Populated dynamically: Agreement Gauge, Solo, Coach, Consensus, Blindspots, Self-Crit -->
+        </div>
+
+        <!-- Category Divergence Breakdown -->
+        <div class="diff-category-section">
+          <div class="diff-section-title">CATEGORY CONSENSUS & DIVERGENCE</div>
+          <div class="diff-category-grid" id="diff-category-grid">
+            <!-- Mechanics, Positioning, Utility, Decision cards -->
+          </div>
+        </div>
+
+        <!-- Filter Tabs for Perspective Items -->
+        <div class="diff-tabs-container">
+          <div class="diff-tabs">
+            <button class="diff-tab-btn active" data-tab="blindspots">BLINDSPOTS (MISSED BY PLAYER)</button>
+            <button class="diff-tab-btn" data-tab="self_criticisms">SELF-CRITICISMS (OVER-ZEALOUS)</button>
+            <button class="diff-tab-btn" data-tab="agreed">MUTUAL CONSENSUS (ALIGNED)</button>
+            <button class="diff-tab-btn" data-tab="all">CHRONOLOGICAL TIMELINE</button>
+          </div>
+        </div>
+
+        <!-- Item Cards List (Clickable to scrub video) -->
+        <div class="diff-cards-container" id="diff-cards-container">
+          <!-- Populated dynamically -->
+        </div>
+
+        <!-- Executive Debrief Takeaways -->
+        <div class="diff-takeaways-card" id="diff-takeaways-card">
+          <div class="sub-header">COACHING DEBRIEF & STRATEGIC TAKEAWAYS</div>
+          <div class="diff-takeaways-list" id="diff-takeaways-list">
+            <!-- Populated dynamically -->
+          </div>
         </div>
       </div>
     </div>

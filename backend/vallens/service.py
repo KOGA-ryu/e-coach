@@ -6,6 +6,7 @@ from typing import Any, Optional
 
 from vallens.analytics.agent_profile import AgentMatrixResult, AgentProfilingEngine
 from vallens.analytics.heatmap import HeatmapAggregationEngine, HeatmapAggregationResult
+from vallens.analytics.perspective import PerspectiveDiffEngine, PerspectiveDiffResult
 from vallens.analytics.projection import CoordinateProjector
 from vallens.db.database import Database
 from vallens.db.repository import MatchRepository
@@ -187,6 +188,20 @@ class ValLensService:
         """Compute Agent Profiling Matrix comparing opening duels, trades, and habit flaws."""
         engine = AgentProfilingEngine(repo=self.repo)
         return engine.generate_matrix(player_puuid=player_puuid)
+
+    def get_perspective_diff(
+        self, match_id: str, tolerance_ms: int = 5000
+    ) -> Optional[PerspectiveDiffResult]:
+        """Compute cognitive discrepancy and blindspots between Solo and Coach tags."""
+        match = self.repo.get_match(match_id)
+        if not match:
+            return None
+        events = self.repo.get_events(match_id)
+        tags = self.repo.get_tags(match_id)
+        engine = PerspectiveDiffEngine(default_tolerance_ms=tolerance_ms)
+        return engine.analyze_perspectives(
+            match_id=match_id, events=events, tags=tags, tolerance_ms=tolerance_ms
+        )
 
 
 

@@ -37,9 +37,20 @@ def seed_demo_data(service: Optional[ValLensService] = None) -> list[str]:
             assists=6,
         )
     ])
-    # Add Jett specific tags
-    s.add_vod_tag(base_match_id, timestamp_ms=45000, category="Positioning", name="over_peeking", author_type="solo")
-    s.add_vod_tag(base_match_id, timestamp_ms=120000, category="Positioning", name="over_peeking", author_type="coach")
+    # Add realistic Solo and Coach review tags for base match
+    # 1. Agreed Consensus
+    s.add_vod_tag(base_match_id, timestamp_ms=40000, category="Mechanics", name="crosshair_placement", author_type="solo")
+    s.add_vod_tag(base_match_id, timestamp_ms=41000, category="Mechanics", name="crosshair_placement", author_type="coach")
+    s.add_vod_tag(base_match_id, timestamp_ms=145000, category="Utility", name="late_flash", author_type="solo")
+    s.add_vod_tag(base_match_id, timestamp_ms=146000, category="Utility", name="late_flash", author_type="coach")
+
+    # 2. Cognitive Blindspots (Coach flagged, Solo missed)
+    s.add_vod_tag(base_match_id, timestamp_ms=95000, category="Positioning", name="over_peeking", author_type="coach")
+    s.add_vod_tag(base_match_id, timestamp_ms=120000, category="Positioning", name="poor_spacing", author_type="coach")
+    s.add_vod_tag(base_match_id, timestamp_ms=180000, category="Decision", name="forced_fight", author_type="coach")
+
+    # 3. Self-Criticisms (Solo flagged, Coach evaluated as standard)
+    s.add_vod_tag(base_match_id, timestamp_ms=75000, category="Mechanics", name="whiffed_spray", author_type="solo")
 
     # Match 2: Ascent Competitive Match #2 (18 rounds) - Ace plays Sova (Initiator)
     match2_id = "match-ascent-comp-002"
@@ -134,9 +145,17 @@ def seed_demo_data(service: Optional[ValLensService] = None) -> list[str]:
     s.repo.insert_events(m2_events)
 
     # Sova tags: late flash / dart timing and spacing
+    # 1. Agreed
     s.add_vod_tag(match2_id, timestamp_ms=40000, category="Utility", name="late_flash", author_type="solo")
-    s.add_vod_tag(match2_id, timestamp_ms=190000, category="Utility", name="late_flash", author_type="coach")
+    s.add_vod_tag(match2_id, timestamp_ms=41000, category="Utility", name="late_flash", author_type="coach")
     s.add_vod_tag(match2_id, timestamp_ms=340000, category="Positioning", name="poor_spacing", author_type="solo")
+    s.add_vod_tag(match2_id, timestamp_ms=341500, category="Positioning", name="poor_spacing", author_type="coach")
+
+    # 2. Blindspots
+    s.add_vod_tag(match2_id, timestamp_ms=190000, category="Utility", name="late_flash", author_type="coach")
+    s.add_vod_tag(match2_id, timestamp_ms=640000, category="Positioning", name="over_peeking", author_type="coach")
+
+    # 3. Self-Criticisms
     s.add_vod_tag(match2_id, timestamp_ms=490000, category="Positioning", name="over_peeking", author_type="solo")
     s.add_vod_tag(match2_id, timestamp_ms=945000, category="Decision", name="forced_fight", author_type="solo")
 
@@ -201,11 +220,18 @@ def seed_demo_data(service: Optional[ValLensService] = None) -> list[str]:
     s.repo.insert_events(m3_events)
 
     # Omen tags: smoke duration / wasted utility and late rotate
+    # 1. Agreed
     s.add_vod_tag(match3_id, timestamp_ms=35000, category="Utility", name="wasted_utility", author_type="solo")
-    s.add_vod_tag(match3_id, timestamp_ms=175000, category="Utility", name="wasted_utility", author_type="coach")
-    s.add_vod_tag(match3_id, timestamp_ms=315000, category="Utility", name="wasted_utility", author_type="solo")
+    s.add_vod_tag(match3_id, timestamp_ms=36000, category="Utility", name="wasted_utility", author_type="coach")
     s.add_vod_tag(match3_id, timestamp_ms=455000, category="Decision", name="late_rotate", author_type="solo")
+    s.add_vod_tag(match3_id, timestamp_ms=456000, category="Decision", name="late_rotate", author_type="coach")
+
+    # 2. Blindspots
+    s.add_vod_tag(match3_id, timestamp_ms=175000, category="Utility", name="wasted_utility", author_type="coach")
     s.add_vod_tag(match3_id, timestamp_ms=595000, category="Decision", name="late_rotate", author_type="coach")
+
+    # 3. Self-Criticism
+    s.add_vod_tag(match3_id, timestamp_ms=315000, category="Utility", name="wasted_utility", author_type="solo")
 
     return match_ids
 

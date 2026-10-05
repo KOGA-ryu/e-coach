@@ -39,6 +39,10 @@ const state = {
   drawStartX: 0,
   drawStartY: 0,
   savedCanvasImage: null,
+
+  // Perspective Diff & Cognitive Blindspots State
+  perspectiveDiff: null,
+  diffFilter: 'blindspots',
 };
 
 // DOM Elements
@@ -95,6 +99,15 @@ const teleCanvas = document.getElementById('telestrator-canvas');
 const teleCtx = teleCanvas.getContext('2d');
 const btnTeleToggle = document.getElementById('btn-telestrator-toggle');
 const teleTools = document.getElementById('tele-tools');
+
+// Perspective Diff DOM Elements
+const btnOpenDiff = document.getElementById('btn-open-diff');
+const diffModal = document.getElementById('diff-modal');
+const btnCloseDiff = document.getElementById('btn-close-diff');
+const diffKpiGrid = document.getElementById('diff-kpi-grid');
+const diffCategoryGrid = document.getElementById('diff-category-grid');
+const diffCardsContainer = document.getElementById('diff-cards-container');
+const diffTakeawaysList = document.getElementById('diff-takeaways-list');
 
 // Tag Mapping for 1-9 Hotkeys
 const TAG_MAP = {
@@ -1019,6 +1032,7 @@ async function loadTags() {
     state.tags = await res.json();
     renderTagHistory();
     renderHabitInsights();
+    loadPerspectiveDiff(state.currentMatchId);
   } catch (err) {
     console.error('Failed to load tags:', err);
   }
@@ -1768,8 +1782,47 @@ function setupEventListeners() {
     });
   }
 
+  // Perspective Diff Modal Handlers
+  if (btnOpenDiff) {
+    btnOpenDiff.addEventListener('click', () => {
+      diffModal.style.display = 'flex';
+      if (!state.perspectiveDiff && state.currentMatchId) {
+        loadPerspectiveDiff(state.currentMatchId);
+      } else {
+        renderPerspectiveDiffModal();
+      }
+    });
+  }
+
+  if (btnCloseDiff) {
+    btnCloseDiff.addEventListener('click', () => {
+      diffModal.style.display = 'none';
+    });
+  }
+
+  if (diffModal) {
+    diffModal.addEventListener('click', (e) => {
+      if (e.target === diffModal) {
+        diffModal.style.display = 'none';
+      }
+    });
+  }
+
+  // Perspective Diff Filter Tabs
+  document.querySelectorAll('.diff-tab-btn').forEach((btn) => {
+    btn.addEventListener('click', () => {
+      document.querySelectorAll('.diff-tab-btn').forEach((b) => b.classList.remove('active'));
+      btn.classList.add('active');
+      state.diffFilter = btn.dataset.tab;
+      renderDiffCards();
+    });
+  });
+
   window.addEventListener('keydown', (e) => {
     if (e.key === 'Escape') {
+      if (diffModal && diffModal.style.display === 'flex') {
+        diffModal.style.display = 'none';
+      }
       if (matrixModal && matrixModal.style.display === 'flex') {
         matrixModal.style.display = 'none';
       }
@@ -1894,6 +1947,217 @@ async function loadAgentMatrix() {
       tbody.innerHTML = `<tr><td colspan="10" style="text-align: center; color: #ff4655; padding: 25px;">Failed to load agent matrix: ${err.message}</td></tr>`;
     }
   }
+}
+
+/**
+ * Fetch and render Cognitive Blindspots and Perspective Diff.
+ */
+async function loadPerspectiveDiff(matchId) {
+  if (!matchId) return;
+  try {
+    const res = await fetch(`/api/matches/${matchId}/perspective-diff`);
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    const data = await res.json();
+    state.perspectiveDiff = data;
+    renderPerspectiveDiffModal();
+  } catch (err) {
+    console.error('Failed to load perspective diff:', err);
+  }
+}
+
+function renderPerspectiveDiffModal() {
+  if (!state.perspectiveDiff) return;
+  const d = state.perspectiveDiff;
+
+  // 1. Render Top KPI Grid & Gauge
+  if (diffKpiGrid) {
+    let statusClass = 'moderate';
+    if (d.agreement_score >= 0.70) statusClass = 'excellent';
+    else if (d.agreement_score < 0.40) statusClass = 'significant';
+
+    diffKpiGrid.innerHTML = `
+      <div class="diff-gauge-card">
+        <div class="diff-gauge-val">${Math.round(d.agreement_score * 100)}%</div>
+        <div class="diff-gauge-lbl">COACH ALIGNMENT</div>
+        <div class="diff-status-pill ${statusClass}">${d.alignment_status}</div>
+      </div>
+      <div class="diff-kpi-card">
+        <div class="diff-kpi-val">${d.total_solo_tags}</div>
+        <div class="diff-kpi-lbl">SOLO REVIEW TAGS</div>
+      </div>
+      <div class="diff-kpi-card">
+        <div class="diff-kpi-val coach">${d.total_coach_tags}</div>
+        <div class="diff-kpi-lbl">COACH OBSERVATIONS</div>
+      </div>
+      <div class="diff-kpi-card">
+        <div class="diff-kpi-val agreed">${d.agreed_count}</div>
+        <div class="diff-kpi-lbl">MUTUAL CONSENSUS</div>
+      </div>
+      <div class="diff-kpi-card">
+        <div class="diff-kpi-val blindspot">${d.blindspots_count}</div>
+        <div class="diff-kpi-lbl">BLINDSPOTS (MISSED)</div>
+      </div>
+      <div class="diff-kpi-card">
+        <div class="diff-kpi-val selfcrit">${d.self_criticisms_count}</div>
+        <div class="diff-kpi-lbl">OVER-CRITICAL TAGS</div>
+      </div>
+    `;
+  }
+
+  // 2. Render Category Divergence Breakdown
+  if (diffCategoryGrid) {
+    diffCategoryGrid.innerHTML = '';
+    (d.category_divergence || []).forEach((c) => {
+      let scoreClass = 'moderate';
+      if (c.alignment_rate >= 0.70) scoreClass = 'consensus';
+      else if (c.blindspots_count >= 2 || (c.coach_count > 0 && c.alignment_rate < 0.40)) scoreClass = 'blindspot';
+
+      const maxVal = Math.max(1, c.solo_count + c.coach_count);
+      const agreedPct = Math.round((c.agreed_count / maxVal) * 100);
+      const blindspotPct = Math.round((c.blindspots_count / maxVal) * 100);
+      const selfCritPct = Math.round((c.self_criticisms_count / maxVal) * 100);
+
+      const el = document.createElement('div');
+      el.className = 'diff-cat-card';
+      el.innerHTML = `
+        <div class="diff-cat-header">
+          <span class="diff-cat-name">${c.category.toUpperCase()}</span>
+          <span class="diff-cat-score ${scoreClass}">${Math.round(c.alignment_rate * 100)}% ALIGNMENT</span>
+        </div>
+        <div class="diff-cat-stats-row">
+          <span>Solo: ${c.solo_count} · Coach: ${c.coach_count}</span>
+          <span style="color: ${c.blindspots_count > 0 ? '#ff4655' : 'var(--text-muted)'}; font-weight: 600;">
+            ${c.blindspots_count} Blindspot${c.blindspots_count === 1 ? '' : 's'}
+          </span>
+        </div>
+        <div class="diff-cat-bar-track">
+          <div class="diff-cat-bar-fill" style="width: ${agreedPct}%; background: #06d6a0;" title="Consensus: ${c.agreed_count}"></div>
+          <div class="diff-cat-bar-fill" style="width: ${blindspotPct}%; background: #ff4655;" title="Blindspots: ${c.blindspots_count}"></div>
+          <div class="diff-cat-bar-fill" style="width: ${selfCritPct}%; background: #00f5d4;" title="Self-Criticisms: ${c.self_criticisms_count}"></div>
+        </div>
+      `;
+      diffCategoryGrid.appendChild(el);
+    });
+  }
+
+  // 3. Render Filtered Item Cards
+  renderDiffCards();
+
+  // 4. Render Executive Takeaways
+  if (diffTakeawaysList) {
+    diffTakeawaysList.innerHTML = '';
+    (d.executive_takeaways || []).forEach((t) => {
+      const item = document.createElement('div');
+      item.className = 'diff-takeaway-item';
+      item.textContent = t;
+      diffTakeawaysList.appendChild(item);
+    });
+  }
+}
+
+function renderDiffCards() {
+  if (!diffCardsContainer || !state.perspectiveDiff) return;
+  diffCardsContainer.innerHTML = '';
+  const d = state.perspectiveDiff;
+  const filter = state.diffFilter;
+
+  let items = [];
+  if (filter === 'blindspots') {
+    items = (d.blindspots || []).map((b) => ({
+      type: 'blindspot',
+      timeMs: b.timestamp_ms,
+      roundNum: b.round_number,
+      formattedTime: b.formatted_time,
+      relTime: b.round_rel_time,
+      tag: b.tag_name,
+      cat: b.tag_category,
+      badgeText: 'BLINDSPOT',
+      badgeClass: 'blindspot',
+      message: b.coaching_directive,
+      related: b.related_event,
+      severity: b.severity,
+    }));
+  } else if (filter === 'self_criticisms') {
+    items = (d.self_criticisms || []).map((sc) => ({
+      type: 'self_criticism',
+      timeMs: sc.timestamp_ms,
+      roundNum: sc.round_number,
+      formattedTime: sc.formatted_time,
+      relTime: sc.round_rel_time,
+      tag: sc.tag_name,
+      cat: sc.tag_category,
+      badgeText: 'SELF-CRITICISM',
+      badgeClass: 'self_criticism',
+      message: sc.evaluation,
+      related: sc.related_event,
+      severity: 'LOW',
+    }));
+  } else if (filter === 'agreed') {
+    items = (d.agreed_tags || []).map((a) => ({
+      type: 'agreed',
+      timeMs: a.timestamp_ms,
+      roundNum: a.round_number,
+      formattedTime: a.formatted_time,
+      relTime: a.round_rel_time,
+      tag: a.coach_tag_name,
+      cat: a.tag_category,
+      badgeText: 'CONSENSUS',
+      badgeClass: 'agreed',
+      message: a.notes,
+      related: `Time delta: ${a.time_delta_ms}ms`,
+      severity: 'LOW',
+    }));
+  } else {
+    // All timeline pips
+    items = (d.timeline_pips || []).map((p) => ({
+      type: p.type,
+      timeMs: p.timestamp_ms,
+      roundNum: p.round_number,
+      formattedTime: formatTime(p.timestamp_ms / 1000),
+      relTime: '',
+      tag: p.label,
+      cat: p.category,
+      badgeText: p.badge,
+      badgeClass: p.type,
+      message: `Author: ${p.author.toUpperCase()}`,
+      related: null,
+      severity: p.severity || 'LOW',
+    }));
+  }
+
+  if (items.length === 0) {
+    diffCardsContainer.innerHTML = `<div class="diff-empty-msg">No ${filter.replace(/_/g, ' ')} recorded for this match.</div>`;
+    return;
+  }
+
+  items.forEach((item) => {
+    const card = document.createElement('div');
+    card.className = `diff-item-card ${item.type}`;
+    card.innerHTML = `
+      <div class="diff-card-top">
+        <div class="diff-tag-pill-group">
+          <span class="diff-tag-badge ${item.badgeClass}">${item.badgeText}</span>
+          <strong style="color: #ece8e1; font-size: 13px;">${item.tag.replace(/_/g, ' ').toUpperCase()}</strong>
+          <span class="diff-cat-pill">${item.cat}</span>
+        </div>
+        <div class="diff-meta-group">
+          <span class="diff-round-pill">R${item.roundNum}</span>
+          <span class="diff-time-pill">${item.formattedTime} ${item.relTime ? `(${item.relTime})` : ''}</span>
+          <span class="diff-scrub-hint">▶ JUMP (-3s)</span>
+        </div>
+      </div>
+      <div class="diff-card-msg">${item.message}</div>
+      ${item.related ? `<div class="diff-related-event">Telemetry context: ${item.related}</div>` : ''}
+    `;
+
+    card.addEventListener('click', () => {
+      diffModal.style.display = 'none';
+      seekToEventWithPreRoll(item.timeMs);
+      showToast(`Scrubbed to ${item.badgeText} in Round ${item.roundNum} (${item.tag.replace(/_/g, ' ')})`);
+    });
+
+    diffCardsContainer.appendChild(card);
+  });
 }
 
 // Start application

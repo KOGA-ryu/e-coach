@@ -16,6 +16,14 @@ from .agent_profile import (
     AgentProfilingEngine,
 )
 
+from .perspective import (
+    CategoryDivergence,
+    PerspectiveAgreedTag,
+    PerspectiveBlindspot,
+    PerspectiveDiffEngine,
+    PerspectiveDiffResult,
+    PerspectiveSelfCriticism,
+)
 from .projection import CoordinateProjector, MapCalibration
 from .report import CoachingReportGenerator
 
@@ -34,6 +42,12 @@ __all__ = [
     "AgentProfile",
     "AgentMatrixResult",
     "AgentProfilingEngine",
+    "PerspectiveDiffEngine",
+    "PerspectiveDiffResult",
+    "PerspectiveBlindspot",
+    "PerspectiveSelfCriticism",
+    "PerspectiveAgreedTag",
+    "CategoryDivergence",
 ]
 
 

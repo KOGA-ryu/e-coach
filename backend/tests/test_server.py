@@ -118,6 +118,23 @@ class TestValLensServer(unittest.TestCase):
         self.assertEqual(status, 200)
         self.assertTrue(del_res.get("success"))
 
+    def test_perspective_diff_endpoint(self):
+        # Seed solo and coach tags
+        self.service.add_vod_tag(self.match.match_id, 40000, "Mechanics", "crosshair_placement", "solo")
+        self.service.add_vod_tag(self.match.match_id, 41000, "Mechanics", "crosshair_placement", "coach")
+        self.service.add_vod_tag(self.match.match_id, 90000, "Positioning", "over_peeking", "coach")
+
+        status, body, _ = self._get(f"/api/matches/{self.match.match_id}/perspective-diff?tolerance_ms=3000")
+        self.assertEqual(status, 200)
+        data = json.loads(body.decode("utf-8"))
+        self.assertIn("agreement_score", data)
+        self.assertIn("alignment_status", data)
+        self.assertEqual(data["agreed_count"], 1)
+        self.assertEqual(data["blindspots_count"], 1)
+        self.assertTrue(len(data["blindspots"]) >= 1)
+        self.assertTrue(len(data["category_divergence"]) >= 4)
+        self.assertTrue(len(data["executive_takeaways"]) >= 1)
+
 
 if __name__ == "__main__":
     unittest.main()
