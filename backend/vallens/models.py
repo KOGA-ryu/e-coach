@@ -79,6 +79,30 @@ class VodTag:
 
 
 @dataclass
+class CoachNote:
+    """Timestamped coach note or voice memo logged during VOD review."""
+    match_id: str
+    round_number: int
+    timestamp_ms: int
+    author_type: str  # 'coach' or 'solo'
+    text_note: str = ""
+    audio_filepath: Optional[str] = None
+    created_at: int = 0
+    note_id: Optional[int] = None
+
+    def to_tuple(self) -> tuple:
+        return (
+            self.match_id,
+            self.round_number,
+            self.timestamp_ms,
+            self.author_type,
+            self.text_note,
+            self.audio_filepath,
+            self.created_at,
+        )
+
+
+@dataclass
 class MatchPlayer:
     """Player roster and agent selection data for a match."""
     match_id: str

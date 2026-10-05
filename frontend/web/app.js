@@ -57,12 +57,37 @@ const state = {
     game_state: 'DISCONNECTED',
   },
   obsPollInterval: null,
+
+  // Coach Notes & Voice Memo State
+  notes: [],
+  noteModalTargetRound: 0,
+  noteModalTargetMs: 0,
+  activeMediaRecorder: null,
+  activeAudioChunks: [],
+  audioRecordTimerInterval: null,
+  recordedAudioBase64: null,
 };
 
 // DOM Elements
 const matchSelect = document.getElementById('match-select');
 const videoPlayer = document.getElementById('video-player');
 const videoWrapper = document.getElementById('video-wrapper');
+
+// Coach Notes & Voice Memo DOM Elements
+const btnAddNote = document.getElementById('btn-add-note');
+const noteModal = document.getElementById('note-modal');
+const btnCloseNote = document.getElementById('btn-close-note');
+const btnCancelNote = document.getElementById('btn-cancel-note');
+const btnSaveNote = document.getElementById('btn-save-note');
+const noteTimeBadge = document.getElementById('note-time-badge');
+const noteRoleBadge = document.getElementById('note-role-badge');
+const noteTextInput = document.getElementById('note-text-input');
+const btnRecordAudio = document.getElementById('btn-record-audio');
+const voiceRecordStatus = document.getElementById('voice-record-status');
+const voiceRecordTimer = document.getElementById('voice-record-timer');
+const voicePreviewWrapper = document.getElementById('voice-preview-wrapper');
+const noteAudioPlayer = document.getElementById('note-audio-player');
+const btnDiscardAudio = document.getElementById('btn-discard-audio');
 const videoPlaceholder = document.getElementById('video-placeholder');
 const videoFileInput = document.getElementById('video-file-input');
 const obsHudPill = document.getElementById('obs-hud-pill');
@@ -227,8 +252,9 @@ async function loadMatch(matchId) {
     const chaptersRes = await fetch(`/api/matches/${matchId}/chapters`);
     state.chapters = await chaptersRes.json();
 
-    // 4. Fetch tags, perspective diff & practice drills
+    // 4. Fetch tags, coach notes, perspective diff & practice drills
     await loadTags();
+    await loadCoachNotes(matchId);
     loadPerspectiveDiff(matchId);
     loadTrainingRoutine(matchId);
 
@@ -543,6 +569,25 @@ function renderRoundEventsFeed(events, roundNum) {
     }
   });
 
+  // Phase 3: Coach Notes & Voice Memos for this round
+  const roundNotes = (state.notes || []).filter((n) => n.round_number === roundNum);
+  roundNotes.forEach((n) => {
+    const relTime = formatRelativeTime(n.timestamp_ms, roundStartMs);
+    const hasAudio = Boolean(n.audio_url);
+    items.push({
+      type: 'note',
+      noteId: n.note_id,
+      timeMs: n.timestamp_ms,
+      relTime: relTime,
+      title: n.text_note || (hasAudio ? 'Voice Dictation' : 'Coach Note'),
+      badgeText: n.author_type === 'coach' ? 'COACH NOTE' : 'PLAYER NOTE',
+      badgeClass: 'note-badge',
+      itemClass: 'note-item',
+      audioUrl: n.audio_url,
+      author: n.author_type,
+    });
+  });
+
   items.sort((a, b) => a.timeMs - b.timeMs);
 
   if (items.length === 0) {
@@ -555,25 +600,59 @@ function renderRoundEventsFeed(events, roundNum) {
     el.className = `feed-item timeline-event-item ${item.itemClass}`;
     el.setAttribute('data-seconds', (item.timeMs / 1000).toFixed(2));
     el.setAttribute('data-event-time', item.timeMs);
-    el.innerHTML = `
-      <div class="feed-item-left">
-        ${item.badgeText ? `<span class="feed-badge ${item.badgeClass}">${item.badgeText}</span>` : ''}
-        <span>${item.title}</span>
-      </div>
-      <div class="feed-time-group">
-        <span class="feed-rel-time">${item.relTime}</span>
-        <span class="feed-abs-time">${formatTime(item.timeMs / 1000)}</span>
-        <button class="event-clip-btn" title="Trim & Download MP4 Clip">✂</button>
-      </div>
-    `;
 
-    const clipBtn = el.querySelector('.event-clip-btn');
-    if (clipBtn) {
-      clipBtn.addEventListener('click', (e) => {
-        e.stopPropagation();
-        const lbl = (item.badgeText || 'event').toLowerCase();
-        trimAndDownloadClip(item.timeMs / 1000, lbl, state.activeRound + 1);
-      });
+    if (item.type === 'note') {
+      el.innerHTML = `
+        <div class="feed-item-left">
+          <span class="feed-badge note-badge" style="background: rgba(255, 209, 102, 0.2); color: #ffd166; border: 1px solid rgba(255, 209, 102, 0.4);">
+            ${item.badgeText}
+          </span>
+          <span style="color: #ece8e1;">${item.title}</span>
+          ${item.audioUrl ? `<button class="note-audio-btn" data-audio="${item.audioUrl}" title="Play Voice Memo">▶️ AUDIO</button>` : ''}
+        </div>
+        <div class="feed-time-group">
+          <span class="feed-rel-time">${item.relTime}</span>
+          <span class="feed-abs-time">${formatTime(item.timeMs / 1000)}</span>
+          <button class="event-delete-note-btn" title="Delete Note" style="background:none; border:none; color:var(--text-muted); cursor:pointer; font-size:14px; padding:0 4px;">&times;</button>
+        </div>
+      `;
+
+      const audioBtn = el.querySelector('.note-audio-btn');
+      if (audioBtn) {
+        audioBtn.addEventListener('click', (e) => {
+          e.stopPropagation();
+          playAudioMemo(item.audioUrl);
+        });
+      }
+
+      const delBtn = el.querySelector('.event-delete-note-btn');
+      if (delBtn) {
+        delBtn.addEventListener('click', async (e) => {
+          e.stopPropagation();
+          await deleteCoachNote(item.noteId);
+        });
+      }
+    } else {
+      el.innerHTML = `
+        <div class="feed-item-left">
+          ${item.badgeText ? `<span class="feed-badge ${item.badgeClass}">${item.badgeText}</span>` : ''}
+          <span>${item.title}</span>
+        </div>
+        <div class="feed-time-group">
+          <span class="feed-rel-time">${item.relTime}</span>
+          <span class="feed-abs-time">${formatTime(item.timeMs / 1000)}</span>
+          <button class="event-clip-btn" title="Trim & Download MP4 Clip">✂</button>
+        </div>
+      `;
+
+      const clipBtn = el.querySelector('.event-clip-btn');
+      if (clipBtn) {
+        clipBtn.addEventListener('click', (e) => {
+          e.stopPropagation();
+          const lbl = (item.badgeText || 'event').toLowerCase();
+          trimAndDownloadClip(item.timeMs / 1000, lbl, state.activeRound + 1);
+        });
+      }
     }
 
     el.addEventListener('click', () => {
@@ -1785,6 +1864,13 @@ function setupEventListeners() {
       return;
     }
 
+    // Coach Note Hotkey: 'N'
+    if (e.key.toLowerCase() === 'n' && !e.ctrlKey && !e.metaKey && !e.altKey) {
+      e.preventDefault();
+      openNoteModal();
+      return;
+    }
+
     // 1-9 Hotkey Review Tags
     if (TAG_MAP[e.key]) {
       e.preventDefault();
@@ -2328,8 +2414,44 @@ function setupEventListeners() {
       if (obsModal && obsModal.style.display === 'flex') {
         obsModal.style.display = 'none';
       }
+      if (noteModal && noteModal.style.display === 'flex') {
+        closeNoteModal();
+      }
     }
   });
+
+  // Coach Notes & Voice Memo Modal Handlers
+  if (btnAddNote) {
+    btnAddNote.addEventListener('click', () => openNoteModal());
+  }
+  if (btnCloseNote) {
+    btnCloseNote.addEventListener('click', closeNoteModal);
+  }
+  if (btnCancelNote) {
+    btnCancelNote.addEventListener('click', closeNoteModal);
+  }
+  if (btnSaveNote) {
+    btnSaveNote.addEventListener('click', saveCoachNote);
+  }
+  if (btnRecordAudio) {
+    btnRecordAudio.addEventListener('click', toggleAudioRecording);
+  }
+  if (btnDiscardAudio) {
+    btnDiscardAudio.addEventListener('click', discardAudioRecording);
+  }
+  if (noteModal) {
+    noteModal.addEventListener('click', (e) => {
+      if (e.target === noteModal) closeNoteModal();
+    });
+  }
+  if (noteTextInput) {
+    noteTextInput.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter' && !e.shiftKey) {
+        e.preventDefault();
+        saveCoachNote();
+      }
+    });
+  }
 }
 
 /**
@@ -3300,6 +3422,235 @@ async function associateMatchVideo(matchId, videoFilepath) {
   } catch (err) {
     console.error('Failed to associate match video:', err);
   }
+}
+
+// -------------------------------------------------------------
+// Coach Notes & Voice Memo Dictation Engine
+// -------------------------------------------------------------
+async function loadCoachNotes(matchId) {
+  if (!matchId) return;
+  try {
+    const res = await fetch(`/api/matches/${matchId}/notes`);
+    if (res.ok) {
+      state.notes = await res.json();
+      const roundEvents = state.events.filter((e) => e.round_number === state.activeRound);
+      renderRoundEventsFeed(roundEvents, state.activeRound);
+    }
+  } catch (err) {
+    console.error('Failed to load coach notes:', err);
+  }
+}
+
+function openNoteModal(timestampSec = null, roundNum = null) {
+  if (!noteModal) return;
+  const sec = timestampSec !== null ? timestampSec : (videoPlayer && !isNaN(videoPlayer.currentTime) ? videoPlayer.currentTime : 0);
+  const rnd = roundNum !== null ? roundNum : (state.activeRound || 0);
+
+  state.noteModalTargetRound = rnd;
+  state.noteModalTargetMs = Math.round(sec * 1000);
+
+  if (noteTimeBadge) {
+    noteTimeBadge.textContent = `ROUND ${rnd + 1} · ${formatTime(sec)}`;
+  }
+  if (noteRoleBadge) {
+    const role = (state.authorType || 'coach').toUpperCase();
+    noteRoleBadge.textContent = `${role} PERSPECTIVE`;
+  }
+  if (noteTextInput) {
+    noteTextInput.value = '';
+  }
+
+  discardAudioRecording();
+  noteModal.style.display = 'flex';
+  setTimeout(() => {
+    if (noteTextInput) noteTextInput.focus();
+  }, 100);
+}
+
+function closeNoteModal() {
+  if (noteModal) noteModal.style.display = 'none';
+  stopAudioRecordingSafe();
+}
+
+function discardAudioRecording() {
+  stopAudioRecordingSafe();
+  state.recordedAudioBase64 = null;
+  state.activeAudioChunks = [];
+  if (noteAudioPlayer) {
+    noteAudioPlayer.pause();
+    noteAudioPlayer.src = '';
+  }
+  if (voicePreviewWrapper) voicePreviewWrapper.style.display = 'none';
+  if (voiceRecordStatus) voiceRecordStatus.textContent = 'READY TO RECORD';
+  if (voiceRecordTimer) voiceRecordTimer.textContent = '00:00';
+  if (btnRecordAudio) {
+    btnRecordAudio.classList.remove('recording');
+    btnRecordAudio.textContent = '🎙️ RECORD AUDIO';
+  }
+}
+
+function stopAudioRecordingSafe() {
+  if (state.activeMediaRecorder && state.activeMediaRecorder.state === 'recording') {
+    try {
+      state.activeMediaRecorder.stop();
+    } catch (e) {}
+  }
+  if (state.audioRecordTimerInterval) {
+    clearInterval(state.audioRecordTimerInterval);
+    state.audioRecordTimerInterval = null;
+  }
+  state.activeMediaRecorder = null;
+}
+
+async function toggleAudioRecording() {
+  if (state.activeMediaRecorder && state.activeMediaRecorder.state === 'recording') {
+    // Stop recording
+    try {
+      state.activeMediaRecorder.stop();
+    } catch (e) {}
+    if (btnRecordAudio) {
+      btnRecordAudio.classList.remove('recording');
+      btnRecordAudio.textContent = '🎙️ RECORD AUDIO';
+    }
+    if (voiceRecordStatus) voiceRecordStatus.textContent = 'PROCESSING AUDIO...';
+    return;
+  }
+
+  // Start recording
+  if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+    showToast('Audio recording is not supported in this browser environment');
+    return;
+  }
+
+  try {
+    const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+    state.activeAudioChunks = [];
+    const mediaRecorder = new MediaRecorder(stream);
+    state.activeMediaRecorder = mediaRecorder;
+
+    mediaRecorder.ondataavailable = (e) => {
+      if (e.data && e.data.size > 0) {
+        state.activeAudioChunks.push(e.data);
+      }
+    };
+
+    mediaRecorder.onstop = () => {
+      stream.getTracks().forEach((track) => track.stop());
+
+      const blob = new Blob(state.activeAudioChunks, { type: 'audio/webm' });
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        state.recordedAudioBase64 = reader.result;
+        if (noteAudioPlayer) {
+          noteAudioPlayer.src = URL.createObjectURL(blob);
+        }
+        if (voicePreviewWrapper) voicePreviewWrapper.style.display = 'flex';
+        if (voiceRecordStatus) voiceRecordStatus.textContent = 'RECORDED MEMO READY';
+      };
+      reader.readAsDataURL(blob);
+
+      if (state.audioRecordTimerInterval) {
+        clearInterval(state.audioRecordTimerInterval);
+        state.audioRecordTimerInterval = null;
+      }
+    };
+
+    mediaRecorder.start();
+
+    if (btnRecordAudio) {
+      btnRecordAudio.classList.add('recording');
+      btnRecordAudio.textContent = '⏹️ STOP RECORDING';
+    }
+    if (voiceRecordStatus) voiceRecordStatus.textContent = 'RECORDING LIVE...';
+
+    const startTime = Date.now();
+    state.audioRecordTimerInterval = setInterval(() => {
+      const elapsedSec = Math.floor((Date.now() - startTime) / 1000);
+      const mins = Math.floor(elapsedSec / 60).toString().padStart(2, '0');
+      const secs = (elapsedSec % 60).toString().padStart(2, '0');
+      if (voiceRecordTimer) voiceRecordTimer.textContent = `${mins}:${secs}`;
+    }, 250);
+  } catch (err) {
+    console.error('Microphone error:', err);
+    showToast('Microphone access denied or unavailable');
+    if (voiceRecordStatus) voiceRecordStatus.textContent = 'MIC ACCESS DENIED';
+  }
+}
+
+async function saveCoachNote() {
+  if (!state.currentMatchId) {
+    showToast('No active match loaded to attach note');
+    return;
+  }
+
+  const text = noteTextInput ? noteTextInput.value.trim() : '';
+  const audioData = state.recordedAudioBase64;
+
+  if (!text && !audioData) {
+    showToast('Enter note text or record a voice memo');
+    return;
+  }
+
+  if (btnSaveNote) {
+    btnSaveNote.disabled = true;
+    btnSaveNote.textContent = 'SAVING...';
+  }
+
+  const payload = {
+    round_number: state.noteModalTargetRound,
+    timestamp_ms: state.noteModalTargetMs,
+    author_type: state.authorType || 'coach',
+    text_note: text,
+    audio_data: audioData,
+  };
+
+  try {
+    const res = await fetch(`/api/matches/${state.currentMatchId}/notes`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload),
+    });
+
+    if (res.ok) {
+      showToast('Coach Note Saved');
+      closeNoteModal();
+      await loadCoachNotes(state.currentMatchId);
+    } else {
+      showToast('Failed to save coach note');
+    }
+  } catch (err) {
+    console.error('Save note error:', err);
+    showToast('Error saving note');
+  } finally {
+    if (btnSaveNote) {
+      btnSaveNote.disabled = false;
+      btnSaveNote.textContent = 'SAVE NOTE [ENTER]';
+    }
+  }
+}
+
+async function deleteCoachNote(noteId) {
+  try {
+    const res = await fetch(`/api/notes/${noteId}`, { method: 'DELETE' });
+    if (res.ok) {
+      showToast('Note deleted');
+      await loadCoachNotes(state.currentMatchId);
+    }
+  } catch (err) {
+    console.error('Delete note error:', err);
+    showToast('Failed to delete note');
+  }
+}
+
+let activeMemoAudio = null;
+function playAudioMemo(url) {
+  if (activeMemoAudio) {
+    activeMemoAudio.pause();
+    activeMemoAudio = null;
+  }
+  activeMemoAudio = new Audio(url);
+  activeMemoAudio.play().catch((e) => console.error('Audio play error:', e));
+  showToast('Playing voice memo...');
 }
 
 // Start application

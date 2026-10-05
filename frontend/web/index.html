@@ -167,7 +167,10 @@
       <div class="round-events-feed">
         <div class="feed-header">
           <span>ROUND EVENTS TIMELINE</span>
-          <span class="feed-subtitle" id="feed-round-label">ROUND 1</span>
+          <div style="display: flex; align-items: center; gap: 8px;">
+            <button id="btn-add-note" class="mini-btn note-btn" title="Add Timestamped Coach Note or Voice Memo [N]">📝 NOTE [N]</button>
+            <span class="feed-subtitle" id="feed-round-label">ROUND 1</span>
+          </div>
         </div>
         <div class="feed-list" id="round-events-list">
           <div class="feed-empty">No events in this round</div>
@@ -613,6 +616,53 @@
       <div class="modal-footer" style="display: flex; justify-content: space-between; padding: 14px 20px;">
         <button id="btn-test-obs" class="btn-sync">TEST CONNECTION</button>
         <button id="btn-save-obs" class="btn-primary">SAVE & CONNECT</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Coach Note & Voice Memo Modal -->
+  <div class="modal-overlay" id="note-modal" style="display: none;">
+    <div class="modal-card note-modal-card">
+      <div class="modal-header">
+        <div class="modal-title">TIMESTAMPED COACH NOTE & VOICE MEMO</div>
+        <button class="modal-close-btn" id="btn-close-note">&times;</button>
+      </div>
+
+      <div class="modal-body note-modal-body">
+        <!-- Timestamp context pill -->
+        <div class="note-context-row">
+          <div class="note-time-badge" id="note-time-badge">ROUND 1 · 00:00</div>
+          <span class="note-role-badge" id="note-role-badge">COACH PERSPECTIVE</span>
+        </div>
+
+        <!-- Text Note Input -->
+        <div class="form-group" style="margin-bottom: 14px;">
+          <label class="form-label" for="note-text-input">COACH OBSERVATION & FEEDBACK</label>
+          <textarea id="note-text-input" class="form-input note-textarea" rows="3" placeholder="Enter tactical coaching feedback, pre-aim advice, rotate critique..."></textarea>
+        </div>
+
+        <!-- Voice Memo Dictation -->
+        <div class="voice-memo-box">
+          <div class="voice-memo-header">
+            <div class="voice-title">🎙️ AUDIO DICTATION / VOICE NOTE</div>
+            <span class="voice-status" id="voice-record-status">READY TO RECORD</span>
+          </div>
+
+          <div class="voice-controls-row">
+            <button id="btn-record-audio" class="mini-btn record-toggle-btn">🎙️ RECORD AUDIO</button>
+            <span id="voice-record-timer" class="voice-timer">00:00</span>
+          </div>
+
+          <div id="voice-preview-wrapper" class="voice-preview-wrapper" style="display: none;">
+            <audio id="note-audio-player" class="voice-audio-element" controls></audio>
+            <button id="btn-discard-audio" class="mini-btn discard-audio-btn" title="Discard Voice Recording">&times;</button>
+          </div>
+        </div>
+      </div>
+
+      <div class="modal-footer" style="display: flex; justify-content: flex-end; gap: 10px; padding: 14px 20px;">
+        <button id="btn-cancel-note" class="btn-sync">CANCEL</button>
+        <button id="btn-save-note" class="btn-primary">SAVE NOTE [ENTER]</button>
       </div>
     </div>
   </div>

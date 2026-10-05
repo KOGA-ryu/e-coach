@@ -11,7 +11,7 @@ from vallens.analytics.perspective import PerspectiveDiffEngine, PerspectiveDiff
 from vallens.analytics.projection import CoordinateProjector
 from vallens.db.database import Database
 from vallens.db.repository import MatchRepository
-from vallens.models import MatchEvent, MatchMetadata, MatchPlayer, VodTag
+from vallens.models import CoachNote, MatchEvent, MatchMetadata, MatchPlayer, VodTag
 from vallens.obs.controller import CaptureController
 from vallens.obs.trimmer import ClipTrimmer
 from vallens.riot.client import RiotApiClient
@@ -425,6 +425,97 @@ class ValLensService:
             post_roll=post_roll,
             title=title or f"{filter_type}_review",
         )
+
+    def add_coach_note(
+        self,
+        match_id: str,
+        round_number: int,
+        timestamp_ms: int,
+        author_type: str = "coach",
+        text_note: str = "",
+        audio_data: Optional[str] = None,
+    ) -> dict[str, Any]:
+        """Add a timestamped coach note with optional voice memo dictation."""
+        audio_filepath = None
+        if audio_data and isinstance(audio_data, str) and len(audio_data) > 0:
+            import base64
+            import uuid
+            import time
+
+            if "," in audio_data:
+                header, b64_payload = audio_data.split(",", 1)
+            else:
+                b64_payload = audio_data
+
+            try:
+                audio_bytes = base64.b64decode(b64_payload)
+                notes_dir = Path(__file__).resolve().parent.parent.parent / "data" / "notes"
+                notes_dir.mkdir(parents=True, exist_ok=True)
+                audio_filename = f"{match_id}_R{round_number}_{int(time.time())}_{uuid.uuid4().hex[:6]}.webm"
+                audio_path = notes_dir / audio_filename
+                with open(audio_path, "wb") as f:
+                    f.write(audio_bytes)
+                audio_filepath = audio_filename
+            except Exception as e:
+                import logging
+                logging.getLogger("vallens.service").error(f"Failed to decode voice memo: {e}")
+
+        import time
+        created_at = int(time.time() * 1000)
+        note = CoachNote(
+            match_id=match_id,
+            round_number=round_number,
+            timestamp_ms=timestamp_ms,
+            author_type=author_type,
+            text_note=text_note,
+            audio_filepath=audio_filepath,
+            created_at=created_at,
+        )
+        note_id = self.repo.create_note(note)
+        return {
+            "note_id": note_id,
+            "match_id": match_id,
+            "round_number": round_number,
+            "timestamp_ms": timestamp_ms,
+            "author_type": author_type,
+            "text_note": text_note,
+            "audio_filepath": audio_filepath,
+            "audio_url": f"/api/notes/{audio_filepath}" if audio_filepath else None,
+            "created_at": created_at,
+        }
+
+    def get_coach_notes(
+        self, match_id: str, round_number: Optional[int] = None
+    ) -> list[dict[str, Any]]:
+        """Fetch coach notes and voice memos for a match."""
+        notes = self.repo.get_notes(match_id, round_number=round_number)
+        return [
+            {
+                "note_id": n.note_id,
+                "match_id": n.match_id,
+                "round_number": n.round_number,
+                "timestamp_ms": n.timestamp_ms,
+                "author_type": n.author_type,
+                "text_note": n.text_note,
+                "audio_filepath": n.audio_filepath,
+                "audio_url": f"/api/notes/{n.audio_filepath}" if n.audio_filepath else None,
+                "created_at": n.created_at,
+            }
+            for n in notes
+        ]
+
+    def delete_coach_note(self, note_id: int) -> bool:
+        """Delete a coach note and remove any associated audio memo."""
+        note = self.repo.get_note(note_id)
+        if note and note.audio_filepath:
+            notes_dir = Path(__file__).resolve().parent.parent.parent / "data" / "notes"
+            target_file = notes_dir / note.audio_filepath
+            if target_file.exists():
+                try:
+                    target_file.unlink()
+                except Exception:
+                    pass
+        return self.repo.delete_note(note_id)
 
 
 

@@ -3,7 +3,7 @@
 import json
 from typing import Any, Optional
 from vallens.db.database import Database
-from vallens.models import MatchEvent, MatchMetadata, MatchPlayer, VodTag
+from vallens.models import CoachNote, MatchEvent, MatchMetadata, MatchPlayer, VodTag
 
 
 
@@ -406,5 +406,71 @@ class MatchRepository:
         with self.db.connection() as conn:
             rows = conn.execute(sql, (player_puuid, player_puuid)).fetchall()
             return [dict(r) for r in rows]
+
+    def create_note(self, note: CoachNote) -> int:
+        """Create a timestamped coach note or voice memo."""
+        sql = """
+        INSERT INTO coach_notes (
+            match_id, round_number, timestamp_ms, author_type, text_note, audio_filepath, created_at
+        ) VALUES (?, ?, ?, ?, ?, ?, ?);
+        """
+        with self.db.connection() as conn:
+            cursor = conn.execute(sql, note.to_tuple())
+            return cursor.lastrowid
+
+    def get_notes(
+        self, match_id: str, round_number: Optional[int] = None
+    ) -> list[CoachNote]:
+        """Fetch notes for a match, optionally filtered by round number."""
+        query = [
+            "SELECT note_id, match_id, round_number, timestamp_ms, author_type, text_note, audio_filepath, created_at "
+            "FROM coach_notes WHERE match_id = ?"
+        ]
+        params: list[Any] = [match_id]
+        if round_number is not None:
+            query.append("AND round_number = ?")
+            params.append(round_number)
+        query.append("ORDER BY timestamp_ms ASC;")
+        sql = " ".join(query)
+        with self.db.connection() as conn:
+            rows = conn.execute(sql, params).fetchall()
+            return [
+                CoachNote(
+                    note_id=r["note_id"],
+                    match_id=r["match_id"],
+                    round_number=r["round_number"],
+                    timestamp_ms=r["timestamp_ms"],
+                    author_type=r["author_type"],
+                    text_note=r["text_note"] or "",
+                    audio_filepath=r["audio_filepath"],
+                    created_at=r["created_at"] or 0,
+                )
+                for r in rows
+            ]
+
+    def get_note(self, note_id: int) -> Optional[CoachNote]:
+        """Fetch a single note by ID."""
+        sql = "SELECT note_id, match_id, round_number, timestamp_ms, author_type, text_note, audio_filepath, created_at FROM coach_notes WHERE note_id = ?;"
+        with self.db.connection() as conn:
+            row = conn.execute(sql, (note_id,)).fetchone()
+            if not row:
+                return None
+            return CoachNote(
+                note_id=row["note_id"],
+                match_id=row["match_id"],
+                round_number=row["round_number"],
+                timestamp_ms=row["timestamp_ms"],
+                author_type=row["author_type"],
+                text_note=row["text_note"] or "",
+                audio_filepath=row["audio_filepath"],
+                created_at=row["created_at"] or 0,
+            )
+
+    def delete_note(self, note_id: int) -> bool:
+        """Delete a note by ID."""
+        sql = "DELETE FROM coach_notes WHERE note_id = ?;"
+        with self.db.connection() as conn:
+            cursor = conn.execute(sql, (note_id,))
+            return cursor.rowcount > 0
 
 

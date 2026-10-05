@@ -23,6 +23,8 @@ logger = logging.getLogger(__name__)
 STATIC_DIR = Path(__file__).parent.parent.parent / "frontend" / "web"
 DATA_MAPS_DIR = Path(__file__).parent.parent.parent / "data" / "maps"
 DATA_CLIPS_DIR = Path(__file__).parent.parent.parent / "data" / "clips"
+DATA_NOTES_DIR = Path(__file__).parent.parent.parent / "data" / "notes"
+DATA_NOTES_DIR.mkdir(parents=True, exist_ok=True)
 
 
 class ValLensRequestHandler(BaseHTTPRequestHandler):
@@ -397,6 +399,15 @@ class ValLensRequestHandler(BaseHTTPRequestHandler):
             })
             return
 
+        # 7.8. Coach Notes API
+        if path.startswith("/api/matches/") and path.endswith("/notes"):
+            match_id = path.split("/")[3]
+            round_param = query.get("round", [None])[0]
+            round_num = int(round_param) if round_param is not None and round_param.isdigit() else None
+            notes = self.service.get_coach_notes(match_id, round_number=round_num)
+            self._send_json(notes)
+            return
+
         # 8. Match Overview
         if path.startswith("/api/matches/"):
             match_id = path.split("/")[3]
@@ -511,6 +522,16 @@ class ValLensRequestHandler(BaseHTTPRequestHandler):
             self._send_error("Clip file not found", status=404)
             return
 
+        # 10.6. Serving Coach Audio Memos
+        if path.startswith("/api/notes/"):
+            audio_name = Path(path[len("/api/notes/"):]).name
+            target_audio = DATA_NOTES_DIR / audio_name
+            if target_audio.exists() and target_audio.is_file():
+                self._serve_file(target_audio, "audio/webm")
+                return
+            self._send_error("Audio note file not found", status=404)
+            return
+
         # 11. Web Frontend Static Files
         clean_path = path.lstrip("/")
         if not clean_path:
@@ -547,6 +568,32 @@ class ValLensRequestHandler(BaseHTTPRequestHandler):
                 event_id=data.get("event_id"),
             )
             self._send_json({"tag_id": tag_id, "success": True}, status=201)
+            return
+
+        if path.startswith("/api/matches/") and path.endswith("/notes"):
+            match_id = path.split("/")[3]
+            content_length = int(self.headers.get("Content-Length", 0))
+            body = self.rfile.read(content_length).decode("utf-8") if content_length > 0 else "{}"
+            try:
+                data = json.loads(body) if body else {}
+            except Exception:
+                data = {}
+
+            round_number = int(data.get("round_number", 0))
+            timestamp_ms = int(data.get("timestamp_ms", 0))
+            author_type = str(data.get("author_type", data.get("author", "coach")))
+            text_note = str(data.get("text_note", data.get("note", ""))).strip()
+            audio_data = data.get("audio_data")
+
+            created = self.service.add_coach_note(
+                match_id=match_id,
+                round_number=round_number,
+                timestamp_ms=timestamp_ms,
+                author_type=author_type,
+                text_note=text_note,
+                audio_data=audio_data,
+            )
+            self._send_json(created, status=201)
             return
 
         if path == "/api/account/sync":
@@ -771,6 +818,12 @@ class ValLensRequestHandler(BaseHTTPRequestHandler):
         if path.startswith("/api/tags/"):
             tag_id = int(path.split("/")[3])
             success = self.service.repo.delete_tag(tag_id)
+            self._send_json({"success": success})
+            return
+
+        if path.startswith("/api/notes/"):
+            note_id = int(path.split("/")[3])
+            success = self.service.delete_coach_note(note_id)
             self._send_json({"success": success})
             return
 

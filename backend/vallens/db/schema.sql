@@ -61,3 +61,19 @@ CREATE TABLE IF NOT EXISTS match_players (
 CREATE INDEX IF NOT EXISTS idx_match_players_puuid ON match_players(player_puuid);
 CREATE INDEX IF NOT EXISTS idx_match_players_character ON match_players(character_id);
 
+-- Timestamped coach notes and audio dictations
+CREATE TABLE IF NOT EXISTS coach_notes (
+    note_id INTEGER PRIMARY KEY AUTOINCREMENT,
+    match_id TEXT NOT NULL,
+    round_number INTEGER,
+    timestamp_ms INTEGER NOT NULL,
+    author_type TEXT NOT NULL, -- 'coach' or 'solo'
+    text_note TEXT,
+    audio_filepath TEXT,
+    created_at INTEGER,
+    FOREIGN KEY(match_id) REFERENCES matches(match_id) ON DELETE CASCADE
+);
+
+CREATE INDEX IF NOT EXISTS idx_coach_notes_match_id ON coach_notes(match_id);
+CREATE INDEX IF NOT EXISTS idx_coach_notes_round ON coach_notes(match_id, round_number);
+

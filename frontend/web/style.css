@@ -3004,4 +3004,184 @@ video {
   font-style: italic;
 }
 
+/* -------------------------------------------------------------
+   Coach Notes & Voice Memo Modal Styling
+   ------------------------------------------------------------- */
+.note-modal-card {
+  width: 520px;
+  max-width: 92vw;
+}
+
+.note-context-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid var(--border-color);
+  padding: 10px 14px;
+  border-radius: 6px;
+  margin-bottom: 16px;
+}
+
+.note-time-badge {
+  font-family: var(--font-tactical);
+  font-weight: 700;
+  font-size: 13.5px;
+  color: var(--accent-cyan);
+  letter-spacing: 0.5px;
+}
+
+.note-role-badge {
+  font-family: var(--font-tactical);
+  font-size: 11px;
+  padding: 2px 8px;
+  border-radius: 3px;
+  font-weight: 700;
+  background: rgba(255, 209, 102, 0.15);
+  color: #ffd166;
+  border: 1px solid rgba(255, 209, 102, 0.3);
+}
+
+.note-textarea {
+  resize: vertical;
+  min-height: 80px;
+  font-size: 12.5px;
+  line-height: 1.5;
+}
+
+.voice-memo-box {
+  background: rgba(0, 245, 212, 0.03);
+  border: 1px solid rgba(0, 245, 212, 0.2);
+  border-radius: 6px;
+  padding: 12px 14px;
+}
+
+.voice-memo-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 10px;
+}
+
+.voice-title {
+  font-family: var(--font-tactical);
+  font-size: 12px;
+  font-weight: 700;
+  color: #ece8e1;
+  letter-spacing: 0.5px;
+}
+
+.voice-status {
+  font-family: var(--font-tactical);
+  font-size: 10.5px;
+  color: var(--text-muted);
+}
+
+.voice-controls-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.record-toggle-btn {
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  color: #ece8e1;
+  font-family: var(--font-tactical);
+  font-weight: 700;
+  font-size: 11.5px;
+  padding: 6px 12px;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.record-toggle-btn:hover {
+  background: rgba(255, 70, 85, 0.18);
+  border-color: var(--accent-red);
+  color: #ff4655;
+}
+
+.record-toggle-btn.recording {
+  background: var(--accent-red);
+  color: #fff;
+  border-color: var(--accent-red);
+  box-shadow: 0 0 10px rgba(255, 70, 85, 0.5);
+  animation: pulse-rec 1s infinite alternate;
+}
+
+@keyframes pulse-rec {
+  from { opacity: 0.85; transform: scale(1); }
+  to { opacity: 1; transform: scale(1.02); }
+}
+
+.voice-timer {
+  font-family: 'Courier New', Courier, monospace;
+  font-weight: 700;
+  font-size: 14px;
+  color: var(--accent-cyan);
+}
+
+.voice-preview-wrapper {
+  margin-top: 10px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.voice-audio-element {
+  height: 32px;
+  flex: 1;
+  outline: none;
+}
+
+.discard-audio-btn {
+  background: rgba(255, 70, 85, 0.15);
+  border: 1px solid rgba(255, 70, 85, 0.3);
+  color: #ff4655;
+  font-size: 14px;
+  width: 32px;
+  height: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 4px;
+  cursor: pointer;
+}
+
+/* Timeline Note item */
+.timeline-event.note {
+  border-left-color: #ffd166 !important;
+  background: rgba(255, 209, 102, 0.04);
+}
+
+.note-btn {
+  background: rgba(255, 209, 102, 0.12);
+  color: #ffd166;
+  border: 1px solid rgba(255, 209, 102, 0.3);
+}
+
+.note-btn:hover {
+  background: rgba(255, 209, 102, 0.25);
+  box-shadow: 0 0 8px rgba(255, 209, 102, 0.3);
+}
+
+.note-audio-btn {
+  background: rgba(0, 245, 212, 0.12);
+  border: 1px solid var(--accent-cyan);
+  color: var(--accent-cyan);
+  font-family: var(--font-tactical);
+  font-size: 10px;
+  font-weight: 700;
+  padding: 2px 6px;
+  border-radius: 3px;
+  cursor: pointer;
+  margin-left: 6px;
+}
+
+.note-audio-btn:hover {
+  background: var(--accent-cyan);
+  color: #0b1118;
+}
+
 

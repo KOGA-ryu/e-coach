@@ -273,6 +273,56 @@ class TestValLensServer(unittest.TestCase):
         self.assertEqual(headers.get("Content-Type"), "video/mp4")
         self.assertGreater(len(body), 1000)
 
+    def test_coach_notes_endpoints(self):
+        # 1. Create a text-only coach note
+        payload = {
+            "round_number": 2,
+            "timestamp_ms": 35000,
+            "author_type": "coach",
+            "text_note": "Keep crosshair head-level at A Main corner",
+        }
+        status, note_res = self._post_json(f"/api/matches/{self.match.match_id}/notes", payload)
+        self.assertEqual(status, 201)
+        self.assertIn("note_id", note_res)
+        note_id = note_res["note_id"]
+        self.assertEqual(note_res["text_note"], "Keep crosshair head-level at A Main corner")
+
+        # 2. Create a note with simulated base64 voice memo
+        import base64
+        fake_audio = base64.b64encode(b"RIFFmockaudiobytes").decode("utf-8")
+        audio_payload = {
+            "round_number": 2,
+            "timestamp_ms": 38000,
+            "author_type": "coach",
+            "text_note": "Voice memo explanation",
+            "audio_data": f"data:audio/webm;base64,{fake_audio}",
+        }
+        status, voice_res = self._post_json(f"/api/matches/{self.match.match_id}/notes", audio_payload)
+        self.assertEqual(status, 201)
+        self.assertIsNotNone(voice_res["audio_url"])
+
+        # 3. Stream the audio file
+        status, body, headers = self._get(voice_res["audio_url"])
+        self.assertEqual(status, 200)
+        self.assertEqual(headers.get("Content-Type"), "audio/webm")
+        self.assertEqual(body, b"RIFFmockaudiobytes")
+
+        # 4. Fetch list of notes
+        status, body, _ = self._get(f"/api/matches/{self.match.match_id}/notes")
+        self.assertEqual(status, 200)
+        notes = json.loads(body.decode("utf-8"))
+        self.assertGreaterEqual(len(notes), 2)
+
+        # 5. Delete note
+        status, del_res = self._delete(f"/api/notes/{note_id}")
+        self.assertEqual(status, 200)
+        self.assertTrue(del_res["success"])
+
+        # Delete voice note and ensure file cleanup
+        status, del_voice = self._delete(f"/api/notes/{voice_res['note_id']}")
+        self.assertEqual(status, 200)
+        self.assertTrue(del_voice["success"])
+
 
 if __name__ == "__main__":
     unittest.main()
