@@ -140,13 +140,22 @@
           </div>
         </div>
 
-        <!-- Round Selector Pills -->
-        <div class="round-pills-scroll" id="round-pills"></div>
+        <!-- Round Selector Pills & Dropdown Jumper -->
+        <div class="round-nav-strip">
+          <div class="round-jump-group">
+            <label class="round-jump-label" for="round-select-dropdown">RND</label>
+            <select id="round-select-dropdown" class="dropdown-select round-dropdown"></select>
+          </div>
+          <div class="round-pills-scroll" id="round-pills"></div>
+        </div>
       </div>
 
       <!-- Live Round Events Feed -->
       <div class="round-events-feed">
-        <div class="feed-header">ROUND EVENTS TIMELINE</div>
+        <div class="feed-header">
+          <span>ROUND EVENTS TIMELINE</span>
+          <span class="feed-subtitle" id="feed-round-label">ROUND 1</span>
+        </div>
         <div class="feed-list" id="round-events-list">
           <div class="feed-empty">No events in this round</div>
         </div>
@@ -199,21 +208,23 @@
         </div>
       </div>
 
-      <div class="minimap-container" id="minimap-wrapper">
-        <canvas id="minimap-canvas" width="600" height="600"></canvas>
-        <div class="map-tooltip" id="map-tooltip"></div>
-      </div>
+      <div class="minimap-stage">
+        <div class="minimap-container" id="minimap-wrapper">
+          <canvas id="minimap-canvas" width="600" height="600"></canvas>
+          <div class="map-tooltip" id="map-tooltip"></div>
+        </div>
 
-      <div class="minimap-legend" id="match-minimap-legend">
-        <div class="legend-item"><span class="legend-dot kill"></span> Kill Position</div>
-        <div class="legend-item"><span class="legend-dot death"></span> Death Position</div>
-        <div class="legend-item"><span class="legend-dot plant"></span> Spike Plant/Defuse</div>
-      </div>
+        <div class="minimap-legend" id="match-minimap-legend">
+          <div class="legend-item"><span class="legend-dot kill"></span> Kill</div>
+          <div class="legend-item"><span class="legend-dot death"></span> Death</div>
+          <div class="legend-item"><span class="legend-dot plant"></span> Spike Plant/Defuse</div>
+        </div>
 
-      <div class="minimap-legend" id="agg-minimap-legend" style="display: none;">
-        <div class="legend-item"><span class="legend-dot death-hotspot"></span> Hotspot Centroid</div>
-        <div class="legend-item"><span class="legend-dot heat-density"></span> Density Cluster</div>
-        <div class="legend-item"><span class="legend-dot death-point"></span> Event Point</div>
+        <div class="minimap-legend" id="agg-minimap-legend" style="display: none;">
+          <div class="legend-item"><span class="legend-dot death-hotspot"></span> Hotspot Centroid</div>
+          <div class="legend-item"><span class="legend-dot heat-density"></span> Density Cluster</div>
+          <div class="legend-item"><span class="legend-dot death-point"></span> Event Point</div>
+        </div>
       </div>
 
       <!-- Multi-Match Hotspot Clusters Panel -->
@@ -243,8 +254,15 @@
         </div>
       </div>
 
+      <!-- Perspective Indicator Bar -->
+      <div class="tag-perspective-indicator solo" id="tag-perspective-indicator">
+        <span class="indicator-dot"></span>
+        <span class="indicator-text">LOGGING PERSPECTIVE: <strong>SOLO (PLAYER)</strong></span>
+        <span class="indicator-key-hint">ACTIVE</span>
+      </div>
+
       <!-- Action Grid -->
-      <div class="tag-grid" id="tag-grid">
+      <div class="tag-grid solo" id="tag-grid">
         <!-- 1-9 Fast Action Keys -->
         <button class="tag-card mechanics" data-key="1" data-cat="Mechanics" data-name="crosshair_placement">
           <span class="key-badge">1</span>
@@ -324,7 +342,10 @@
 
       <!-- Review Tags Log -->
       <div class="tag-history-section">
-        <div class="sub-header">LOGGED VOD TAGS (<span id="tag-count">0</span>)</div>
+        <div class="sub-header tag-history-header">
+          <span>LOGGED VOD TAGS (<span id="tag-count">0</span>)</span>
+          <button id="btn-undo-tag-inline" class="mini-btn undo-btn inline-undo" title="Undo Last Tag (Ctrl+Z)">UNDO [^Z]</button>
+        </div>
         <div class="tag-history-list" id="tag-history-list">
           <div class="empty-tags">No tags applied yet. Use numeric keys [1-9] while reviewing.</div>
         </div>

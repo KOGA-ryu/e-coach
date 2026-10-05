@@ -227,32 +227,77 @@ function seekToEventWithPreRoll(eventTimeMs) {
 }
 
 // -------------------------------------------------------------
+// -------------------------------------------------------------
 // Round Navigation & Events Feed
 // -------------------------------------------------------------
+function formatRelativeTime(ms, startMs) {
+  const diffSec = Math.max(0, Math.floor((ms - startMs) / 1000));
+  const m = Math.floor(diffSec / 60);
+  const s = diffSec % 60;
+  return `+${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`;
+}
+
 function buildRoundPills() {
   roundPills.innerHTML = '';
+  const roundDropdown = document.getElementById('round-select-dropdown');
+  if (roundDropdown) {
+    roundDropdown.innerHTML = '';
+  }
+
   state.chapters.forEach((ch, idx) => {
+    // Round Pill
     const pill = document.createElement('button');
     pill.className = `round-pill ${idx === state.activeRound ? 'active' : ''}`;
     pill.textContent = `R${ch.round_num + 1}`;
-    pill.title = ch.comment;
+    pill.title = ch.comment || `Round ${ch.round_num + 1}`;
+    pill.dataset.round = ch.round_num;
     pill.addEventListener('click', () => selectRound(ch.round_num));
     roundPills.appendChild(pill);
+
+    // Dropdown Option for rapid jumper
+    if (roundDropdown) {
+      const opt = document.createElement('option');
+      opt.value = ch.round_num;
+      opt.textContent = `Round ${ch.round_num + 1}`;
+      if (idx === state.activeRound) opt.selected = true;
+      roundDropdown.appendChild(opt);
+    }
   });
+
+  if (roundDropdown && !roundDropdown.dataset.listenerAttached) {
+    roundDropdown.dataset.listenerAttached = 'true';
+    roundDropdown.addEventListener('change', (e) => {
+      selectRound(parseInt(e.target.value, 10));
+    });
+  }
 }
 
 function selectRound(roundNum) {
   state.activeRound = roundNum;
-  document.getElementById('info-active-round').textContent = `ROUND ${roundNum + 1}`;
+  const activeRoundLabel = document.getElementById('info-active-round');
+  if (activeRoundLabel) activeRoundLabel.textContent = `ROUND ${roundNum + 1}`;
 
-  // Update round pills highlight
+  const feedRoundLabel = document.getElementById('feed-round-label');
+  if (feedRoundLabel) feedRoundLabel.textContent = `ROUND ${roundNum + 1}`;
+
+  // Sync dropdown selector
+  const roundDropdown = document.getElementById('round-select-dropdown');
+  if (roundDropdown && roundDropdown.value !== String(roundNum)) {
+    roundDropdown.value = String(roundNum);
+  }
+
+  // Update round pills highlight and auto-scroll into view
   document.querySelectorAll('.round-pill').forEach((pill, idx) => {
-    pill.classList.toggle('active', idx === roundNum);
+    const isActive = idx === roundNum;
+    pill.classList.toggle('active', isActive);
+    if (isActive) {
+      pill.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'nearest' });
+    }
   });
 
-  // Filter events feed
+  // Filter events feed for this round
   const roundEvents = state.events.filter((e) => e.round_number === roundNum);
-  renderRoundEventsFeed(roundEvents);
+  renderRoundEventsFeed(roundEvents, roundNum);
 
   // Jump video to round start if chapter exists
   const chap = state.chapters.find((c) => c.round_num === roundNum);
@@ -264,44 +309,144 @@ function selectRound(roundNum) {
   renderMinimap();
 }
 
-function renderRoundEventsFeed(events) {
+function renderRoundEventsFeed(events, roundNum) {
   roundEventsList.innerHTML = '';
-  if (!events || events.length === 0) {
+
+  const chap = state.chapters.find((c) => c.round_num === roundNum);
+  const startEv = events ? events.find((e) => e.event_type === 'round_start') : null;
+  const roundStartMs = chap ? chap.start_ms : (startEv ? startEv.event_time_ms : (events && events[0] ? events[0].event_time_ms : 0));
+
+  const items = [];
+
+  // Phase 1: Round Start / Buy Phase
+  items.push({
+    type: 'phase',
+    timeMs: roundStartMs,
+    relTime: '+00:00',
+    title: 'ROUND START · BUY PHASE',
+    badgeText: 'PHASE',
+    badgeClass: '',
+    itemClass: 'phase-item',
+  });
+
+  const sortedEvents = (events || []).slice().sort((a, b) => a.event_time_ms - b.event_time_ms);
+
+  // Phase 2: Action Live / Walls Drop (if combat starts after 20s)
+  const firstCombat = sortedEvents.find((e) => e.event_type === 'kill' || e.event_type === 'death');
+  if (firstCombat && (firstCombat.event_time_ms - roundStartMs) > 20000) {
+    items.push({
+      type: 'phase',
+      timeMs: roundStartMs + 20000,
+      relTime: '+00:20',
+      title: 'WALLS DROP · COMBAT ACTIVE',
+      badgeText: 'ACTION',
+      badgeClass: '',
+      itemClass: 'phase-item',
+    });
+  }
+
+  const firstKillEv = sortedEvents.find((e) => e.event_type === 'kill');
+  let lastDeathTime = -999999;
+
+  sortedEvents.forEach((e) => {
+    if (e.event_type === 'round_start') return;
+
+    const relTime = formatRelativeTime(e.event_time_ms, roundStartMs);
+
+    if (e.event_type === 'kill') {
+      const isAce = e.player_puuid === 'player-ace-001';
+      const isFB = (e === firstKillEv);
+      const isTrade = (e.event_time_ms - lastDeathTime <= 3000);
+      const weapon = e.metadata.weapon || 'Gun';
+      const victim = (e.metadata.victim || 'Enemy').replace('player-', '');
+
+      items.push({
+        type: 'kill',
+        timeMs: e.event_time_ms,
+        relTime: relTime,
+        title: `${isAce ? 'ACE ELIMINATED' : 'KILL:'} [${weapon}] ➔ ${victim}`,
+        badgeText: isFB ? 'FIRST BLOOD' : (isTrade ? 'TRADE' : (isAce ? 'ACE' : '')),
+        badgeClass: isFB ? 'fb' : (isTrade ? 'trade' : ''),
+        itemClass: 'kill-item',
+      });
+    } else if (e.event_type === 'death') {
+      lastDeathTime = e.event_time_ms;
+      const isAce = e.player_puuid === 'player-ace-001';
+      if (isAce) {
+        const isFD = (firstKillEv && firstKillEv.metadata.victim === 'player-ace-001');
+        const killer = (e.metadata.killer || 'Enemy').replace('player-', '');
+        const weapon = e.metadata.weapon || 'Gun';
+
+        items.push({
+          type: 'death',
+          timeMs: e.event_time_ms,
+          relTime: relTime,
+          title: `ACE ELIMINATED by ${killer} [${weapon}]`,
+          badgeText: isFD ? 'FIRST DEATH' : 'DEATH',
+          badgeClass: 'fd',
+          itemClass: 'death-item',
+        });
+      }
+    } else if (e.event_type === 'plant') {
+      const site = e.metadata.site || 'A';
+      items.push({
+        type: 'plant',
+        timeMs: e.event_time_ms,
+        relTime: relTime,
+        title: `SPIKE PLANTED (Site ${site})`,
+        badgeText: 'SPIKE',
+        badgeClass: '',
+        itemClass: 'plant-item',
+      });
+    } else if (e.event_type === 'defuse') {
+      items.push({
+        type: 'defuse',
+        timeMs: e.event_time_ms,
+        relTime: relTime,
+        title: `SPIKE DEFUSED`,
+        badgeText: 'DEFUSE',
+        badgeClass: '',
+        itemClass: 'defuse-item',
+      });
+    } else if (e.event_type === 'round_end') {
+      const team = e.metadata.winning_team || '';
+      const result = e.metadata.round_result || 'Round Concluded';
+      items.push({
+        type: 'end',
+        timeMs: e.event_time_ms,
+        relTime: relTime,
+        title: `ROUND END · ${team ? `${team} Won` : 'Completed'} (${result})`,
+        badgeText: 'ROUND END',
+        badgeClass: '',
+        itemClass: 'end-item',
+      });
+    }
+  });
+
+  items.sort((a, b) => a.timeMs - b.timeMs);
+
+  if (items.length === 0) {
     roundEventsList.innerHTML = '<div class="feed-empty">No events in this round</div>';
     return;
   }
 
-  events.forEach((e) => {
-    if (e.event_type === 'round_start' || e.event_type === 'round_end') return;
-
-    const item = document.createElement('div');
-    const isKill = e.event_type === 'kill';
-    const isPlant = e.event_type === 'plant' || e.event_type === 'defuse';
-    item.className = `feed-item ${isKill ? 'kill-item' : isPlant ? 'plant-item' : ''}`;
-
-    let label = e.event_type.toUpperCase();
-    if (isKill) {
-      const weapon = e.metadata.weapon || 'Weapon';
-      label = `KILL [${weapon}] -> ${(e.metadata.victim || 'Enemy').slice(0, 8)}`;
-    } else if (e.event_type === 'death') {
-      const weapon = e.metadata.weapon || 'Weapon';
-      label = `DEATH by ${(e.metadata.killer || 'Enemy').slice(0, 8)} [${weapon}]`;
-    } else if (e.event_type === 'plant') {
-      label = `SPIKE PLANTED (Site ${e.metadata.site || 'A'})`;
-    } else if (e.event_type === 'defuse') {
-      label = `SPIKE DEFUSED`;
-    }
-
-    item.innerHTML = `
-      <span>${label}</span>
-      <span class="feed-time">${formatTime(e.event_time_ms / 1000)}</span>
+  items.forEach((item) => {
+    const el = document.createElement('div');
+    el.className = `feed-item ${item.itemClass}`;
+    el.innerHTML = `
+      <div class="feed-item-left">
+        ${item.badgeText ? `<span class="feed-badge ${item.badgeClass}">${item.badgeText}</span>` : ''}
+        <span>${item.title}</span>
+      </div>
+      <div class="feed-time-group">
+        <span class="feed-rel-time">${item.relTime}</span>
+        <span class="feed-abs-time">${formatTime(item.timeMs / 1000)}</span>
+      </div>
     `;
-
-    item.addEventListener('click', () => {
-      seekToEventWithPreRoll(e.event_time_ms);
+    el.addEventListener('click', () => {
+      seekToEventWithPreRoll(item.timeMs);
     });
-
-    roundEventsList.appendChild(item);
+    roundEventsList.appendChild(el);
   });
 }
 
@@ -707,6 +852,8 @@ function setupAggregateControls() {
 // Hotkey Review Tagging & Undo Stack
 // -------------------------------------------------------------
 
+let activeDeleteTimer = null;
+
 async function logTag(key) {
   const mapping = TAG_MAP[key];
   if (!mapping || !state.currentMatchId) return;
@@ -734,8 +881,8 @@ async function logTag(key) {
 
     if (res.ok) {
       const data = await res.json();
-      state.tagHistoryStack.push({ tag_id: data.tag_id, name: mapping.name });
-      showToast(`[${key}] ${mapping.name} logged at ${formatTime(currentMs / 1000)} (Ctrl+Z to Undo)`);
+      state.tagHistoryStack.push({ action: 'create', tag_id: data.tag_id, name: mapping.name });
+      showToast(`[${key}] ${mapping.name.replace(/_/g, ' ')} logged (${state.authorType.toUpperCase()})`);
       await loadTags();
     }
   } catch (err) {
@@ -751,10 +898,29 @@ async function undoLastTag() {
 
   const last = state.tagHistoryStack.pop();
   try {
-    const res = await fetch(`/api/tags/${last.tag_id}`, { method: 'DELETE' });
-    if (res.ok) {
-      showToast(`Undid tag [${last.name}]`);
-      await loadTags();
+    if (last.action === 'delete') {
+      // Re-create previously deleted tag
+      const res = await fetch(`/api/matches/${state.currentMatchId}/tags`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          timestamp_ms: last.timestamp_ms,
+          category: last.category,
+          name: last.name,
+          author: last.author,
+        }),
+      });
+      if (res.ok) {
+        showToast(`Restored tag [${last.name.replace(/_/g, ' ')}]`);
+        await loadTags();
+      }
+    } else {
+      // Undo newly created tag
+      const res = await fetch(`/api/tags/${last.tag_id}`, { method: 'DELETE' });
+      if (res.ok) {
+        showToast(`Undid tag [${last.name.replace(/_/g, ' ')}]`);
+        await loadTags();
+      }
     }
   } catch (err) {
     console.error('Failed to undo tag:', err);
@@ -786,32 +952,38 @@ function renderTagHistory() {
   state.tags.slice().reverse().forEach((t) => {
     const item = document.createElement('div');
     item.className = 'tag-item';
+    item.dataset.time = t.timestamp_ms;
+    const cleanName = (t.name || '').replace(/_/g, ' ');
 
     item.innerHTML = `
       <div class="tag-item-left">
         <span class="tag-badge ${t.author}">${t.author}</span>
-        <span class="tag-name">${t.name}</span>
+        <span class="tag-name" title="${cleanName}">${cleanName}</span>
         <span class="feed-time">${formatTime(t.timestamp_ms / 1000)}</span>
       </div>
-      <button class="tag-delete-btn" data-id="${t.tag_id}" title="Delete Tag">×</button>
+      <button class="tag-delete-btn" data-id="${t.tag_id}" title="Click to Delete">×</button>
     `;
-
-    item.addEventListener('click', (e) => {
-      if (e.target.classList.contains('tag-delete-btn')) {
-        deleteTag(t.tag_id);
-      } else {
-        seekToEventWithPreRoll(t.timestamp_ms);
-      }
-    });
 
     tagHistoryList.appendChild(item);
   });
 }
 
 async function deleteTag(tagId) {
+  const tagObj = state.tags.find((t) => t.tag_id === tagId);
   try {
     const res = await fetch(`/api/tags/${tagId}`, { method: 'DELETE' });
     if (res.ok) {
+      if (tagObj) {
+        state.tagHistoryStack.push({
+          action: 'delete',
+          tag_id: tagObj.tag_id,
+          timestamp_ms: tagObj.timestamp_ms,
+          category: tagObj.category || 'Positioning',
+          name: tagObj.name,
+          author: tagObj.author || state.authorType,
+        });
+      }
+      showToast(`Deleted [${(tagObj?.name || '').replace(/_/g, ' ')}] (Ctrl+Z to Restore)`);
       await loadTags();
     }
   } catch (err) {
@@ -828,7 +1000,8 @@ function renderHabitInsights() {
   });
 
   const sorted = Object.entries(counts).sort((a, b) => b[1] - a[1]);
-  const max = sorted.length > 0 ? sorted[0][1] : 1;
+  const totalTags = state.tags.length;
+  const maxCount = sorted.length > 0 ? sorted[0][1] : 1;
 
   if (sorted.length === 0) {
     habitBars.innerHTML = '<div class="empty-tags">Log tags to generate habit distribution</div>';
@@ -836,16 +1009,24 @@ function renderHabitInsights() {
   }
 
   sorted.forEach(([name, count]) => {
-    const pct = Math.round((count / max) * 100);
+    const normalizedPct = Math.max(10, Math.round((count / maxCount) * 100));
+    const sharePct = totalTags > 0 ? Math.round((count / totalTags) * 100) : 0;
+    const tagEntry = Object.values(TAG_MAP).find((t) => t.name === name);
+    const category = tagEntry ? tagEntry.category.toLowerCase() : 'positioning';
+    const cleanName = name.replace(/_/g, ' ');
+
     const row = document.createElement('div');
     row.className = 'habit-row';
     row.innerHTML = `
       <div class="habit-header">
-        <span>${name}</span>
-        <span>${count}x</span>
+        <span title="${cleanName}">${cleanName}</span>
+        <div class="habit-stats">
+          <span>${count}x</span>
+          <span class="habit-share">(${sharePct}%)</span>
+        </div>
       </div>
       <div class="habit-bar-bg">
-        <div class="habit-bar-fill" style="width: ${pct}%"></div>
+        <div class="habit-bar-fill ${category}" style="width: ${normalizedPct}%"></div>
       </div>
     `;
     habitBars.appendChild(row);
@@ -1096,6 +1277,14 @@ function setupEventListeners() {
       return;
     }
 
+    // Perspective Toggle Hotkey: 'P'
+    if (e.key.toLowerCase() === 'p' && !e.ctrlKey && !e.metaKey) {
+      e.preventDefault();
+      setPerspective(state.authorType === 'solo' ? 'coach' : 'solo');
+      showToast(`Switched perspective to ${state.authorType.toUpperCase()}`);
+      return;
+    }
+
     // 1-9 Hotkey Review Tags
     if (TAG_MAP[e.key]) {
       e.preventDefault();
@@ -1118,8 +1307,44 @@ function setupEventListeners() {
     }
   });
 
-  // Undo button click
+  // Undo button clicks (Header and Inline History)
   btnUndoTag.addEventListener('click', undoLastTag);
+  const btnUndoInline = document.getElementById('btn-undo-tag-inline');
+  if (btnUndoInline) {
+    btnUndoInline.addEventListener('click', undoLastTag);
+  }
+
+  // Tag History List: Delegation for safe 2-step deletion and timestamp seeking
+  tagHistoryList.addEventListener('click', async (e) => {
+    const deleteBtn = e.target.closest('.tag-delete-btn');
+    if (deleteBtn) {
+      e.stopPropagation();
+      const tagId = parseInt(deleteBtn.dataset.id, 10);
+      if (deleteBtn.classList.contains('confirming')) {
+        if (activeDeleteTimer) clearTimeout(activeDeleteTimer);
+        await deleteTag(tagId);
+      } else {
+        document.querySelectorAll('.tag-delete-btn.confirming').forEach((b) => {
+          b.classList.remove('confirming');
+          b.textContent = '×';
+        });
+        deleteBtn.classList.add('confirming');
+        deleteBtn.textContent = 'CONFIRM';
+        activeDeleteTimer = setTimeout(() => {
+          if (deleteBtn && deleteBtn.classList.contains('confirming')) {
+            deleteBtn.classList.remove('confirming');
+            deleteBtn.textContent = '×';
+          }
+        }, 3000);
+      }
+      return;
+    }
+
+    const item = e.target.closest('.tag-item');
+    if (item && item.dataset.time) {
+      seekToEventWithPreRoll(parseInt(item.dataset.time, 10));
+    }
+  });
 
   // Match Selector
   matchSelect.addEventListener('change', (e) => {
@@ -1129,17 +1354,33 @@ function setupEventListeners() {
   });
 
   // Perspective Toggle
-  document.getElementById('btn-author-solo').addEventListener('click', (e) => {
-    state.authorType = 'solo';
-    e.target.classList.add('active');
-    document.getElementById('btn-author-coach').classList.remove('active');
-  });
+  function setPerspective(author) {
+    state.authorType = author;
+    const btnSolo = document.getElementById('btn-author-solo');
+    const btnCoach = document.getElementById('btn-author-coach');
+    const tagGridEl = document.getElementById('tag-grid');
+    const indicator = document.getElementById('tag-perspective-indicator');
 
-  document.getElementById('btn-author-coach').addEventListener('click', (e) => {
-    state.authorType = 'coach';
-    e.target.classList.add('active');
-    document.getElementById('btn-author-solo').classList.remove('active');
-  });
+    if (btnSolo && btnCoach) {
+      btnSolo.classList.toggle('active', author === 'solo');
+      btnCoach.classList.toggle('active', author === 'coach');
+    }
+
+    if (tagGridEl) {
+      tagGridEl.className = `tag-grid ${author}`;
+    }
+
+    if (indicator) {
+      indicator.className = `tag-perspective-indicator ${author}`;
+      const textSpan = indicator.querySelector('.indicator-text');
+      if (textSpan) {
+        textSpan.innerHTML = `LOGGING PERSPECTIVE: <strong>${author === 'solo' ? 'SOLO (PLAYER)' : 'COACH'}</strong>`;
+      }
+    }
+  }
+
+  document.getElementById('btn-author-solo').addEventListener('click', () => setPerspective('solo'));
+  document.getElementById('btn-author-coach').addEventListener('click', () => setPerspective('coach'));
 
   // Video Playback Events
   videoPlayer.addEventListener('timeupdate', updateScrubber);
