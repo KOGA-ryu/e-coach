@@ -216,14 +216,28 @@ function loadMapImage(mapName) {
 }
 
 // -------------------------------------------------------------
-// -3s Pre-Roll Event Seek
+// -3s Pre-Roll Event Seek & Auto-Play
 // -------------------------------------------------------------
-function seekToEventWithPreRoll(eventTimeMs) {
-  if (!videoPlayer.duration) return;
-  // Jump 3 seconds before event to analyze angle isolation and pre-aim
-  const targetSec = Math.max(0, (eventTimeMs - 3000) / 1000);
+function seekToEventWithPreRoll(eventTimeMs, bufferSeconds = 3.0) {
+  const targetSec = Math.max(0, (eventTimeMs - bufferSeconds * 1000) / 1000);
   videoPlayer.currentTime = targetSec;
-  showToast(`Pre-roll (-3s) -> ${formatTime(targetSec)}`);
+
+  if (videoPlayer.duration && !isNaN(videoPlayer.duration)) {
+    videoPlayer.play().catch(() => {});
+    btnPlayPause.textContent = 'PAUSE';
+  } else {
+    // Virtual scrub fallback when running review without an offline video asset
+    timecodeDisplay.textContent = formatTimecode(targetSec);
+    const pct = videoPlayer.duration ? (targetSec / videoPlayer.duration) * 100 : 0;
+    if (scrubberProgress) scrubberProgress.style.width = `${pct}%`;
+    if (scrubberThumb) scrubberThumb.style.left = `${pct}%`;
+  }
+
+  // Refresh dynamic radar
+  if (state.radarMode) {
+    renderMinimap();
+  }
+  showToast(`Scrubbed to ${formatTime(targetSec)} (-${bufferSeconds}s pre-roll)`);
 }
 
 // -------------------------------------------------------------
@@ -272,7 +286,7 @@ function buildRoundPills() {
   }
 }
 
-function selectRound(roundNum) {
+function selectRound(roundNum, shouldSeek = true) {
   state.activeRound = roundNum;
   const activeRoundLabel = document.getElementById('info-active-round');
   if (activeRoundLabel) activeRoundLabel.textContent = `ROUND ${roundNum + 1}`;
@@ -299,10 +313,12 @@ function selectRound(roundNum) {
   const roundEvents = state.events.filter((e) => e.round_number === roundNum);
   renderRoundEventsFeed(roundEvents, roundNum);
 
-  // Jump video to round start if chapter exists
-  const chap = state.chapters.find((c) => c.round_num === roundNum);
-  if (chap && videoPlayer.duration) {
-    videoPlayer.currentTime = chap.start_ms / 1000;
+  // Jump video to round start if user clicked a round pill or dropdown
+  if (shouldSeek) {
+    const chap = state.chapters.find((c) => c.round_num === roundNum);
+    if (chap && videoPlayer.duration) {
+      videoPlayer.currentTime = chap.start_ms / 1000;
+    }
   }
 
   // Redraw minimap for active round
@@ -488,7 +504,7 @@ function renderMinimap() {
     if (e.pos_x === null || e.pos_y === null) return false;
 
     // Temporal Live Radar mode check
-    if (state.radarMode && videoPlayer.duration) {
+    if (state.radarMode && (videoPlayer.duration || videoPlayer.currentTime > 0)) {
       return e.event_time_ms <= currentVideoMs;
     }
     return true;
@@ -499,19 +515,42 @@ function renderMinimap() {
     const px = e.pos_x * w;
     const py = e.pos_y * h;
     const deltaMs = currentVideoMs - e.event_time_ms;
-    const isRecent = state.radarMode && deltaMs >= 0 && deltaMs <= 3000;
+    const isRecent = state.radarMode && deltaMs >= 0 && deltaMs <= 4000;
+    const isPast = state.radarMode && deltaMs > 4000;
 
     ctx.save();
+
+    // Dim past events so player focus stays on active engagements
+    if (isPast) {
+      ctx.globalAlpha = 0.4;
+    } else {
+      ctx.globalAlpha = 1.0;
+    }
 
     // Recent Event Pulsing Radar Shockwave
     if (isRecent) {
       const pulseRatio = (deltaMs % 1000) / 1000;
-      const pulseRadius = 10 + pulseRatio * 20;
+      const pulseRadius = 10 + pulseRatio * 22;
       ctx.strokeStyle = e.event_type === 'kill' ? `rgba(6, 214, 160, ${1 - pulseRatio})` : `rgba(255, 70, 85, ${1 - pulseRatio})`;
-      ctx.lineWidth = 2;
+      ctx.lineWidth = 2.5;
       ctx.beginPath();
       ctx.arc(px, py, pulseRadius, 0, Math.PI * 2);
       ctx.stroke();
+
+      // Recent event floating callout pill
+      const weapon = e.metadata.weapon || (e.event_type === 'plant' ? 'SPIKE' : '');
+      if (weapon) {
+        ctx.font = 'bold 10px Rajdhani, sans-serif';
+        const textWidth = ctx.measureText(weapon).width;
+        ctx.fillStyle = 'rgba(15, 25, 35, 0.85)';
+        ctx.fillRect(px - textWidth / 2 - 4, py - 22, textWidth + 8, 14);
+        ctx.strokeStyle = e.event_type === 'kill' ? '#06d6a0' : '#ff4655';
+        ctx.lineWidth = 1;
+        ctx.strokeRect(px - textWidth / 2 - 4, py - 22, textWidth + 8, 14);
+        ctx.fillStyle = '#ffffff';
+        ctx.textAlign = 'center';
+        ctx.fillText(weapon, px, py - 11);
+      }
     }
 
     if (e.event_type === 'kill') {
@@ -1204,11 +1243,7 @@ function updateScrubber() {
   for (let i = state.chapters.length - 1; i >= 0; i--) {
     if (currentMs >= state.chapters[i].start_ms) {
       if (state.activeRound !== state.chapters[i].round_num) {
-        state.activeRound = state.chapters[i].round_num;
-        document.getElementById('info-active-round').textContent = `ROUND ${state.activeRound + 1}`;
-        document.querySelectorAll('.round-pill').forEach((p, idx) => {
-          p.classList.toggle('active', idx === state.activeRound);
-        });
+        selectRound(state.chapters[i].round_num, false);
       }
       break;
     }
