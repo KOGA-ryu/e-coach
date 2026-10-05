@@ -6,6 +6,7 @@ from typing import Any, Optional
 
 from vallens.analytics.agent_profile import AgentMatrixResult, AgentProfilingEngine
 from vallens.analytics.career_radar import CareerProfileReport, CareerRadarEngine
+from vallens.analytics.crosshair_scorer import CrosshairScorerEngine, CrosshairScoringReport
 from vallens.analytics.drills import TrainingRoutineEngine, TrainingRoutineResult
 from vallens.analytics.economy import EconomyAnalysisResult, EconomyCorrelationEngine
 from vallens.analytics.frame_sync import FrameSyncEngine, FrameSyncResult
@@ -81,6 +82,10 @@ class ValLensService:
             trade_engine=self.trade_engine,
         )
         self.tendency_profiler = TendencyProfilerEngine(
+            repo=self.repo,
+            heatmap_engine=self.heatmap_engine,
+        )
+        self.crosshair_scorer = CrosshairScorerEngine(
             repo=self.repo,
             heatmap_engine=self.heatmap_engine,
         )
@@ -968,6 +973,21 @@ class ValLensService:
             match_id=match_id,
             target_team=target_team,
             user_puuid=user_puuid,
+        )
+        return report.to_dict()
+
+    # ------------------------------------------------------------------
+    # Offline Crosshair Placement & Corner Peeking Precision Scorer
+    # ------------------------------------------------------------------
+    def get_crosshair_scores(
+        self,
+        match_id: str,
+        target_puuid: Optional[str] = None,
+    ) -> dict[str, Any]:
+        """Evaluate pre-aim precision, angular error, and corner-peeking discipline."""
+        report = self.crosshair_scorer.evaluate_player_crosshair(
+            match_id=match_id,
+            target_puuid=target_puuid,
         )
         return report.to_dict()
 

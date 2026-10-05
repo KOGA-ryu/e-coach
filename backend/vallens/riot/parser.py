@@ -224,21 +224,38 @@ class MatchParser:
             if vx is not None and vy is not None:
                 v_norm_x, v_norm_y = self.projector.world_to_norm(map_id, vx, vy)
 
-            # Extract killer position from playerLocations
+            # Extract killer and victim positions & orientations from playerLocations
             kx, ky = (None, None)
             k_norm_x, k_norm_y = (None, None)
+            k_view_radians = None
+            v_view_radians = None
+
             for ploc in k.get("playerLocations", []):
                 puuid = ploc.get("puuid") or ploc.get("subject")
                 if puuid == killer_puuid:
                     loc = ploc.get("location", {})
                     kx = loc.get("x")
                     ky = loc.get("y")
+                    k_view_radians = ploc.get("viewRadians")
                     if kx is not None and ky is not None:
                         k_norm_x, k_norm_y = self.projector.world_to_norm(map_id, kx, ky)
-                    break
+                elif puuid == victim_puuid:
+                    v_view_radians = ploc.get("viewRadians")
 
             # 1. Killer event
             if killer_puuid:
+                k_meta = {
+                    "victim": victim_puuid,
+                    "weapon": weapon,
+                    "damage_type": damage_type,
+                    "victim_pos": {"norm_x": v_norm_x, "norm_y": v_norm_y, "raw_x": vx, "raw_y": vy},
+                    "raw_x": kx,
+                    "raw_y": ky,
+                }
+                if k_view_radians is not None:
+                    k_meta["view_radians"] = float(k_view_radians)
+                    k_meta["view_yaw_deg"] = round(math.degrees(float(k_view_radians)), 1)
+
                 events.append(
                     MatchEvent(
                         match_id=match_id,
@@ -248,19 +265,24 @@ class MatchParser:
                         player_puuid=killer_puuid,
                         pos_x=k_norm_x,
                         pos_y=k_norm_y,
-                        metadata={
-                            "victim": victim_puuid,
-                            "weapon": weapon,
-                            "damage_type": damage_type,
-                            "victim_pos": {"norm_x": v_norm_x, "norm_y": v_norm_y, "raw_x": vx, "raw_y": vy},
-                            "raw_x": kx,
-                            "raw_y": ky,
-                        },
+                        metadata=k_meta,
                     )
                 )
 
             # 2. Death event for victim
             if victim_puuid:
+                v_meta = {
+                    "killer": killer_puuid,
+                    "weapon": weapon,
+                    "damage_type": damage_type,
+                    "killer_pos": {"norm_x": k_norm_x, "norm_y": k_norm_y, "raw_x": kx, "raw_y": ky},
+                    "raw_x": vx,
+                    "raw_y": vy,
+                }
+                if v_view_radians is not None:
+                    v_meta["view_radians"] = float(v_view_radians)
+                    v_meta["view_yaw_deg"] = round(math.degrees(float(v_view_radians)), 1)
+
                 events.append(
                     MatchEvent(
                         match_id=match_id,
@@ -270,14 +292,7 @@ class MatchParser:
                         player_puuid=victim_puuid,
                         pos_x=v_norm_x,
                         pos_y=v_norm_y,
-                        metadata={
-                            "killer": killer_puuid,
-                            "weapon": weapon,
-                            "damage_type": damage_type,
-                            "killer_pos": {"norm_x": k_norm_x, "norm_y": k_norm_y, "raw_x": kx, "raw_y": ky},
-                            "raw_x": vx,
-                            "raw_y": vy,
-                        },
+                        metadata=v_meta,
                     )
                 )
 

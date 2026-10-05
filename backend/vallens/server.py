@@ -543,6 +543,20 @@ class ValLensRequestHandler(BaseHTTPRequestHandler):
                 self._send_error(f"Tendency profiling failed: {e}", status=500)
             return
 
+        # Offline Crosshair Placement & Corner Peeking Scorer API
+        if path.startswith("/api/matches/") and path.endswith("/crosshair"):
+            match_id = path.split("/")[3]
+            target_player = query.get("player", [None])[0]
+            try:
+                report = self.service.get_crosshair_scores(
+                    match_id=match_id,
+                    target_puuid=target_player,
+                )
+                self._send_json(report)
+            except Exception as e:
+                self._send_error(f"Crosshair scoring failed: {e}", status=500)
+            return
+
         # Auto-Detected Highlight Candidates API
         if path.startswith("/api/matches/") and path.endswith("/clips/candidates"):
             match_id = path.split("/")[3]

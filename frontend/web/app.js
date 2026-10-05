@@ -406,6 +406,7 @@ async function init() {
   setupHighlightStudio();
   setupRoundComparison();
   setupOpponentTendencies();
+  setupCrosshairScorer();
   await loadAvailableMaps();
 
   await loadMatchList();
@@ -7324,6 +7325,167 @@ function setupOpponentTendencies() {
     } catch (err) {
       console.error('Failed to load opponent tendencies:', err);
       if (summaryPills) summaryPills.innerHTML = '<span class="empty-hint error">Failed to load opponent tendencies telemetry.</span>';
+    }
+  }
+}
+
+// ------------------------------------------------------------------
+// Offline Crosshair Placement & Corner Peeking Scorer UI
+// ------------------------------------------------------------------
+function setupCrosshairScorer() {
+  const btnOpen = document.getElementById('btn-open-crosshair');
+  const modal = document.getElementById('crosshair-modal');
+  const btnClose = document.getElementById('btn-close-crosshair-modal');
+  const btnCloseFooter = document.getElementById('btn-close-crosshair-footer');
+
+  if (!btnOpen || !modal) return;
+
+  function closeModal() {
+    modal.classList.add('hidden');
+  }
+
+  function openModal() {
+    modal.classList.remove('hidden');
+    loadCrosshairData();
+  }
+
+  btnOpen.addEventListener('click', openModal);
+  if (btnClose) btnClose.addEventListener('click', closeModal);
+  if (btnCloseFooter) btnCloseFooter.addEventListener('click', closeModal);
+
+  modal.addEventListener('click', (e) => {
+    if (e.target === modal) closeModal();
+  });
+
+  async function loadCrosshairData() {
+    if (!state.currentMatchId) return;
+
+    const overallScoreEl = document.getElementById('crosshair-overall-score');
+    const gradeTagEl = document.getElementById('crosshair-grade-tag');
+    const avgOffsetEl = document.getElementById('crosshair-avg-offset');
+    const pixelRateEl = document.getElementById('crosshair-pixel-rate');
+    const preaimWinrateEl = document.getElementById('crosshair-preaim-winrate');
+    const wideWinrateSubEl = document.getElementById('crosshair-wide-winrate-sub');
+    const distGrid = document.getElementById('crosshair-dist-grid');
+    const countTag = document.getElementById('crosshair-duels-count-tag');
+    const tbody = document.getElementById('crosshair-duels-tbody');
+    const insightsDeck = document.getElementById('crosshair-insights-deck');
+
+    try {
+      const url = `/api/matches/${state.currentMatchId}/crosshair?player=${encodeURIComponent(state.selectedPlayerPuuid || '')}`;
+      const res = await fetch(url);
+      if (!res.ok) throw new Error(`HTTP error ${res.status}`);
+      const data = await res.json();
+
+      // 1. Hero Strip
+      if (overallScoreEl) overallScoreEl.textContent = data.overall_score;
+      if (gradeTagEl) {
+        let tagText = 'NEEDS DRILLS';
+        let tagColor = '#ff4655';
+        if (data.overall_score >= 85) { tagText = 'ELITE S-TIER'; tagColor = '#06d6a0'; }
+        else if (data.overall_score >= 70) { tagText = 'SOLID A-TIER'; tagColor = '#00f2fe'; }
+        else if (data.overall_score >= 55) { tagText = 'AVERAGE B-TIER'; tagColor = '#fdbb2d'; }
+        gradeTagEl.textContent = tagText;
+        gradeTagEl.style.color = tagColor;
+      }
+      if (avgOffsetEl) avgOffsetEl.textContent = `${data.avg_angular_offset_deg}°`;
+      if (pixelRateEl) pixelRateEl.textContent = `${data.pixel_pre_aim_rate}%`;
+      if (preaimWinrateEl) preaimWinrateEl.textContent = `${data.pre_aim_win_rate}%`;
+      if (wideWinrateSubEl) wideWinrateSubEl.textContent = `vs ${data.wide_flick_win_rate}% on wide flicks`;
+
+      // 2. Spectrum Progress Cards
+      if (distGrid) {
+        const midPct = Math.max(0, 100 - data.pixel_pre_aim_rate - data.clean_micro_adjust_rate - data.wide_flick_rate).toFixed(1);
+        distGrid.innerHTML = `
+          <div class="dist-grade-box">
+            <div class="dist-grade-header">
+              <span class="dist-grade-badge badge-grade-s">S: PIXEL PRE-AIM</span>
+              <strong>${data.pixel_pre_aim_rate}%</strong>
+            </div>
+            <div class="tendency-progress-track">
+              <div class="tendency-progress-fill fill-site" style="width: ${Math.max(4, data.pixel_pre_aim_rate)}%"></div>
+            </div>
+            <span class="row-meta">Offset ≤ 6.0° • Head Height</span>
+          </div>
+
+          <div class="dist-grade-box">
+            <div class="dist-grade-header">
+              <span class="dist-grade-badge badge-grade-a">A: MICRO-ADJUST</span>
+              <strong>${data.clean_micro_adjust_rate}%</strong>
+            </div>
+            <div class="tendency-progress-track">
+              <div class="tendency-progress-fill fill-default" style="width: ${Math.max(4, data.clean_micro_adjust_rate)}%"></div>
+            </div>
+            <span class="row-meta">Offset 6.0° - 16.0° • Clean Slice</span>
+          </div>
+
+          <div class="dist-grade-box">
+            <div class="dist-grade-header">
+              <span class="dist-grade-badge badge-grade-b">B: WIDE ADJUST</span>
+              <strong>${midPct}%</strong>
+            </div>
+            <div class="tendency-progress-track">
+              <div class="tendency-progress-fill fill-late" style="width: ${Math.max(4, parseFloat(midPct))}%"></div>
+            </div>
+            <span class="row-meta">Offset 16.0° - 28.0° • Large Flick</span>
+          </div>
+
+          <div class="dist-grade-box">
+            <div class="dist-grade-header">
+              <span class="dist-grade-badge badge-grade-f">F: LAZY CROSSHAIR</span>
+              <strong>${data.wide_flick_rate}%</strong>
+            </div>
+            <div class="tendency-progress-track">
+              <div class="tendency-progress-fill fill-blitz" style="width: ${Math.max(4, data.wide_flick_rate)}%"></div>
+            </div>
+            <span class="row-meta">Offset > 28.0° • Caught Blind</span>
+          </div>
+        `;
+      }
+
+      // 3. Table of Engagements
+      if (countTag) countTag.textContent = `${data.duels_analyzed} duels analyzed`;
+      if (tbody) {
+        if (!data.engagements || data.engagements.length === 0) {
+          tbody.innerHTML = '<tr><td colspan="8" class="empty-hint">No gunfight engagements recorded.</td></tr>';
+        } else {
+          tbody.innerHTML = data.engagements.map((e) => {
+            const gradeClass = `grade-${e.pre_aim_grade.toLowerCase()}`;
+            const outcomeClass = e.won ? '#06d6a0' : '#ff4655';
+            const outcomeText = e.won ? 'KILL' : 'DEATH';
+            const timeSec = (e.timestamp_ms / 1000).toFixed(1);
+            return `
+              <tr>
+                <td><strong>R${e.round_number}</strong> <span style="color:var(--text-muted); font-size:10px;">(${timeSec}s)</span></td>
+                <td><strong style="color: ${outcomeClass};">${outcomeText}</strong></td>
+                <td><span>${e.target_name}</span></td>
+                <td><span style="color: var(--text-muted);">${e.weapon}</span></td>
+                <td><span>${e.zone_callout}</span></td>
+                <td><strong style="color: #fff;">${e.angular_offset_deg}°</strong></td>
+                <td><span class="grade-pill ${gradeClass}">${e.pre_aim_grade}: ${e.grade_label}</span></td>
+                <td><span style="font-family: var(--font-display); font-size: 16px;">${e.score}</span></td>
+              </tr>
+            `;
+          }).join('');
+        }
+      }
+
+      // 4. Coaching Prescriptions Deck
+      if (insightsDeck) {
+        if (!data.coaching_insights || data.coaching_insights.length === 0) {
+          insightsDeck.innerHTML = '<div class="empty-hint">No mechanical prescriptions available.</div>';
+        } else {
+          insightsDeck.innerHTML = data.coaching_insights.map((ins) => `
+            <div class="crosshair-insight-item">
+              <div>${ins}</div>
+            </div>
+          `).join('');
+        }
+      }
+
+    } catch (err) {
+      console.error('Failed to load crosshair scores:', err);
+      if (overallScoreEl) overallScoreEl.textContent = 'ERR';
     }
   }
 }

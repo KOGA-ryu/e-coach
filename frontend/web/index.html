@@ -62,6 +62,7 @@
       <button id="btn-open-highlights" class="btn-highlights" title="Auto-Detect Highlights & Clip Studio">🎬 CLIPS & REEL</button>
       <button id="btn-open-round-compare" class="btn-round-compare" title="Multi-POV / Round-over-Round Side-by-Side Synchronizer">👥 ROUND COMPARE</button>
       <button id="btn-open-tendencies" class="btn-tendencies" title="Opponent Tendency & Default Timing Profiler">⏱️ TENDENCIES</button>
+      <button id="btn-open-crosshair" class="btn-crosshair" title="Offline Crosshair Placement & Corner Peeking Precision Scorer">🎯 CROSSHAIR SCORER</button>
       <button id="btn-generate-montage" class="btn-montage" title="Generate Continuous Flaw Review Reel MP4">🎬 REVIEW REEL</button>
 
       <a id="btn-view-report" class="btn-report" target="_blank" href="#">COACHING REPORT</a>
@@ -1841,6 +1842,113 @@
 
       <div class="modal-footer" style="display: flex; justify-content: flex-end; padding: 14px 20px;">
         <button id="btn-close-tendencies-footer" class="btn-sync">CLOSE</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Offline Crosshair Placement & Corner Peeking Scorer Modal -->
+  <div id="crosshair-modal" class="modal-overlay hidden">
+    <div class="modal-card crosshair-modal-card">
+      <div class="modal-header">
+        <div class="modal-title-group">
+          <div class="modal-icon">🎯</div>
+          <div>
+            <div class="modal-title">OFFLINE CROSSHAIR PLACEMENT & CORNER PEEKING SCORER</div>
+            <div class="modal-subtitle">Mechanical Gunfight Hygiene • Angular Pre-Aim Deviation • Corner Slicing & Duel Winrate Impact</div>
+          </div>
+        </div>
+        <button id="btn-close-crosshair-modal" class="btn-icon-close">✕</button>
+      </div>
+
+      <div class="modal-body crosshair-modal-body">
+        <!-- Hero Metrics Strip -->
+        <div class="crosshair-hero-strip">
+          <div class="crosshair-hero-card">
+            <span class="hero-label">PLACEMENT GRADE</span>
+            <div class="hero-val-group">
+              <span class="hero-val" id="crosshair-overall-score">--</span>
+              <span class="hero-denom">/ 100</span>
+            </div>
+            <span class="hero-sub" id="crosshair-grade-tag">--</span>
+          </div>
+
+          <div class="crosshair-hero-card">
+            <span class="hero-label">AVG ANGULAR DEVIATION</span>
+            <div class="hero-val-group">
+              <span class="hero-val" id="crosshair-avg-offset">--°</span>
+            </div>
+            <span class="hero-sub">Mean corner peek error</span>
+          </div>
+
+          <div class="crosshair-hero-card">
+            <span class="hero-label">PIXEL PRE-AIM (≤6°)</span>
+            <div class="hero-val-group">
+              <span class="hero-val" id="crosshair-pixel-rate">--%</span>
+            </div>
+            <span class="hero-sub">Zero micro-adjust needed</span>
+          </div>
+
+          <div class="crosshair-hero-card">
+            <span class="hero-label">TIGHT PRE-AIM WINRATE</span>
+            <div class="hero-val-group">
+              <span class="hero-val positive" id="crosshair-preaim-winrate">--%</span>
+            </div>
+            <span class="hero-sub" id="crosshair-wide-winrate-sub">vs --% on wide flicks</span>
+          </div>
+        </div>
+
+        <!-- Grade Distribution Progress Grid -->
+        <div class="crosshair-distribution-card">
+          <div class="card-header-tactical">
+            <span>📊 CORNER PEEK & PRE-AIM ACCURACY SPECTRUM</span>
+            <span class="card-subtitle-tag">Distribution of engagement crosshair offsets</span>
+          </div>
+          <div class="crosshair-dist-grid" id="crosshair-dist-grid">
+            <!-- Populated dynamically: S (Pixel), A (Micro-Adjust), B (Wide), F (Lazy) -->
+          </div>
+        </div>
+
+        <!-- Duel Engagements Breakdown Table -->
+        <div class="crosshair-table-card">
+          <div class="card-header-tactical">
+            <span>⚔️ DUEL ENGAGEMENT HYGIENE LOG</span>
+            <span class="card-subtitle-tag" id="crosshair-duels-count-tag">0 duels analyzed</span>
+          </div>
+          <div class="crosshair-table-wrapper">
+            <table class="tactical-table" id="crosshair-duels-table">
+              <thead>
+                <tr>
+                  <th>ROUND</th>
+                  <th>OUTCOME</th>
+                  <th>OPPONENT</th>
+                  <th>WEAPON</th>
+                  <th>CORRIDOR / ZONE</th>
+                  <th>ANGULAR OFFSET (Δθ)</th>
+                  <th>PRE-AIM GRADE</th>
+                  <th>SCORE</th>
+                </tr>
+              </thead>
+              <tbody id="crosshair-duels-tbody">
+                <tr><td colspan="8" class="empty-hint">Loading duel engagements...</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        <!-- AI Mechanical Coaching Prescriptions -->
+        <div class="crosshair-coaching-card">
+          <div class="card-header-tactical">
+            <span>💡 MECHANICAL GUNFIGHT PRESCRIPTIONS</span>
+            <span class="card-badge alert">COACHING TAKEAWAYS</span>
+          </div>
+          <div class="crosshair-insights-deck" id="crosshair-insights-deck">
+            <!-- Populated dynamically -->
+          </div>
+        </div>
+      </div>
+
+      <div class="modal-footer" style="display: flex; justify-content: flex-end; padding: 14px 20px;">
+        <button id="btn-close-crosshair-footer" class="btn-sync">CLOSE</button>
       </div>
     </div>
   </div>

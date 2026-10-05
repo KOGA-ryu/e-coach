@@ -580,6 +580,16 @@ class TestValLensServer(unittest.TestCase):
         self.assertIn("aggression_profile", res)
         self.assertIn("counter_strats", res)
 
+    def test_crosshair_scores_endpoint(self):
+        status, body, _ = self._get(f"/api/matches/{self.match.match_id}/crosshair")
+        self.assertEqual(status, 200)
+        res = json.loads(body.decode("utf-8"))
+        self.assertEqual(res["match_id"], self.match.match_id)
+        self.assertIn("overall_score", res)
+        self.assertIn("avg_angular_offset_deg", res)
+        self.assertIn("engagements", res)
+        self.assertIn("coaching_insights", res)
+
     def test_highlight_clips_endpoints(self):
         # 1. Candidates list
         status, body, _ = self._get(f"/api/matches/{self.match.match_id}/clips/candidates")
