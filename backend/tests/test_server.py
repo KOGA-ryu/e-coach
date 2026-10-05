@@ -559,7 +559,75 @@ class TestValLensServer(unittest.TestCase):
         self.assertIn("<!DOCTYPE html>", html)
         self.assertIn("PRO SCOUTING DOSSIER", html)
 
+    def test_round_comparison_endpoint(self):
+        status, body, _ = self._get(f"/api/matches/{self.match.match_id}/rounds/compare?round_a=1&round_b=2")
+        self.assertEqual(status, 200)
+        res = json.loads(body.decode("utf-8"))
+        self.assertEqual(res["match_id"], self.match.match_id)
+        self.assertIn("round_a", res)
+        self.assertIn("round_b", res)
+        self.assertIn("deltas", res)
+        self.assertIn("key_takeaways", res)
+
+    def test_highlight_clips_endpoints(self):
+        # 1. Candidates list
+        status, body, _ = self._get(f"/api/matches/{self.match.match_id}/clips/candidates")
+        self.assertEqual(status, 200)
+        candidates = json.loads(body.decode("utf-8"))
+        self.assertIsInstance(candidates, list)
+
+        # 2. Render custom clip
+        post_data = {
+            "start_seconds": 10.0,
+            "duration_seconds": 4.0,
+            "label": "test_highlight",
+            "round_number": 1,
+        }
+        status, render_res = self._post_json(f"/api/matches/{self.match.match_id}/clips/render", post_data)
+        self.assertEqual(status, 200)
+        self.assertTrue(render_res["success"])
+        self.assertIn("download_url", render_res["clip"])
+
+        # 3. List saved clips
+        status, body, _ = self._get(f"/api/matches/{self.match.match_id}/clips")
+        self.assertEqual(status, 200)
+        saved = json.loads(body.decode("utf-8"))
+        self.assertIsInstance(saved, list)
+        self.assertGreaterEqual(len(saved), 1)
+
+    def test_playbook_strat_endpoints(self):
+        # 1. List seeded default strats
+        status, body, _ = self._get("/api/playbook/strats")
+        self.assertEqual(status, 200)
+        strats = json.loads(body.decode("utf-8"))
+        self.assertGreaterEqual(len(strats), 1)
+
+        # 2. Create new strat
+        new_strat = {
+            "title": "Abyss Mid Control",
+            "map_name": "Abyss",
+            "side": "attack",
+            "description": "Double smoke mid cross",
+            "drawing_data": [{"type": "arrow", "x1": 0.5, "y1": 0.8, "x2": 0.5, "y2": 0.4, "color": "#00f2fe"}],
+        }
+        status, create_res = self._post_json("/api/playbook/strats", new_strat)
+        self.assertEqual(status, 200)
+        self.assertTrue(create_res["success"])
+        strat_id = create_res["strat"]["strat_id"]
+
+        # 3. Fetch single strat
+        status, body, _ = self._get(f"/api/playbook/strats/{strat_id}")
+        self.assertEqual(status, 200)
+        fetched = json.loads(body.decode("utf-8"))
+        self.assertEqual(fetched["title"], "Abyss Mid Control")
+
+        # 4. Delete strat
+        del_status, del_body = self._delete(f"/api/playbook/strats/{strat_id}")
+        self.assertEqual(del_status, 200)
+        self.assertTrue(del_body["success"])
+
 
 if __name__ == "__main__":
     unittest.main()
+
 

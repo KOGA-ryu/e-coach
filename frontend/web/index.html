@@ -58,7 +58,11 @@
       <button id="btn-open-trades" class="btn-trades" title="Post-Match Trade Frag Efficiency & Spacing Matrix">🤝 TRADE MATRIX</button>
       <button id="btn-open-winprob" class="btn-winprob" title="Round Win Probability Curve & Clutch Evaluator">📈 WIN PROBABILITY</button>
       <button id="btn-open-scouting" class="btn-scouting" title="Pro Scouting Dossier & One-Click PDF Export">📄 SCOUTING DOSSIER</button>
+      <button id="btn-open-playbook" class="btn-playbook" title="Tactical Strat Playbook & Minimap Whiteboard">📖 STRAT PLAYBOOK</button>
+      <button id="btn-open-highlights" class="btn-highlights" title="Auto-Detect Highlights & Clip Studio">🎬 CLIPS & REEL</button>
+      <button id="btn-open-round-compare" class="btn-round-compare" title="Multi-POV / Round-over-Round Side-by-Side Synchronizer">👥 ROUND COMPARE</button>
       <button id="btn-generate-montage" class="btn-montage" title="Generate Continuous Flaw Review Reel MP4">🎬 REVIEW REEL</button>
+
       <a id="btn-view-report" class="btn-report" target="_blank" href="#">COACHING REPORT</a>
       <a id="btn-export-dossier" class="btn-dossier" title="Export Standalone Offline Review Dossier (.html)" href="#" download>EXPORT DOSSIER</a>
     </div>
@@ -302,13 +306,38 @@
           </div>
           <button id="btn-heat-gradient" class="mini-btn heat-btn active" title="Toggle Smooth Heat Gradient">HEAT GLOW</button>
         </div>
+
+        <!-- Minimap Whiteboard & Telestrator Controls -->
+        <div class="minimap-whiteboard-toolbar" id="whiteboard-toolbar">
+          <button id="btn-toggle-draw" class="wb-btn" title="Toggle 2D Tactical Whiteboard & Drawing Mode">🎨 DRAW / STRATS</button>
+          <div class="wb-tools-group" id="wb-tools-group" style="display: none;">
+            <button class="wb-tool-btn active" data-wb-tool="pencil" title="Freehand Brush">✏️</button>
+            <button class="wb-tool-btn" data-wb-tool="arrow" title="Tactical Movement Arrow">➡️</button>
+            <button class="wb-tool-btn" data-wb-tool="line" title="Sightline">📏</button>
+            <button class="wb-tool-btn" data-wb-tool="smoke" title="Smoke / Utility Radius">⭕</button>
+            <button class="wb-tool-btn" data-wb-tool="marker" title="Tactical Marker">📍</button>
+            <div class="wb-colors">
+              <span class="wb-color active" data-color="#00f2fe" style="background:#00f2fe;" title="Radiant Cyan"></span>
+              <span class="wb-color" data-color="#ff4655" style="background:#ff4655;" title="Duelist Red"></span>
+              <span class="wb-color" data-color="#ffc107" style="background:#ffc107;" title="Sentinel Yellow"></span>
+              <span class="wb-color" data-color="#a855f7" style="background:#a855f7;" title="Controller Purple"></span>
+              <span class="wb-color" data-color="#22c55e" style="background:#22c55e;" title="Initiator Green"></span>
+            </div>
+            <button id="btn-wb-undo" class="wb-action-btn" title="Undo Stroke">↩️</button>
+            <button id="btn-wb-clear" class="wb-action-btn" title="Clear Drawing">🗑️</button>
+            <button id="btn-wb-save-modal" class="wb-action-btn primary" title="Save Strat to Playbook">💾 SAVE</button>
+            <button id="btn-wb-open-playbook" class="wb-action-btn" title="Open Playbook Library">📖 PLAYBOOK</button>
+          </div>
+        </div>
       </div>
 
       <div class="minimap-stage">
         <div class="minimap-container" id="minimap-wrapper">
           <canvas id="minimap-canvas" width="600" height="600"></canvas>
+          <canvas id="whiteboard-canvas" width="600" height="600"></canvas>
           <div class="map-tooltip" id="map-tooltip"></div>
         </div>
+
 
         <div class="minimap-legend" id="match-minimap-legend">
           <div class="legend-item"><span class="legend-dot kill"></span> Kill</div>
@@ -1451,7 +1480,252 @@
     </div>
   </div>
 
+  <!-- 1. Tactical Strat Playbook Library Modal -->
+  <div class="modal-backdrop" id="playbook-modal" style="display: none;">
+    <div class="modal-card playbook-modal-card">
+      <div class="modal-header">
+        <div class="modal-title-group">
+          <h2>📖 TACTICAL STRAT PLAYBOOK & WHITEBOARD ARCHIVE</h2>
+          <span class="modal-subtitle">Offline custom strats, default executes, and annotated telestrator setups</span>
+        </div>
+        <button id="btn-close-playbook" class="modal-close-btn">&times;</button>
+      </div>
+
+      <div class="modal-body playbook-modal-body">
+        <div class="playbook-filter-bar">
+          <div class="playbook-filter-group">
+            <label class="mini-label" for="playbook-map-filter">MAP:</label>
+            <select id="playbook-map-filter" class="dropdown-select mini-select">
+              <option value="all">ALL MAPS</option>
+              <option value="Ascent">Ascent</option>
+              <option value="Bind">Bind</option>
+              <option value="Haven">Haven</option>
+              <option value="Split">Split</option>
+              <option value="Lotus">Lotus</option>
+              <option value="Sunset">Sunset</option>
+              <option value="Abyss">Abyss</option>
+            </select>
+          </div>
+          <div class="playbook-filter-group">
+            <label class="mini-label" for="playbook-side-filter">SIDE:</label>
+            <select id="playbook-side-filter" class="dropdown-select mini-select">
+              <option value="all">ALL SIDES</option>
+              <option value="attack">Attack</option>
+              <option value="defense">Defense</option>
+              <option value="retake">Retake</option>
+            </select>
+          </div>
+          <button id="btn-playbook-new" class="btn-primary mini-btn">+ NEW STRAT</button>
+        </div>
+
+        <div class="playbook-cards-grid" id="playbook-cards-grid">
+          <!-- Populated dynamically via app.js -->
+        </div>
+      </div>
+
+      <div class="modal-footer" style="display: flex; justify-content: flex-end; padding: 14px 20px;">
+        <button id="btn-close-playbook-footer" class="btn-sync">CLOSE</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 2. Save Strat Dialog Modal -->
+  <div class="modal-backdrop" id="save-strat-modal" style="display: none; z-index: 1050;">
+    <div class="modal-card save-strat-modal-card">
+      <div class="modal-header">
+        <div class="modal-title-group">
+          <h2>💾 SAVE TACTICAL STRAT TO PLAYBOOK</h2>
+          <span class="modal-subtitle">Save current telestrator drawing as a reusable strat</span>
+        </div>
+        <button id="btn-close-save-strat" class="modal-close-btn">&times;</button>
+      </div>
+
+      <div class="modal-body save-strat-modal-body">
+        <div class="form-group">
+          <label for="strat-input-title">STRAT TITLE:</label>
+          <input type="text" id="strat-input-title" class="text-input" placeholder="e.g. Ascent A Split Retake 2-1-2" required>
+        </div>
+        <div class="form-row-2">
+          <div class="form-group">
+            <label for="strat-select-map">MAP:</label>
+            <select id="strat-select-map" class="dropdown-select">
+              <option value="Ascent">Ascent</option>
+              <option value="Bind">Bind</option>
+              <option value="Haven">Haven</option>
+              <option value="Split">Split</option>
+              <option value="Lotus">Lotus</option>
+              <option value="Sunset">Sunset</option>
+              <option value="Abyss">Abyss</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label for="strat-select-side">SIDE:</label>
+            <select id="strat-select-side" class="dropdown-select">
+              <option value="attack">Attack</option>
+              <option value="defense">Defense</option>
+              <option value="retake">Retake</option>
+              <option value="default">Default</option>
+            </select>
+          </div>
+        </div>
+        <div class="form-group">
+          <label for="strat-input-desc">COACHING NOTES & EXECUTE DETAILS:</label>
+          <textarea id="strat-input-desc" class="text-area" rows="3" placeholder="Explain timing, utility line-ups, and crossfire positions..."></textarea>
+        </div>
+      </div>
+
+      <div class="modal-footer" style="display: flex; justify-content: flex-end; gap: 10px; padding: 14px 20px;">
+        <button id="btn-cancel-save-strat" class="btn-sync">CANCEL</button>
+        <button id="btn-confirm-save-strat" class="btn-primary">SAVE STRAT</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 3. Automated Highlight Reel & Clip Studio Modal -->
+  <div class="modal-backdrop" id="highlights-modal" style="display: none;">
+    <div class="modal-card highlights-modal-card">
+      <div class="modal-header">
+        <div class="modal-title-group">
+          <h2>🎬 HIGHLIGHT REEL & COACHING CLIP STUDIO</h2>
+          <span class="modal-subtitle">Local FFmpeg clipping of 1vX clutches, momentum swings, multi-kills, and coach errors</span>
+        </div>
+        <button id="btn-close-highlights" class="modal-close-btn">&times;</button>
+      </div>
+
+      <div class="modal-body highlights-modal-body">
+        <div class="highlights-tabs-bar">
+          <div class="highlights-tabs-left">
+            <button class="hl-tab-btn active" data-hl-tab="candidates">AUTO-DETECTED MOMENTS</button>
+            <button class="hl-tab-btn" data-hl-tab="saved">SAVED MP4 CLIPS (<span id="saved-clips-count">0</span>)</button>
+          </div>
+          <div class="highlights-filters" id="hl-category-filters">
+            <button class="hl-filter-pill active" data-hl-cat="all">ALL</button>
+            <button class="hl-filter-pill" data-hl-cat="clutch">🔥 CLUTCHES</button>
+            <button class="hl-filter-pill" data-hl-cat="swing">⚡ SWINGS</button>
+            <button class="hl-filter-pill" data-hl-cat="multikill">⚔️ MULTI-KILLS</button>
+            <button class="hl-filter-pill" data-hl-cat="flaw">⚠️ FLAWS</button>
+          </div>
+        </div>
+
+        <div id="hl-candidates-panel" class="hl-tab-content active">
+          <div class="hl-candidates-grid" id="hl-candidates-grid">
+            <!-- Populated dynamically via app.js -->
+          </div>
+
+          <div class="hl-compilation-bar">
+            <div class="hl-selection-summary">
+              <span id="hl-selected-count-badge">0 moments selected</span>
+              <span class="hl-hint">Select moments to compile into a continuous review montage</span>
+            </div>
+            <div class="hl-compile-controls">
+              <input type="text" id="hl-reel-title" class="text-input" placeholder="Montage Title (e.g. Ace VOD Review Reel)">
+              <button id="btn-compile-selected-reel" class="btn-primary">COMPILE 1-CLICK REEL</button>
+            </div>
+          </div>
+        </div>
+
+        <div id="hl-saved-panel" class="hl-tab-content" style="display: none;">
+          <div class="saved-clips-grid" id="saved-clips-grid">
+            <!-- Populated dynamically via app.js -->
+          </div>
+        </div>
+      </div>
+
+      <div class="modal-footer" style="display: flex; justify-content: flex-end; padding: 14px 20px;">
+        <button id="btn-close-highlights-footer" class="btn-sync">CLOSE</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 4. Multi-POV / Round-over-Round Side-by-Side Synchronizer Modal -->
+  <div class="modal-backdrop" id="round-compare-modal" style="display: none;">
+    <div class="modal-card round-compare-modal-card">
+      <div class="modal-header">
+        <div class="modal-title-group">
+          <h2>👥 DUAL-ROUND TACTICAL COMPARATOR & MULTI-POV SYNCHRONIZER</h2>
+          <span class="modal-subtitle">Lockstepped simultaneous 2D replay, differential metrics, and AI tactical takeaways</span>
+        </div>
+        <button id="btn-close-round-compare" class="modal-close-btn">&times;</button>
+      </div>
+
+      <div class="modal-body round-compare-modal-body">
+        <div class="compare-selector-bar">
+          <div class="compare-select-group">
+            <label class="mini-label" for="compare-select-round-a">ROUND A (BASELINE):</label>
+            <select id="compare-select-round-a" class="dropdown-select"></select>
+          </div>
+          <span class="compare-vs-badge">VS</span>
+          <div class="compare-select-group">
+            <label class="mini-label" for="compare-select-round-b">ROUND B (COMPARISON):</label>
+            <select id="compare-select-round-b" class="dropdown-select"></select>
+          </div>
+          <button id="btn-run-round-compare" class="btn-primary">COMPARE ROUNDS</button>
+        </div>
+
+        <!-- Dual Side-by-Side Panes -->
+        <div class="compare-split-stage" id="compare-split-stage">
+          <div class="compare-pane compare-pane-a">
+            <div class="compare-pane-header" id="pane-header-a">
+              <span class="pane-round-tag">ROUND 1</span>
+              <span class="pane-outcome-badge">--</span>
+              <span class="pane-econ-badge">--</span>
+            </div>
+            <div class="compare-canvas-wrapper">
+              <canvas id="compare-canvas-a" width="400" height="400"></canvas>
+            </div>
+            <div class="compare-pane-events" id="pane-events-a">
+              <div class="empty-hint">Loading Round A events...</div>
+            </div>
+          </div>
+
+          <div class="compare-pane compare-pane-b">
+            <div class="compare-pane-header" id="pane-header-b">
+              <span class="pane-round-tag">ROUND 2</span>
+              <span class="pane-outcome-badge">--</span>
+              <span class="pane-econ-badge">--</span>
+            </div>
+            <div class="compare-canvas-wrapper">
+              <canvas id="compare-canvas-b" width="400" height="400"></canvas>
+            </div>
+            <div class="compare-pane-events" id="pane-events-b">
+              <div class="empty-hint">Loading Round B events...</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Synchronized Playback Control Bar -->
+        <div class="compare-sync-controls">
+          <button id="btn-compare-play" class="ctrl-btn play-btn">▶ PLAY SYNC</button>
+          <span id="compare-time-display" class="time-readout">00:00 / 00:45</span>
+          <input type="range" id="compare-scrub-slider" class="timeline-slider" min="0" max="100" value="0">
+          <div class="segmented-control mini-segmented">
+            <button class="segment-btn" data-cmp-speed="0.5">0.5x</button>
+            <button class="segment-btn active" data-cmp-speed="1.0">1x</button>
+            <button class="segment-btn" data-cmp-speed="2.0">2x</button>
+          </div>
+        </div>
+
+        <!-- Comparative Metrics & AI Takeaways -->
+        <div class="compare-analysis-card">
+          <div class="sub-header">AI COACH DIVERGENCE & TACTICAL TAKEAWAYS</div>
+          <div class="compare-takeaways-list" id="compare-takeaways-list">
+            <div class="empty-hint">Select two rounds and click "Compare Rounds" to generate tactical divergence.</div>
+          </div>
+
+          <div class="compare-deltas-grid" id="compare-deltas-grid">
+            <!-- Metric comparison cards populated dynamically -->
+          </div>
+        </div>
+      </div>
+
+      <div class="modal-footer" style="display: flex; justify-content: flex-end; padding: 14px 20px;">
+        <button id="btn-close-round-compare-footer" class="btn-sync">CLOSE</button>
+      </div>
+    </div>
+  </div>
+
   <script src="app.js"></script>
 </body>
 </html>
+
 

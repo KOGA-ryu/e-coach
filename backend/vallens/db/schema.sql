@@ -106,4 +106,21 @@ CREATE TABLE IF NOT EXISTS utility_events (
 
 CREATE INDEX IF NOT EXISTS idx_utility_events_match ON utility_events(match_id, round_number);
 
+-- Tactical Playbook strats and whiteboard diagrams
+CREATE TABLE IF NOT EXISTS playbook_strats (
+    strat_id TEXT PRIMARY KEY,
+    title TEXT NOT NULL,
+    map_name TEXT NOT NULL,
+    side TEXT NOT NULL DEFAULT 'attack', -- 'attack', 'defense', 'retake', 'default'
+    round_number INTEGER,
+    match_id TEXT,
+    description TEXT,
+    drawing_data TEXT NOT NULL, -- JSON array of shapes/lines/markers
+    created_at INTEGER NOT NULL,
+    FOREIGN KEY(match_id) REFERENCES matches(match_id) ON DELETE SET NULL
+);
+
+CREATE INDEX IF NOT EXISTS idx_playbook_strats_map ON playbook_strats(map_name, side);
+
+
 

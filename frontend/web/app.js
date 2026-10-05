@@ -402,7 +402,11 @@ async function init() {
   setupTradeMatrixControls();
   setupWinProbabilityControls();
   setupScoutingDossierControls();
+  setupMinimapWhiteboardAndPlaybook();
+  setupHighlightStudio();
+  setupRoundComparison();
   await loadAvailableMaps();
+
   await loadMatchList();
   await loadProReferenceCatalog();
 
@@ -6072,6 +6076,11 @@ function closeScoutingModal() {
 }
 
 function setupScoutingDossierControls() {
+  const btnOpenScouting = document.getElementById('btn-open-scouting');
+  const btnCloseScouting = document.getElementById('btn-close-scouting');
+  const btnCloseScoutingFooter = document.getElementById('btn-close-scouting-footer');
+  const scoutingModal = document.getElementById('scouting-modal');
+
   if (btnOpenScouting) btnOpenScouting.addEventListener('click', openScoutingModal);
   if (btnCloseScouting) btnCloseScouting.addEventListener('click', closeScoutingModal);
   if (btnCloseScoutingFooter) btnCloseScoutingFooter.addEventListener('click', closeScoutingModal);
@@ -6082,6 +6091,1021 @@ function setupScoutingDossierControls() {
   }
 }
 
+// -------------------------------------------------------------
+// 1. Interactive 2D Minimap Whiteboard & Strat Playbook
+// -------------------------------------------------------------
+const wbState = {
+
+  active: false,
+  tool: 'pencil',
+  color: '#00f2fe',
+  lineWidth: 3,
+  isDrawing: false,
+  startX: 0,
+  startY: 0,
+  strokes: [],
+};
+
+function setupMinimapWhiteboardAndPlaybook() {
+  const btnToggleDraw = document.getElementById('btn-toggle-draw');
+  const wbToolsGroup = document.getElementById('wb-tools-group');
+  const wbCanvas = document.getElementById('whiteboard-canvas');
+  const btnWbUndo = document.getElementById('btn-wb-undo');
+  const btnWbClear = document.getElementById('btn-wb-clear');
+  const btnWbSaveModal = document.getElementById('btn-wb-save-modal');
+  const btnWbOpenPlaybook = document.getElementById('btn-wb-open-playbook');
+  const btnOpenPlaybook = document.getElementById('btn-open-playbook');
+
+  const playbookModal = document.getElementById('playbook-modal');
+  const btnClosePlaybook = document.getElementById('btn-close-playbook');
+  const btnClosePlaybookFooter = document.getElementById('btn-close-playbook-footer');
+  const playbookMapFilter = document.getElementById('playbook-map-filter');
+  const playbookSideFilter = document.getElementById('playbook-side-filter');
+  const btnPlaybookNew = document.getElementById('btn-playbook-new');
+
+  const saveStratModal = document.getElementById('save-strat-modal');
+  const btnCloseSaveStrat = document.getElementById('btn-close-save-strat');
+  const btnCancelSaveStrat = document.getElementById('btn-cancel-save-strat');
+  const btnConfirmSaveStrat = document.getElementById('btn-confirm-save-strat');
+
+  if (!wbCanvas) return;
+  const ctx = wbCanvas.getContext('2d');
+
+  function resizeWbCanvas() {
+    const parent = wbCanvas.parentElement;
+    if (parent) {
+      wbCanvas.width = parent.clientWidth || 600;
+      wbCanvas.height = parent.clientHeight || 600;
+      redrawWhiteboard();
+    }
+  }
+  window.addEventListener('resize', resizeWbCanvas);
+  setTimeout(resizeWbCanvas, 200);
+
+  function toggleDrawingMode(forcedState) {
+    wbState.active = forcedState !== undefined ? forcedState : !wbState.active;
+    if (btnToggleDraw) btnToggleDraw.classList.toggle('active', wbState.active);
+    if (wbToolsGroup) wbToolsGroup.style.display = wbState.active ? 'flex' : 'none';
+    wbCanvas.classList.toggle('drawing-active', wbState.active);
+    showToast(`2D Whiteboard Mode: ${wbState.active ? 'ON' : 'OFF'}`);
+  }
+
+  if (btnToggleDraw) {
+    btnToggleDraw.addEventListener('click', () => toggleDrawingMode());
+  }
+
+  document.querySelectorAll('.wb-tool-btn').forEach((btn) => {
+    btn.addEventListener('click', () => {
+      document.querySelectorAll('.wb-tool-btn').forEach((b) => b.classList.remove('active'));
+      btn.classList.add('active');
+      wbState.tool = btn.dataset.wbTool;
+    });
+  });
+
+  document.querySelectorAll('.wb-color').forEach((col) => {
+    col.addEventListener('click', () => {
+      document.querySelectorAll('.wb-color').forEach((c) => c.classList.remove('active'));
+      col.classList.add('active');
+      wbState.color = col.dataset.color;
+    });
+  });
+
+  function getPos(e) {
+    const rect = wbCanvas.getBoundingClientRect();
+    const scaleX = wbCanvas.width / rect.width;
+    const scaleY = wbCanvas.height / rect.height;
+    return {
+      x: (e.clientX - rect.left) * scaleX,
+      y: (e.clientY - rect.top) * scaleY,
+      normX: (e.clientX - rect.left) / rect.width,
+      normY: (e.clientY - rect.top) / rect.height,
+    };
+  }
+
+  let currentPencilPoints = [];
+
+  wbCanvas.addEventListener('mousedown', (e) => {
+    if (!wbState.active) return;
+    wbState.isDrawing = true;
+    const pos = getPos(e);
+    wbState.startX = pos.normX;
+    wbState.startY = pos.normY;
+
+    if (wbState.tool === 'pencil') {
+      currentPencilPoints = [{ x: pos.normX, y: pos.normY }];
+    } else if (wbState.tool === 'marker') {
+      wbState.strokes.push({
+        type: 'marker',
+        x: pos.normX,
+        y: pos.normY,
+        color: wbState.color,
+        label: 'Ping',
+      });
+      redrawWhiteboard();
+    }
+  });
+
+  wbCanvas.addEventListener('mousemove', (e) => {
+    if (!wbState.active || !wbState.isDrawing) return;
+    const pos = getPos(e);
+
+    if (wbState.tool === 'pencil') {
+      currentPencilPoints.push({ x: pos.normX, y: pos.normY });
+      redrawWhiteboard();
+      drawStroke(ctx, {
+        type: 'pencil',
+        points: currentPencilPoints,
+        color: wbState.color,
+        width: wbState.lineWidth,
+      }, wbCanvas.width, wbCanvas.height);
+    } else {
+      redrawWhiteboard();
+      if (wbState.tool === 'arrow') {
+        drawStroke(ctx, {
+          type: 'arrow',
+          x1: wbState.startX,
+          y1: wbState.startY,
+          x2: pos.normX,
+          y2: pos.normY,
+          color: wbState.color,
+          width: wbState.lineWidth,
+        }, wbCanvas.width, wbCanvas.height);
+      } else if (wbState.tool === 'line') {
+        drawStroke(ctx, {
+          type: 'line',
+          x1: wbState.startX,
+          y1: wbState.startY,
+          x2: pos.normX,
+          y2: pos.normY,
+          color: wbState.color,
+          width: wbState.lineWidth,
+        }, wbCanvas.width, wbCanvas.height);
+      } else if (wbState.tool === 'smoke') {
+        const dx = pos.normX - wbState.startX;
+        const dy = pos.normY - wbState.startY;
+        const radius = Math.max(0.02, Math.sqrt(dx * dx + dy * dy));
+        drawStroke(ctx, {
+          type: 'smoke',
+          x: wbState.startX,
+          y: wbState.startY,
+          radius: radius,
+          color: wbState.color,
+        }, wbCanvas.width, wbCanvas.height);
+      }
+    }
+  });
+
+  wbCanvas.addEventListener('mouseup', (e) => {
+    if (!wbState.active || !wbState.isDrawing) return;
+    wbState.isDrawing = false;
+    const pos = getPos(e);
+
+    if (wbState.tool === 'pencil') {
+      if (currentPencilPoints.length > 1) {
+        wbState.strokes.push({
+          type: 'pencil',
+          points: currentPencilPoints,
+          color: wbState.color,
+          width: wbState.lineWidth,
+        });
+      }
+      currentPencilPoints = [];
+    } else if (wbState.tool === 'arrow') {
+      wbState.strokes.push({
+        type: 'arrow',
+        x1: wbState.startX,
+        y1: wbState.startY,
+        x2: pos.normX,
+        y2: pos.normY,
+        color: wbState.color,
+        width: wbState.lineWidth,
+      });
+    } else if (wbState.tool === 'line') {
+      wbState.strokes.push({
+        type: 'line',
+        x1: wbState.startX,
+        y1: wbState.startY,
+        x2: pos.normX,
+        y2: pos.normY,
+        color: wbState.color,
+        width: wbState.lineWidth,
+      });
+    } else if (wbState.tool === 'smoke') {
+      const dx = pos.normX - wbState.startX;
+      const dy = pos.normY - wbState.startY;
+      const radius = Math.max(0.02, Math.sqrt(dx * dx + dy * dy));
+      wbState.strokes.push({
+        type: 'smoke',
+        x: wbState.startX,
+        y: wbState.startY,
+        radius: radius,
+        color: wbState.color,
+      });
+    }
+
+    redrawWhiteboard();
+  });
+
+  wbCanvas.addEventListener('mouseleave', () => {
+    if (wbState.isDrawing) {
+      wbState.isDrawing = false;
+      redrawWhiteboard();
+    }
+  });
+
+  function redrawWhiteboard() {
+    ctx.clearRect(0, 0, wbCanvas.width, wbCanvas.height);
+    for (const stroke of wbState.strokes) {
+      drawStroke(ctx, stroke, wbCanvas.width, wbCanvas.height);
+    }
+  }
+
+  function drawStroke(targetCtx, stroke, w, h) {
+    targetCtx.save();
+    if (stroke.type === 'pencil' && stroke.points && stroke.points.length > 1) {
+      targetCtx.strokeStyle = stroke.color || '#00f2fe';
+      targetCtx.lineWidth = stroke.width || 3;
+      targetCtx.lineCap = 'round';
+      targetCtx.lineJoin = 'round';
+      targetCtx.beginPath();
+      targetCtx.moveTo(stroke.points[0].x * w, stroke.points[0].y * h);
+      for (let i = 1; i < stroke.points.length; i++) {
+        targetCtx.lineTo(stroke.points[i].x * w, stroke.points[i].y * h);
+      }
+      targetCtx.stroke();
+    } else if (stroke.type === 'arrow' || stroke.type === 'line') {
+      const x1 = (stroke.x1 !== undefined ? stroke.x1 : 0.5) * w;
+      const y1 = (stroke.y1 !== undefined ? stroke.y1 : 0.5) * h;
+      const x2 = (stroke.x2 !== undefined ? stroke.x2 : 0.6) * w;
+      const y2 = (stroke.y2 !== undefined ? stroke.y2 : 0.6) * h;
+
+      targetCtx.strokeStyle = stroke.color || '#00f2fe';
+      targetCtx.lineWidth = stroke.width || 3;
+      targetCtx.beginPath();
+      targetCtx.moveTo(x1, y1);
+      targetCtx.lineTo(x2, y2);
+      targetCtx.stroke();
+
+      if (stroke.type === 'arrow') {
+        const angle = Math.atan2(y2 - y1, x2 - x1);
+        const headlen = 12;
+        targetCtx.fillStyle = stroke.color || '#00f2fe';
+        targetCtx.beginPath();
+        targetCtx.moveTo(x2, y2);
+        targetCtx.lineTo(x2 - headlen * Math.cos(angle - Math.PI / 6), y2 - headlen * Math.sin(angle - Math.PI / 6));
+        targetCtx.lineTo(x2 - headlen * Math.cos(angle + Math.PI / 6), y2 - headlen * Math.sin(angle + Math.PI / 6));
+        targetCtx.closePath();
+        targetCtx.fill();
+      }
+    } else if (stroke.type === 'smoke') {
+      const cx = (stroke.x !== undefined ? stroke.x : 0.5) * w;
+      const cy = (stroke.y !== undefined ? stroke.y : 0.5) * h;
+      const r = (stroke.radius !== undefined ? stroke.radius : 0.05) * w;
+
+      targetCtx.fillStyle = stroke.color ? `${stroke.color}44` : 'rgba(168, 85, 247, 0.35)';
+      targetCtx.strokeStyle = stroke.color || '#a855f7';
+      targetCtx.lineWidth = 2;
+      targetCtx.setLineDash([4, 3]);
+      targetCtx.beginPath();
+      targetCtx.arc(cx, cy, r, 0, Math.PI * 2);
+      targetCtx.fill();
+      targetCtx.stroke();
+    } else if (stroke.type === 'marker') {
+      const cx = (stroke.x !== undefined ? stroke.x : 0.5) * w;
+      const cy = (stroke.y !== undefined ? stroke.y : 0.5) * h;
+      targetCtx.fillStyle = stroke.color || '#ff4655';
+      targetCtx.beginPath();
+      targetCtx.arc(cx, cy, 6, 0, Math.PI * 2);
+      targetCtx.fill();
+      targetCtx.strokeStyle = '#fff';
+      targetCtx.lineWidth = 2;
+      targetCtx.beginPath();
+      targetCtx.arc(cx, cy, 10, 0, Math.PI * 2);
+      targetCtx.stroke();
+    }
+    targetCtx.restore();
+  }
+
+  if (btnWbUndo) {
+    btnWbUndo.addEventListener('click', () => {
+      wbState.strokes.pop();
+      redrawWhiteboard();
+      showToast('Undid stroke');
+    });
+  }
+  if (btnWbClear) {
+    btnWbClear.addEventListener('click', () => {
+      wbState.strokes = [];
+      redrawWhiteboard();
+      showToast('Cleared whiteboard');
+    });
+  }
+
+  function openSaveStratModal() {
+    if (wbState.strokes.length === 0) {
+      showToast('Draw shapes on the minimap first before saving a strat!');
+      return;
+    }
+    if (saveStratModal) {
+      saveStratModal.style.display = 'flex';
+      const mapSelect = document.getElementById('strat-select-map');
+      if (mapSelect && state.currentMatchMap) {
+        mapSelect.value = state.currentMatchMap;
+      }
+    }
+  }
+
+  function closeSaveStratModal() {
+    if (saveStratModal) saveStratModal.style.display = 'none';
+  }
+
+  if (btnWbSaveModal) btnWbSaveModal.addEventListener('click', openSaveStratModal);
+  if (btnCloseSaveStrat) btnCloseSaveStrat.addEventListener('click', closeSaveStratModal);
+  if (btnCancelSaveStrat) btnCancelSaveStrat.addEventListener('click', closeSaveStratModal);
+
+  if (btnConfirmSaveStrat) {
+    btnConfirmSaveStrat.addEventListener('click', async () => {
+      const titleInput = document.getElementById('strat-input-title');
+      const mapSelect = document.getElementById('strat-select-map');
+      const sideSelect = document.getElementById('strat-select-side');
+      const descInput = document.getElementById('strat-input-desc');
+
+      const title = titleInput ? titleInput.value.trim() : 'Tactical Strat';
+      if (!title) {
+        alert('Please enter a Strat Title.');
+        return;
+      }
+
+      const payload = {
+        title: title,
+        map_name: mapSelect ? mapSelect.value : 'Ascent',
+        side: sideSelect ? sideSelect.value : 'attack',
+        round_number: state.currentRound || 1,
+        match_id: state.currentMatchId,
+        description: descInput ? descInput.value.trim() : '',
+        drawing_data: wbState.strokes,
+      };
+
+      try {
+        const res = await fetch('/api/playbook/strats', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload),
+        });
+        const data = await res.json();
+        if (data.success) {
+          showToast(`Saved Strat: "${title}"!`);
+          closeSaveStratModal();
+        } else {
+          showToast('Failed to save strat');
+        }
+      } catch (err) {
+        console.error('Error saving strat:', err);
+        showToast('Error saving strat');
+      }
+    });
+  }
+
+  function openPlaybookModal() {
+    if (playbookModal) {
+      playbookModal.style.display = 'flex';
+      loadPlaybookStrats();
+    }
+  }
+
+  function closePlaybookModal() {
+    if (playbookModal) playbookModal.style.display = 'none';
+  }
+
+  if (btnWbOpenPlaybook) btnWbOpenPlaybook.addEventListener('click', openPlaybookModal);
+  if (btnOpenPlaybook) btnOpenPlaybook.addEventListener('click', openPlaybookModal);
+  if (btnClosePlaybook) btnClosePlaybook.addEventListener('click', closePlaybookModal);
+  if (btnClosePlaybookFooter) btnClosePlaybookFooter.addEventListener('click', closePlaybookModal);
+
+  if (btnPlaybookNew) {
+    btnPlaybookNew.addEventListener('click', () => {
+      closePlaybookModal();
+      wbState.strokes = [];
+      redrawWhiteboard();
+      toggleDrawingMode(true);
+    });
+  }
+
+  if (playbookMapFilter) playbookMapFilter.addEventListener('change', () => loadPlaybookStrats());
+  if (playbookSideFilter) playbookSideFilter.addEventListener('change', () => loadPlaybookStrats());
+
+  async function loadPlaybookStrats() {
+    const grid = document.getElementById('playbook-cards-grid');
+    if (!grid) return;
+    grid.innerHTML = '<div class="empty-hint">Loading tactical strats...</div>';
+
+    const mapVal = playbookMapFilter ? playbookMapFilter.value : 'all';
+    const sideVal = playbookSideFilter ? playbookSideFilter.value : 'all';
+
+    let url = '/api/playbook/strats';
+    const params = [];
+    if (mapVal && mapVal !== 'all') params.push(`map=${encodeURIComponent(mapVal)}`);
+    if (sideVal && sideVal !== 'all') params.push(`side=${encodeURIComponent(sideVal)}`);
+    if (params.length) url += `?${params.join('&')}`;
+
+    try {
+      const res = await fetch(url);
+      const strats = await res.json();
+      if (!Array.isArray(strats) || strats.length === 0) {
+        grid.innerHTML = '<div class="empty-hint">No strats found for this filter. Click "+ NEW STRAT" to draw one!</div>';
+        return;
+      }
+
+      grid.innerHTML = '';
+      strats.forEach((s) => {
+        const card = document.createElement('div');
+        card.className = 'playbook-strat-card';
+        card.innerHTML = `
+          <div class="strat-card-header">
+            <div class="strat-card-title">${escapeHtml(s.title)}</div>
+            <span class="strat-side-pill ${escapeHtml(s.side || 'attack')}">${escapeHtml(s.side || 'attack')}</span>
+          </div>
+          <div class="strat-meta-row">
+            <span>MAP: <strong>${escapeHtml(s.map_name)}</strong></span>
+            <span>SHAPES: <strong>${(s.drawing_data || []).length}</strong></span>
+          </div>
+          <div class="strat-card-desc">${escapeHtml(s.description || 'No execute notes provided.')}</div>
+          <div class="strat-card-footer">
+            <button class="mini-btn btn-load-strat" style="color:#00f2fe; border-color:rgba(0,242,254,0.4);">LOAD TO MAP</button>
+            <div class="strat-actions-group">
+              <button class="mini-btn btn-delete-strat" style="color:#ff4655;">DELETE</button>
+            </div>
+          </div>
+        `;
+
+        card.querySelector('.btn-load-strat').addEventListener('click', () => {
+          wbState.strokes = s.drawing_data || [];
+          redrawWhiteboard();
+          toggleDrawingMode(true);
+          closePlaybookModal();
+          showToast(`Loaded Strat: "${s.title}" onto Minimap`);
+        });
+
+        card.querySelector('.btn-delete-strat').addEventListener('click', async () => {
+          if (!confirm(`Delete strat "${s.title}"?`)) return;
+          try {
+            await fetch(`/api/playbook/strats/${s.strat_id}`, { method: 'DELETE' });
+            showToast('Deleted strat');
+            loadPlaybookStrats();
+          } catch (err) {
+            console.error(err);
+          }
+        });
+
+        grid.appendChild(card);
+      });
+    } catch (err) {
+      console.error('Error loading strats:', err);
+      grid.innerHTML = '<div class="empty-hint">Failed to load playbook strats.</div>';
+    }
+  }
+}
+
+// -------------------------------------------------------------
+// 2. Local FFmpeg Coaching Clip & Highlight Reel Extractor
+// -------------------------------------------------------------
+function setupHighlightStudio() {
+  const btnOpenHighlights = document.getElementById('btn-open-highlights');
+  const highlightsModal = document.getElementById('highlights-modal');
+  const btnCloseHighlights = document.getElementById('btn-close-highlights');
+  const btnCloseHighlightsFooter = document.getElementById('btn-close-highlights-footer');
+  const hlCandidatesGrid = document.getElementById('hl-candidates-grid');
+  const savedClipsGrid = document.getElementById('saved-clips-grid');
+  const hlSelectedCountBadge = document.getElementById('hl-selected-count-badge');
+  const btnCompileReel = document.getElementById('btn-compile-selected-reel');
+  const hlReelTitleInput = document.getElementById('hl-reel-title');
+
+  let activeTab = 'candidates';
+  let activeFilter = 'all';
+  let cachedCandidates = [];
+  let selectedCandidateIds = new Set();
+
+  function openModal() {
+    if (highlightsModal) {
+      highlightsModal.style.display = 'flex';
+      loadCandidates();
+      loadSavedClips();
+    }
+  }
+
+  function closeModal() {
+    if (highlightsModal) highlightsModal.style.display = 'none';
+  }
+
+  if (btnOpenHighlights) btnOpenHighlights.addEventListener('click', openModal);
+  if (btnCloseHighlights) btnCloseHighlights.addEventListener('click', closeModal);
+  if (btnCloseHighlightsFooter) btnCloseHighlightsFooter.addEventListener('click', closeModal);
+  if (highlightsModal) {
+    highlightsModal.addEventListener('click', (e) => {
+      if (e.target === highlightsModal) closeModal();
+    });
+  }
+
+  document.querySelectorAll('.hl-tab-btn').forEach((btn) => {
+    btn.addEventListener('click', () => {
+      document.querySelectorAll('.hl-tab-btn').forEach((b) => b.classList.remove('active'));
+      btn.classList.add('active');
+      activeTab = btn.dataset.hlTab;
+
+      const pCand = document.getElementById('hl-candidates-panel');
+      const pSaved = document.getElementById('hl-saved-panel');
+      if (pCand) pCand.style.display = activeTab === 'candidates' ? 'block' : 'none';
+      if (pSaved) pSaved.style.display = activeTab === 'saved' ? 'block' : 'none';
+
+      if (activeTab === 'saved') loadSavedClips();
+    });
+  });
+
+  document.querySelectorAll('.hl-filter-pill').forEach((pill) => {
+    pill.addEventListener('click', () => {
+      document.querySelectorAll('.hl-filter-pill').forEach((p) => p.classList.remove('active'));
+      pill.classList.add('active');
+      activeFilter = pill.dataset.hlCat;
+      renderCandidates();
+    });
+  });
+
+  async function loadCandidates() {
+    if (!state.currentMatchId || !hlCandidatesGrid) return;
+    hlCandidatesGrid.innerHTML = '<div class="empty-hint">Scanning match telemetry for clutches, swings, and multi-kills...</div>';
+
+    try {
+      const res = await fetch(`/api/matches/${state.currentMatchId}/clips/candidates`);
+      cachedCandidates = await res.json();
+      selectedCandidateIds.clear();
+      renderCandidates();
+      updateSelectedCount();
+    } catch (err) {
+      console.error('Error loading candidates:', err);
+      hlCandidatesGrid.innerHTML = '<div class="empty-hint">Failed to load highlight candidates.</div>';
+    }
+  }
+
+  function renderCandidates() {
+    if (!hlCandidatesGrid) return;
+    const filtered = cachedCandidates.filter((c) => activeFilter === 'all' || c.category === activeFilter);
+    if (filtered.length === 0) {
+      hlCandidatesGrid.innerHTML = '<div class="empty-hint">No highlight moments found matching this filter.</div>';
+      return;
+    }
+
+    hlCandidatesGrid.innerHTML = '';
+    filtered.forEach((c) => {
+      const card = document.createElement('div');
+      card.className = 'hl-candidate-card';
+      const isChecked = selectedCandidateIds.has(c.candidate_id);
+
+      card.innerHTML = `
+        <div class="hl-card-top">
+          <span class="hl-cat-badge ${escapeHtml(c.category)}">${escapeHtml(c.category)}</span>
+          <span class="mini-label">SCORE: <strong>${c.priority_score}/100</strong></span>
+        </div>
+        <div class="hl-card-title">${escapeHtml(c.label)}</div>
+        <div class="hl-card-desc">${escapeHtml(c.description)}</div>
+        <div class="hl-card-footer">
+          <label style="display:flex; align-items:center; gap:6px; font-size:11px; cursor:pointer;">
+            <input type="checkbox" class="hl-select-cb" data-id="${escapeHtml(c.candidate_id)}" ${isChecked ? 'checked' : ''}>
+            Select for Reel
+          </label>
+          <div style="display:flex; gap:6px;">
+            <button class="mini-btn btn-hl-preview" style="color:#00f2fe;">PREVIEW</button>
+            <button class="mini-btn btn-hl-export" style="color:#22c55e;">EXPORT CLIP</button>
+          </div>
+        </div>
+      `;
+
+      card.querySelector('.hl-select-cb').addEventListener('change', (e) => {
+        if (e.target.checked) selectedCandidateIds.add(c.candidate_id);
+        else selectedCandidateIds.delete(c.candidate_id);
+        updateSelectedCount();
+      });
+
+      card.querySelector('.btn-hl-preview').addEventListener('click', () => {
+        if (videoPlayer.duration) {
+          videoPlayer.currentTime = Math.max(0, c.timestamp_seconds + (state.videoOffsetMs || 0) / 1000);
+          showToast(`Jumped to moment @ ${c.timestamp_seconds.toFixed(1)}s`);
+        }
+      });
+
+      const exportBtn = card.querySelector('.btn-hl-export');
+      exportBtn.addEventListener('click', async () => {
+        exportBtn.disabled = true;
+        exportBtn.textContent = 'TRIMMING...';
+        try {
+          const postRes = await fetch(`/api/matches/${state.currentMatchId}/clips/render`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ candidate_id: c.candidate_id }),
+          });
+          const postData = await postRes.json();
+          if (postData.success) {
+            exportBtn.textContent = 'DONE ✓';
+            exportBtn.style.color = '#22c55e';
+            showToast(`Exported clip: ${postData.clip.filename}`);
+            loadSavedClips();
+          } else {
+            exportBtn.textContent = 'FAILED';
+          }
+        } catch (err) {
+          console.error(err);
+          exportBtn.textContent = 'ERROR';
+        }
+      });
+
+      hlCandidatesGrid.appendChild(card);
+    });
+  }
+
+  function updateSelectedCount() {
+    if (hlSelectedCountBadge) {
+      const count = selectedCandidateIds.size;
+      hlSelectedCountBadge.textContent = `${count} moment${count === 1 ? '' : 's'} selected`;
+    }
+  }
+
+  if (btnCompileReel) {
+    btnCompileReel.addEventListener('click', async () => {
+      const ids = Array.from(selectedCandidateIds);
+      if (ids.length === 0) {
+        showToast('Please select at least 1 moment using the checkboxes!');
+        return;
+      }
+
+      btnCompileReel.disabled = true;
+      btnCompileReel.textContent = 'CONCATENATING (FFMPEG)...';
+
+      const title = hlReelTitleInput ? hlReelTitleInput.value.trim() : 'Coaching Review Reel';
+      try {
+        const res = await fetch(`/api/matches/${state.currentMatchId}/clips/compile-reel`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            candidate_ids: ids,
+            title: title,
+          }),
+        });
+        const data = await res.json();
+        if (data.success) {
+          showToast('Highlight Reel Compiled Successfully!');
+          const tabSaved = document.querySelector('.hl-tab-btn[data-hl-tab="saved"]');
+          if (tabSaved) tabSaved.click();
+        } else {
+          showToast('Failed to compile reel');
+        }
+      } catch (err) {
+        console.error(err);
+        showToast('Error compiling reel');
+      } finally {
+        btnCompileReel.disabled = false;
+        btnCompileReel.textContent = 'COMPILE 1-CLICK REEL';
+      }
+    });
+  }
+
+  async function loadSavedClips() {
+    if (!savedClipsGrid) return;
+    try {
+      const url = state.currentMatchId ? `/api/matches/${state.currentMatchId}/clips` : '/api/clips';
+      const res = await fetch(url);
+      const clips = await res.json();
+
+      const badge = document.getElementById('saved-clips-count');
+      if (badge) badge.textContent = Array.isArray(clips) ? clips.length : 0;
+
+      if (!Array.isArray(clips) || clips.length === 0) {
+        savedClipsGrid.innerHTML = '<div class="empty-hint">No exported clips found. Export moments from "Auto-Detected Moments"!</div>';
+        return;
+      }
+
+      savedClipsGrid.innerHTML = '';
+      clips.forEach((cl) => {
+        const card = document.createElement('div');
+        card.className = 'saved-clip-card';
+        card.innerHTML = `
+          <div style="font-weight:700; font-size:12px; color:#fff; word-break:break-all;">${escapeHtml(cl.filename)}</div>
+          <video controls preload="metadata" src="${escapeHtml(cl.download_url)}"></video>
+          <div style="display:flex; justify-content:space-between; align-items:center; font-size:11px;">
+            <span style="color:var(--text-muted);">${cl.file_size_mb || 0} MB</span>
+            <a class="mini-btn" href="${escapeHtml(cl.download_url)}" download="${escapeHtml(cl.filename)}" style="color:#00f2fe; text-decoration:none;">⬇ DOWNLOAD</a>
+          </div>
+        `;
+        savedClipsGrid.appendChild(card);
+      });
+    } catch (err) {
+      console.error(err);
+    }
+  }
+}
+
+// -------------------------------------------------------------
+// 3. Multi-POV / Round-over-Round Side-by-Side Synchronizer
+// -------------------------------------------------------------
+function setupRoundComparison() {
+  const btnOpenRoundCompare = document.getElementById('btn-open-round-compare');
+  const roundCompareModal = document.getElementById('round-compare-modal');
+  const btnCloseRoundCompare = document.getElementById('btn-close-round-compare');
+  const btnCloseRoundCompareFooter = document.getElementById('btn-close-round-compare-footer');
+
+  const selRoundA = document.getElementById('compare-select-round-a');
+  const selRoundB = document.getElementById('compare-select-round-b');
+  const btnRunCompare = document.getElementById('btn-run-round-compare');
+
+  const canvasA = document.getElementById('compare-canvas-a');
+  const canvasB = document.getElementById('compare-canvas-b');
+  const ctxA = canvasA ? canvasA.getContext('2d') : null;
+  const ctxB = canvasB ? canvasB.getContext('2d') : null;
+
+  const btnComparePlay = document.getElementById('btn-compare-play');
+  const scrubSlider = document.getElementById('compare-scrub-slider');
+  const timeDisplay = document.getElementById('compare-time-display');
+
+  const cmpState = {
+    data: null,
+    isPlaying: false,
+    currentT: 0.0,
+    maxT: 45.0,
+    speed: 1.0,
+    animFrame: null,
+    lastTick: 0,
+  };
+
+  function openModal() {
+    if (roundCompareModal) {
+      roundCompareModal.style.display = 'flex';
+      populateSelectors();
+      if (state.currentMatchId) runCompare();
+    }
+  }
+
+  function closeModal() {
+    if (roundCompareModal) {
+      roundCompareModal.style.display = 'none';
+      pausePlayback();
+    }
+  }
+
+  if (btnOpenRoundCompare) btnOpenRoundCompare.addEventListener('click', openModal);
+  if (btnCloseRoundCompare) btnCloseRoundCompare.addEventListener('click', closeModal);
+  if (btnCloseRoundCompareFooter) btnCloseRoundCompareFooter.addEventListener('click', closeModal);
+  if (roundCompareModal) {
+    roundCompareModal.addEventListener('click', (e) => {
+      if (e.target === roundCompareModal) closeModal();
+    });
+  }
+
+  function populateSelectors() {
+    if (!selRoundA || !selRoundB) return;
+    const maxRounds = state.currentMatchOverview ? (state.currentMatchOverview.rounds_count || 24) : 12;
+    selRoundA.innerHTML = '';
+    selRoundB.innerHTML = '';
+    for (let i = 1; i <= maxRounds; i++) {
+      const optA = document.createElement('option');
+      optA.value = i;
+      optA.textContent = `Round ${i}`;
+      if (i === 1) optA.selected = true;
+      selRoundA.appendChild(optA);
+
+      const optB = document.createElement('option');
+      optB.value = i;
+      optB.textContent = `Round ${i}`;
+      if (i === 2) optB.selected = true;
+      selRoundB.appendChild(optB);
+    }
+  }
+
+  if (btnRunCompare) {
+    btnRunCompare.addEventListener('click', runCompare);
+  }
+
+  async function runCompare() {
+    if (!state.currentMatchId) return;
+    const rA = selRoundA ? selRoundA.value : 1;
+    const rB = selRoundB ? selRoundB.value : 2;
+
+    try {
+      const res = await fetch(`/api/matches/${state.currentMatchId}/rounds/compare?round_a=${rA}&round_b=${rB}`);
+      const data = await res.json();
+      cmpState.data = data;
+      cmpState.currentT = 0.0;
+      cmpState.maxT = Math.max(
+        data.round_a ? data.round_a.duration_seconds : 45,
+        data.round_b ? data.round_b.duration_seconds : 45
+      );
+      if (scrubSlider) {
+        scrubSlider.max = Math.ceil(cmpState.maxT);
+        scrubSlider.value = 0;
+      }
+      renderComparisonView();
+      renderCanvasesAtT(0.0);
+    } catch (err) {
+      console.error('Error running round compare:', err);
+      showToast('Failed to compare rounds');
+    }
+  }
+
+  function renderComparisonView() {
+    if (!cmpState.data) return;
+    const ra = cmpState.data.round_a;
+    const rb = cmpState.data.round_b;
+
+    const hA = document.getElementById('pane-header-a');
+    if (hA && ra) {
+      hA.innerHTML = `
+        <span class="pane-round-tag">ROUND ${ra.round_number}</span>
+        <span class="pane-outcome-badge ${ra.won ? 'won' : 'lost'}">${ra.won ? 'WON' : 'LOST'}</span>
+        <span class="pane-econ-badge">${escapeHtml(ra.economy_tier || 'semi')}</span>
+      `;
+    }
+
+    const hB = document.getElementById('pane-header-b');
+    if (hB && rb) {
+      hB.innerHTML = `
+        <span class="pane-round-tag">ROUND ${rb.round_number}</span>
+        <span class="pane-outcome-badge ${rb.won ? 'won' : 'lost'}">${rb.won ? 'WON' : 'LOST'}</span>
+        <span class="pane-econ-badge">${escapeHtml(rb.economy_tier || 'full_buy')}</span>
+      `;
+    }
+
+    const evFeedA = document.getElementById('pane-events-a');
+    if (evFeedA && ra) {
+      evFeedA.innerHTML = ra.key_events.map((e) => `
+        <div style="color:${e.team === 'Blue' ? '#00f2fe' : '#ff4655'};">
+          <strong>+${e.round_time_sec}s:</strong> ${escapeHtml(e.description)}
+        </div>
+      `).join('') || '<div class="empty-hint">No major events</div>';
+    }
+
+    const evFeedB = document.getElementById('pane-events-b');
+    if (evFeedB && rb) {
+      evFeedB.innerHTML = rb.key_events.map((e) => `
+        <div style="color:${e.team === 'Blue' ? '#00f2fe' : '#ff4655'};">
+          <strong>+${e.round_time_sec}s:</strong> ${escapeHtml(e.description)}
+        </div>
+      `).join('') || '<div class="empty-hint">No major events</div>';
+    }
+
+    const takeList = document.getElementById('compare-takeaways-list');
+    if (takeList && cmpState.data.key_takeaways) {
+      takeList.innerHTML = cmpState.data.key_takeaways.map((t) => `
+        <div class="compare-takeaway-item">
+          <span>⚡</span>
+          <div>${escapeHtml(t)}</div>
+        </div>
+      `).join('');
+    }
+
+    const deltasGrid = document.getElementById('compare-deltas-grid');
+    if (deltasGrid && cmpState.data.deltas) {
+      const d = cmpState.data.deltas;
+      deltasGrid.innerHTML = `
+        <div class="delta-metric-card">
+          <div class="delta-metric-title">First Blood Contact Delta</div>
+          <div class="delta-metric-val ${d.first_blood_delta_sec < 0 ? 'positive' : ''}">${d.first_blood_delta_sec > 0 ? '+' : ''}${d.first_blood_delta_sec}s</div>
+        </div>
+        <div class="delta-metric-card">
+          <div class="delta-metric-title">Round Duration Delta</div>
+          <div class="delta-metric-val">${d.duration_delta_sec > 0 ? '+' : ''}${d.duration_delta_sec}s</div>
+        </div>
+        <div class="delta-metric-card">
+          <div class="delta-metric-title">Untraded Deaths Delta</div>
+          <div class="delta-metric-val ${d.untraded_deaths_delta <= 0 ? 'positive' : 'negative'}">${d.untraded_deaths_delta > 0 ? '+' : ''}${d.untraded_deaths_delta}</div>
+        </div>
+        <div class="delta-metric-card">
+          <div class="delta-metric-title">Trades Landed Delta</div>
+          <div class="delta-metric-val ${d.trades_delta >= 0 ? 'positive' : 'negative'}">${d.trades_delta > 0 ? '+' : ''}${d.trades_delta}</div>
+        </div>
+        <div class="delta-metric-card">
+          <div class="delta-metric-title">Utility Deployment ROI</div>
+          <div class="delta-metric-val ${d.utility_roi_delta >= 0 ? 'positive' : 'negative'}">${d.utility_roi_delta > 0 ? '+' : ''}${d.utility_roi_delta}</div>
+        </div>
+      `;
+    }
+  }
+
+  function renderCanvasesAtT(t) {
+    if (!cmpState.data) return;
+    renderSingleRoundCanvas(ctxA, canvasA, cmpState.data.round_a, t);
+    renderSingleRoundCanvas(ctxB, canvasB, cmpState.data.round_b, t);
+
+    if (timeDisplay) {
+      const curM = Math.floor(t / 60).toString().padStart(2, '0');
+      const curS = Math.floor(t % 60).toString().padStart(2, '0');
+      const maxM = Math.floor(cmpState.maxT / 60).toString().padStart(2, '0');
+      const maxS = Math.floor(cmpState.maxT % 60).toString().padStart(2, '0');
+      timeDisplay.textContent = `${curM}:${curS} / ${maxM}:${maxS}`;
+    }
+  }
+
+  function renderSingleRoundCanvas(tCtx, tCanvas, rData, t) {
+    if (!tCtx || !tCanvas || !rData) return;
+    const w = tCanvas.width;
+    const h = tCanvas.height;
+
+    tCtx.clearRect(0, 0, w, h);
+
+    if (state.mapImage) {
+      tCtx.drawImage(state.mapImage, 0, 0, w, h);
+    } else {
+      tCtx.fillStyle = '#0f1923';
+      tCtx.fillRect(0, 0, w, h);
+    }
+
+    if (rData.player_paths) {
+      for (const [puuid, pts] of Object.entries(rData.player_paths)) {
+        if (!pts || pts.length === 0) continue;
+        const validPts = pts.filter((p) => p.t <= t);
+        if (validPts.length === 0) continue;
+
+        const currentPos = validPts[validPts.length - 1];
+        const cx = currentPos.x * w;
+        const cy = currentPos.y * h;
+
+        tCtx.save();
+        tCtx.fillStyle = '#00f2fe';
+        tCtx.beginPath();
+        tCtx.arc(cx, cy, 6, 0, Math.PI * 2);
+        tCtx.fill();
+        tCtx.strokeStyle = '#fff';
+        tCtx.lineWidth = 1.5;
+        tCtx.stroke();
+        tCtx.restore();
+      }
+    }
+
+    for (const ev of rData.key_events || []) {
+      if (Math.abs(ev.round_time_sec - t) < 1.5) {
+        tCtx.save();
+        tCtx.fillStyle = ev.event_type === 'kill' ? '#ff4655' : '#ffc107';
+        tCtx.font = 'bold 12px Rajdhani';
+        tCtx.fillText(`[${ev.description}]`, 10, h - 16);
+        tCtx.restore();
+      }
+    }
+  }
+
+  function stepSync(timestamp) {
+    if (!cmpState.isPlaying) return;
+    if (!cmpState.lastTick) cmpState.lastTick = timestamp;
+    const deltaSec = (timestamp - cmpState.lastTick) / 1000.0;
+    cmpState.lastTick = timestamp;
+
+    cmpState.currentT += deltaSec * cmpState.speed;
+    if (cmpState.currentT > cmpState.maxT) {
+      cmpState.currentT = cmpState.maxT;
+      pausePlayback();
+    }
+
+    if (scrubSlider) scrubSlider.value = Math.floor(cmpState.currentT);
+    renderCanvasesAtT(cmpState.currentT);
+
+    if (cmpState.isPlaying) {
+      cmpState.animFrame = requestAnimationFrame(stepSync);
+    }
+  }
+
+  function startPlayback() {
+    if (cmpState.currentT >= cmpState.maxT) cmpState.currentT = 0.0;
+    cmpState.isPlaying = true;
+    cmpState.lastTick = 0;
+    if (btnComparePlay) btnComparePlay.textContent = '⏸ PAUSE';
+    cmpState.animFrame = requestAnimationFrame(stepSync);
+  }
+
+  function pausePlayback() {
+    cmpState.isPlaying = false;
+    if (btnComparePlay) btnComparePlay.textContent = '▶ PLAY SYNC';
+    if (cmpState.animFrame) cancelAnimationFrame(cmpState.animFrame);
+  }
+
+  if (btnComparePlay) {
+    btnComparePlay.addEventListener('click', () => {
+      if (cmpState.isPlaying) pausePlayback();
+      else startPlayback();
+    });
+  }
+
+  if (scrubSlider) {
+    scrubSlider.addEventListener('input', (e) => {
+      cmpState.currentT = parseFloat(e.target.value);
+      renderCanvasesAtT(cmpState.currentT);
+    });
+  }
+
+  document.querySelectorAll('.segment-btn[data-cmp-speed]').forEach((b) => {
+    b.addEventListener('click', () => {
+      document.querySelectorAll('.segment-btn[data-cmp-speed]').forEach((btn) => btn.classList.remove('active'));
+      b.classList.add('active');
+      cmpState.speed = parseFloat(b.dataset.cmpSpeed) || 1.0;
+    });
+  });
+}
+
 // Start application
 window.addEventListener('DOMContentLoaded', init);
+
 

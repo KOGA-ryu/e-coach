@@ -13,6 +13,7 @@ from vallens.analytics.heatmap import HeatmapAggregationEngine, HeatmapAggregati
 from vallens.analytics.perspective import PerspectiveDiffEngine, PerspectiveDiffResult
 from vallens.analytics.projection import CoordinateProjector
 from vallens.analytics.reference_vods import ProReferenceCatalog
+from vallens.analytics.round_comparison import RoundComparisonEngine, RoundComparisonResult
 from vallens.analytics.scouting_report import ScoutingReportGenerator
 from vallens.analytics.trade_matrix import MatchTradeReport, TradeMatrixEngine
 from vallens.analytics.transcription import CoachVoiceTranscriber
@@ -20,11 +21,12 @@ from vallens.analytics.utility_roi import UtilityRoiEngine, UtilityRoiReport
 from vallens.analytics.win_probability import MatchWinProbabilityReport, WinProbabilityEngine
 from vallens.db.database import Database
 from vallens.db.repository import MatchRepository
-from vallens.models import CoachNote, MatchEvent, MatchMetadata, MatchPlayer, VodTag
+from vallens.models import CoachNote, MatchEvent, MatchMetadata, MatchPlayer, PlaybookStrat, VodTag
 from vallens.obs.controller import CaptureController
 from vallens.obs.trimmer import ClipTrimmer
 from vallens.riot.client import RiotApiClient
 from vallens.riot.parser import MatchParser
+from vallens.video.clipper import HighlightCandidate, HighlightClipper
 
 
 
@@ -65,6 +67,22 @@ class ValLensService:
             economy_engine=self.economy_engine,
             drills_engine=TrainingRoutineEngine(),
         )
+        self.trimmer = ClipTrimmer()
+        self.clipper = HighlightClipper(
+            repo=self.repo,
+            trimmer=self.trimmer,
+            win_prob_engine=self.win_prob_engine,
+            trade_engine=self.trade_engine,
+        )
+        self.round_comparator = RoundComparisonEngine(
+            repo=self.repo,
+            win_prob_engine=self.win_prob_engine,
+            trade_engine=self.trade_engine,
+        )
+        try:
+            self.repo.seed_default_strats()
+        except Exception:
+            pass
         self.capture_controller = capture_controller or CaptureController(service=self)
 
     def ingest_match_payload(
@@ -792,6 +810,145 @@ class ValLensService:
         return self.scouting_generator.generate_dossier_data(
             match_id=match_id, player_puuid=player_puuid
         )
+
+    # ------------------------------------------------------------------
+    # Tactical Playbook Strategies & Minimap Telestrator Drawings
+    # ------------------------------------------------------------------
+    def create_playbook_strat(self, data: dict[str, Any]) -> dict[str, Any]:
+        """Create a new playbook tactical strategy."""
+        import time
+        import uuid
+
+        strat_id = data.get("strat_id") or f"strat_{uuid.uuid4().hex[:8]}"
+        title = data.get("title") or "Tactical Strategy"
+        map_name = data.get("map_name") or "Ascent"
+        side = data.get("side") or "attack"
+        round_number = data.get("round_number")
+        match_id = data.get("match_id")
+        description = data.get("description") or ""
+        drawing_data = data.get("drawing_data") or []
+        created_at = int(time.time() * 1000)
+
+        strat = PlaybookStrat(
+            strat_id=strat_id,
+            title=title,
+            map_name=map_name,
+            side=side,
+            round_number=int(round_number) if round_number is not None else None,
+            match_id=match_id,
+            description=description,
+            drawing_data=drawing_data,
+            created_at=created_at,
+        )
+        self.repo.insert_strat(strat)
+        return strat.to_dict()
+
+    def get_playbook_strat(self, strat_id: str) -> Optional[dict[str, Any]]:
+        """Retrieve a playbook strategy by its strat_id."""
+        strat = self.repo.get_strat(strat_id)
+        return strat.to_dict() if strat else None
+
+    def list_playbook_strats(
+        self,
+        map_name: Optional[str] = None,
+        side: Optional[str] = None,
+        match_id: Optional[str] = None,
+    ) -> list[dict[str, Any]]:
+        """List saved playbook strategies."""
+        strats = self.repo.list_strats(map_name=map_name, side=side, match_id=match_id)
+        return [s.to_dict() for s in strats]
+
+    def update_playbook_strat(self, strat_id: str, data: dict[str, Any]) -> Optional[dict[str, Any]]:
+        """Update an existing playbook strategy."""
+        existing = self.repo.get_strat(strat_id)
+        if not existing:
+            return None
+
+        if "title" in data:
+            existing.title = data["title"]
+        if "map_name" in data:
+            existing.map_name = data["map_name"]
+        if "side" in data:
+            existing.side = data["side"]
+        if "round_number" in data:
+            existing.round_number = int(data["round_number"]) if data["round_number"] is not None else None
+        if "match_id" in data:
+            existing.match_id = data["match_id"]
+        if "description" in data:
+            existing.description = data["description"]
+        if "drawing_data" in data:
+            existing.drawing_data = data["drawing_data"]
+
+        self.repo.update_strat(existing)
+        return existing.to_dict()
+
+    def delete_playbook_strat(self, strat_id: str) -> bool:
+        """Delete a playbook strategy."""
+        return self.repo.delete_strat(strat_id)
+
+    # ------------------------------------------------------------------
+    # Automated Video Clipping & Highlight Reel Generation
+    # ------------------------------------------------------------------
+    def get_highlight_candidates(
+        self, match_id: str, player_puuid: Optional[str] = None
+    ) -> list[dict[str, Any]]:
+        """Discover auto-detected highlight moments (clutches, swings, multi-kills, flaws)."""
+        candidates = self.clipper.detect_highlight_candidates(match_id, player_puuid=player_puuid)
+        return [c.to_dict() for c in candidates]
+
+    def render_highlight_clip(
+        self,
+        match_id: str,
+        candidate_id: str,
+        pre_roll: Optional[float] = None,
+        post_roll: Optional[float] = None,
+    ) -> dict[str, Any]:
+        """Render an MP4 clip for a specific candidate moment."""
+        return self.clipper.render_candidate_clip(
+            match_id=match_id,
+            candidate_id=candidate_id,
+            pre_roll=pre_roll,
+            post_roll=post_roll,
+        )
+
+    def compile_highlights_montage(
+        self,
+        match_id: str,
+        candidate_ids: Optional[list[str]] = None,
+        title: Optional[str] = None,
+        limit: int = 8,
+    ) -> dict[str, Any]:
+        """Compile selected or top highlight clips into a single continuous review reel."""
+        return self.clipper.compile_highlight_reel(
+            match_id=match_id,
+            candidate_ids=candidate_ids,
+            title=title,
+            limit=limit,
+        )
+
+    def list_saved_match_clips(self, match_id: Optional[str] = None) -> list[dict[str, Any]]:
+        """List previously exported MP4 clips from the data/clips directory."""
+        return self.clipper.list_saved_clips(match_id=match_id)
+
+    # ------------------------------------------------------------------
+    # Multi-POV / Round-over-Round Side-by-Side Comparison
+    # ------------------------------------------------------------------
+    def compare_rounds(
+        self,
+        match_id: str,
+        round_a: int,
+        round_b: int,
+        target_puuid: Optional[str] = None,
+    ) -> dict[str, Any]:
+        """Perform side-by-side round comparison and generate tactical delta takeaways."""
+        result = self.round_comparator.compare(
+            match_id=match_id,
+            round_a_num=round_a,
+            round_b_num=round_b,
+            target_puuid=target_puuid,
+        )
+        return result.to_dict()
+
 
 
 

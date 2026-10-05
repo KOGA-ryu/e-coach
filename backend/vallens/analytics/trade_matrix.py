@@ -159,6 +159,11 @@ class MatchTradeReport:
             "all_trade_events": [t.to_dict() for t in self.all_trade_events],
         }
 
+    @property
+    def trades(self) -> list[TradeEvent]:
+        return self.all_trade_events
+
+
 
 class TradeMatrixEngine:
     """Evaluates combat trade windows, spacing errors, and revenge frags."""
@@ -178,6 +183,7 @@ class TradeMatrixEngine:
         if events is None and self.repo:
             events = self.repo.get_events(match_id)
         events = events or []
+
 
         if players is None and self.repo:
             players = self.repo.get_match_players(match_id)
@@ -224,7 +230,7 @@ class TradeMatrixEngine:
             first_death_traded = False
 
             if r_kills:
-                first_victim = r_kills[0].metadata.get("victim")
+                first_victim = r_kills[0].metadata.get("victim") or r_kills[0].metadata.get("victim_puuid")
                 first_death_id = first_victim
                 total_first_deaths += 1
                 if first_victim and first_victim in player_acc:
@@ -232,7 +238,7 @@ class TradeMatrixEngine:
 
             for i, k in enumerate(r_kills):
                 killer_id = k.player_puuid or "unknown"
-                victim_id = k.metadata.get("victim") or "unknown"
+                victim_id = k.metadata.get("victim") or k.metadata.get("victim_puuid") or "unknown"
                 death_time = k.event_time_ms
 
                 killer_player = player_map.get(killer_id)
@@ -269,8 +275,9 @@ class TradeMatrixEngine:
 
                     # Did a teammate of victim kill the original killer?
                     next_killer_id = next_k.player_puuid
-                    next_victim_id = next_k.metadata.get("victim")
+                    next_victim_id = next_k.metadata.get("victim") or next_k.metadata.get("victim_puuid")
                     next_killer_player = player_map.get(next_killer_id)
+
 
                     # Same team as victim, killed the killer
                     is_teammate = (
@@ -481,3 +488,12 @@ class TradeMatrixEngine:
             round_summaries=round_summaries,
             all_trade_events=all_trade_events,
         )
+
+    # Class method alias
+    analyze = analyze_match_trades
+
+
+
+# Convenient alias
+TradeFragMatrixEngine = TradeMatrixEngine
+

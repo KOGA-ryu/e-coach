@@ -504,6 +504,75 @@ class ValLensRequestHandler(BaseHTTPRequestHandler):
                 self._send_json(data)
                 return
 
+        # Round-over-Round Side-by-Side Comparison API
+        if path.startswith("/api/matches/") and path.endswith("/rounds/compare"):
+            match_id = path.split("/")[3]
+            try:
+                r_a = int(query.get("round_a", [1])[0])
+                r_b = int(query.get("round_b", [2])[0])
+            except ValueError:
+                r_a, r_b = 1, 2
+            target_player = query.get("player", [None])[0]
+            try:
+                comparison = self.service.compare_rounds(
+                    match_id=match_id,
+                    round_a=r_a,
+                    round_b=r_b,
+                    target_puuid=target_player,
+                )
+                self._send_json(comparison)
+            except ValueError as e:
+                self._send_error(str(e), status=404)
+            except Exception as e:
+                self._send_error(f"Round comparison failed: {e}", status=500)
+            return
+
+        # Auto-Detected Highlight Candidates API
+        if path.startswith("/api/matches/") and path.endswith("/clips/candidates"):
+            match_id = path.split("/")[3]
+            target_player = query.get("player", [None])[0]
+            try:
+                candidates = self.service.get_highlight_candidates(
+                    match_id=match_id, player_puuid=target_player
+                )
+                self._send_json(candidates)
+            except Exception as e:
+                self._send_error(f"Failed to detect candidates: {e}", status=500)
+            return
+
+        # Saved Clips for Match API
+        if path.startswith("/api/matches/") and path.endswith("/clips"):
+            match_id = path.split("/")[3]
+            clips = self.service.list_saved_match_clips(match_id=match_id)
+            self._send_json(clips)
+            return
+
+        # All Saved Clips API
+        if path == "/api/clips":
+            clips = self.service.list_saved_match_clips(None)
+            self._send_json(clips)
+            return
+
+        # Tactical Playbook Strategies API
+        if path == "/api/playbook/strats":
+            map_name = query.get("map", [None])[0]
+            side = query.get("side", [None])[0]
+            match_id = query.get("match_id", [None])[0]
+            strats = self.service.list_playbook_strats(
+                map_name=map_name, side=side, match_id=match_id
+            )
+            self._send_json(strats)
+            return
+
+        if path.startswith("/api/playbook/strats/"):
+            strat_id = path.split("/")[4]
+            strat = self.service.get_playbook_strat(strat_id)
+            if not strat:
+                self._send_error("Strat not found", status=404)
+                return
+            self._send_json(strat)
+            return
+
         # 8. Match Overview
         if path.startswith("/api/matches/"):
             match_id = path.split("/")[3]
@@ -1070,7 +1139,119 @@ class ValLensRequestHandler(BaseHTTPRequestHandler):
                 self._send_error(f"Montage generation failed: {e}", status=500)
             return
 
+        # Render Precision Highlight Clip API
+        if path.startswith("/api/matches/") and path.endswith("/clips/render"):
+            match_id = path.split("/")[3]
+            content_length = int(self.headers.get("Content-Length", 0))
+            body = self.rfile.read(content_length).decode("utf-8") if content_length > 0 else "{}"
+            try:
+                data = json.loads(body) if body else {}
+            except Exception:
+                data = {}
+
+            candidate_id = data.get("candidate_id")
+            pre = data.get("pre_roll")
+            post = data.get("post_roll")
+            if pre is not None:
+                try:
+                    pre = float(pre)
+                except ValueError:
+                    pre = None
+            if post is not None:
+                try:
+                    post = float(post)
+                except ValueError:
+                    post = None
+
+            try:
+                if candidate_id:
+                    clip = self.service.render_highlight_clip(
+                        match_id=match_id,
+                        candidate_id=candidate_id,
+                        pre_roll=pre,
+                        post_roll=post,
+                    )
+                else:
+                    start_sec = float(data.get("start_seconds", 0.0))
+                    dur_sec = float(data.get("duration_seconds", 5.0))
+                    lbl = data.get("label", "clip")
+                    rnd = data.get("round_number")
+                    clip = self.service.clipper.render_custom_clip(
+                        match_id=match_id,
+                        start_seconds=start_sec,
+                        duration_seconds=dur_sec,
+                        label=lbl,
+                        round_number=int(rnd) if rnd is not None else None,
+                    )
+                self._send_json({"success": True, "clip": clip})
+            except ValueError as e:
+                self._send_error(str(e), status=404)
+            except Exception as e:
+                self._send_error(f"Highlight clip render failed: {e}", status=500)
+            return
+
+        # Compile Highlights Reel API
+        if path.startswith("/api/matches/") and path.endswith("/clips/compile-reel"):
+            match_id = path.split("/")[3]
+            content_length = int(self.headers.get("Content-Length", 0))
+            body = self.rfile.read(content_length).decode("utf-8") if content_length > 0 else "{}"
+            try:
+                data = json.loads(body) if body else {}
+            except Exception:
+                data = {}
+
+            cand_ids = data.get("candidate_ids")
+            title = data.get("title")
+            limit = int(data.get("limit", 8))
+
+            try:
+                reel = self.service.compile_highlights_montage(
+                    match_id=match_id,
+                    candidate_ids=cand_ids,
+                    title=title,
+                    limit=limit,
+                )
+                self._send_json({"success": True, "reel": reel})
+            except ValueError as e:
+                self._send_error(str(e), status=404)
+            except Exception as e:
+                self._send_error(f"Highlight reel compilation failed: {e}", status=500)
+            return
+
+        # Tactical Playbook Create API
+        if path == "/api/playbook/strats":
+            content_length = int(self.headers.get("Content-Length", 0))
+            body = self.rfile.read(content_length).decode("utf-8") if content_length > 0 else "{}"
+            try:
+                data = json.loads(body) if body else {}
+            except Exception:
+                data = {}
+
+            strat = self.service.create_playbook_strat(data)
+            self._send_json({"success": True, "strat": strat})
+            return
+
+        # Tactical Playbook Update API
+        if path.startswith("/api/playbook/strats/"):
+            strat_id = path.split("/")[4]
+            content_length = int(self.headers.get("Content-Length", 0))
+            body = self.rfile.read(content_length).decode("utf-8") if content_length > 0 else "{}"
+            try:
+                data = json.loads(body) if body else {}
+            except Exception:
+                data = {}
+
+            updated = self.service.update_playbook_strat(strat_id, data)
+            if not updated:
+                self._send_error("Strat not found", status=404)
+                return
+            self._send_json({"success": True, "strat": updated})
+            return
+
         self._send_error("Unknown POST endpoint", status=404)
+
+    def do_PUT(self) -> None:
+        self.do_POST()
 
     def do_DELETE(self) -> None:
         parsed = urllib.parse.urlparse(self.path)
@@ -1088,7 +1269,14 @@ class ValLensRequestHandler(BaseHTTPRequestHandler):
             self._send_json({"success": success})
             return
 
+        if path.startswith("/api/playbook/strats/"):
+            strat_id = path.split("/")[4]
+            success = self.service.delete_playbook_strat(strat_id)
+            self._send_json({"success": success})
+            return
+
         self._send_error("Unknown DELETE endpoint", status=404)
+
 
     def _serve_file(self, file_path: Path, content_type: str) -> None:
         data = file_path.read_bytes()

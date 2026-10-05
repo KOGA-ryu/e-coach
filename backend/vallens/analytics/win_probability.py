@@ -115,6 +115,15 @@ class MatchWinProbabilityReport:
             "match_timeline": [p.to_dict() for p in self.match_timeline],
         }
 
+    @property
+    def clutches(self) -> list[ClutchScenario]:
+        return self.clutch_scenarios
+
+    @property
+    def momentum_swings(self) -> list[WinProbabilityPoint]:
+        return [p for p in self.match_timeline if p.is_swing]
+
+
 
 class WinProbabilityEngine:
     """Offline analytical win expectancy calculator and clutch analyzer."""
@@ -128,7 +137,9 @@ class WinProbabilityEngine:
         match_id: str,
         events: Optional[list[MatchEvent]] = None,
         players: Optional[list[MatchPlayer]] = None,
+        target_puuid: Optional[str] = None,
     ) -> MatchWinProbabilityReport:
+
         """Calculate complete round-by-round win expectancy timelines and clutch ratings."""
         if events is None and self.repo:
             events = self.repo.get_events(match_id)

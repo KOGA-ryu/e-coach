@@ -3,7 +3,7 @@
 import json
 from typing import Any, Optional
 from vallens.db.database import Database
-from vallens.models import CoachNote, MatchEvent, MatchMetadata, MatchPlayer, UtilityEvent, VodTag
+from vallens.models import CoachNote, MatchEvent, MatchMetadata, MatchPlayer, PlaybookStrat, UtilityEvent, VodTag
 
 
 
@@ -583,6 +583,178 @@ class MatchRepository:
         sql = "DELETE FROM utility_events WHERE match_id = ?;"
         with self.db.connection() as conn:
             conn.execute(sql, (match_id,))
+
+    # ---------------------------------------------------------
+    # Tactical Playbook Strategies & Minimap Telestrator Drawings
+    # ---------------------------------------------------------
+
+    def insert_strat(self, strat: PlaybookStrat) -> None:
+        """Insert or replace a tactical playbook strategy."""
+        sql = """
+        INSERT OR REPLACE INTO playbook_strats (
+            strat_id, title, map_name, side, round_number, match_id, description, drawing_data, created_at
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?);
+        """
+        with self.db.connection() as conn:
+            conn.execute(sql, strat.to_tuple())
+
+    def get_strat(self, strat_id: str) -> Optional[PlaybookStrat]:
+        """Retrieve a tactical strat by its strat_id."""
+        sql = "SELECT strat_id, title, map_name, side, round_number, match_id, description, drawing_data, created_at FROM playbook_strats WHERE strat_id = ?;"
+        with self.db.connection() as conn:
+            row = conn.execute(sql, (strat_id,)).fetchone()
+            if not row:
+                return None
+            try:
+                drawings = json.loads(row["drawing_data"])
+            except Exception:
+                drawings = []
+            return PlaybookStrat(
+                strat_id=row["strat_id"],
+                title=row["title"],
+                map_name=row["map_name"],
+                side=row["side"] or "attack",
+                round_number=row["round_number"],
+                match_id=row["match_id"],
+                description=row["description"] or "",
+                drawing_data=drawings,
+                created_at=row["created_at"],
+            )
+
+    def list_strats(
+        self,
+        map_name: Optional[str] = None,
+        side: Optional[str] = None,
+        match_id: Optional[str] = None,
+    ) -> list[PlaybookStrat]:
+        """List playbook strategies, optionally filtered by map, side, or match."""
+        clauses = []
+        params: list[Any] = []
+        if map_name:
+            clauses.append("LOWER(map_name) = LOWER(?)")
+            params.append(map_name)
+        if side:
+            clauses.append("LOWER(side) = LOWER(?)")
+            params.append(side)
+        if match_id:
+            clauses.append("match_id = ?")
+            params.append(match_id)
+
+        where = f"WHERE {' AND '.join(clauses)}" if clauses else ""
+        sql = f"SELECT strat_id, title, map_name, side, round_number, match_id, description, drawing_data, created_at FROM playbook_strats {where} ORDER BY created_at DESC;"
+
+        with self.db.connection() as conn:
+            rows = conn.execute(sql, params).fetchall()
+            results = []
+            for r in rows:
+                try:
+                    drawings = json.loads(r["drawing_data"])
+                except Exception:
+                    drawings = []
+                results.append(
+                    PlaybookStrat(
+                        strat_id=r["strat_id"],
+                        title=r["title"],
+                        map_name=r["map_name"],
+                        side=r["side"] or "attack",
+                        round_number=r["round_number"],
+                        match_id=r["match_id"],
+                        description=r["description"] or "",
+                        drawing_data=drawings,
+                        created_at=r["created_at"],
+                    )
+                )
+            return results
+
+    def update_strat(self, strat: PlaybookStrat) -> bool:
+        """Update an existing playbook strategy."""
+        sql = """
+        UPDATE playbook_strats
+        SET title = ?, map_name = ?, side = ?, round_number = ?, match_id = ?, description = ?, drawing_data = ?
+        WHERE strat_id = ?;
+        """
+        with self.db.connection() as conn:
+            cur = conn.execute(
+                sql,
+                (
+                    strat.title,
+                    strat.map_name,
+                    strat.side,
+                    strat.round_number,
+                    strat.match_id,
+                    strat.description,
+                    strat.drawing_json,
+                    strat.strat_id,
+                ),
+            )
+            return cur.rowcount > 0
+
+    def delete_strat(self, strat_id: str) -> bool:
+        """Delete a playbook strategy by its strat_id."""
+        sql = "DELETE FROM playbook_strats WHERE strat_id = ?;"
+        with self.db.connection() as conn:
+            cur = conn.execute(sql, (strat_id,))
+            return cur.rowcount > 0
+
+    def seed_default_strats(self) -> int:
+        """Seed professional baseline playbook strats if none exist."""
+        existing = self.list_strats()
+        if existing:
+            return 0
+
+        default_strats = [
+            PlaybookStrat(
+                strat_id="strat-ascent-a-retake",
+                title="Ascent A Site 2-1-2 High-Low Retake",
+                map_name="Ascent",
+                side="retake",
+                round_number=7,
+                description="Synchronized retake from Tree and CT Heaven. Smoke Main to isolate site defenders; flash dice from Heaven while Tree pushes close door.",
+                drawing_data=[
+                    {"type": "smoke", "x": 0.62, "y": 0.48, "radius": 0.05, "color": "#9c27b0", "label": "A Main Smoke"},
+                    {"type": "arrow", "x1": 0.48, "y1": 0.35, "x2": 0.58, "y2": 0.42, "color": "#00f2fe", "label": "Tree Push"},
+                    {"type": "arrow", "x1": 0.55, "y1": 0.22, "x2": 0.60, "y2": 0.36, "color": "#00f2fe", "label": "Heaven Drop"},
+                    {"type": "marker", "x": 0.63, "y": 0.38, "marker_type": "danger", "color": "#ff4655", "label": "Default Plant"},
+                ],
+                created_at=1700000000000,
+            ),
+            PlaybookStrat(
+                strat_id="strat-bind-b-hookah-split",
+                title="Bind B Split: Hookah & Long Pinch",
+                map_name="Bind",
+                side="attack",
+                round_number=3,
+                description="Controller smokes Elbow & CT. 2 push Long with flash out of fountain, 3 push Hookah with recon dart back-site to clear tube.",
+                drawing_data=[
+                    {"type": "smoke", "x": 0.32, "y": 0.38, "radius": 0.045, "color": "#9c27b0", "label": "CT Smoke"},
+                    {"type": "smoke", "x": 0.28, "y": 0.46, "radius": 0.045, "color": "#9c27b0", "label": "Elbow Smoke"},
+                    {"type": "arrow", "x1": 0.42, "y1": 0.70, "x2": 0.35, "y2": 0.52, "color": "#ffc107", "label": "Hookah Pinch"},
+                    {"type": "arrow", "x1": 0.18, "y1": 0.68, "x2": 0.24, "y2": 0.50, "color": "#ffc107", "label": "Long Push"},
+                    {"type": "marker", "x": 0.30, "y": 0.48, "marker_type": "site", "color": "#22c55e", "label": "Safe Plant"},
+                ],
+                created_at=1700000010000,
+            ),
+            PlaybookStrat(
+                strat_id="strat-haven-c-default-hold",
+                title="Haven C Site Crossfire Defense",
+                map_name="Haven",
+                side="defense",
+                round_number=12,
+                description="Sentinel holds Garage/C-link, Duelist holds Plat/Logs. Bait first contact from C-Long and collapse crossfire into default plant zone.",
+                drawing_data=[
+                    {"type": "line", "x1": 0.20, "y1": 0.72, "x2": 0.22, "y2": 0.55, "color": "#ff4655", "label": "Long Sightline"},
+                    {"type": "arrow", "x1": 0.25, "y1": 0.42, "x2": 0.22, "y2": 0.50, "color": "#00f2fe", "label": "Plat Crossfire"},
+                    {"type": "arrow", "x1": 0.32, "y1": 0.58, "x2": 0.24, "y2": 0.54, "color": "#00f2fe", "label": "Garage Retake Support"},
+                    {"type": "marker", "x": 0.21, "y": 0.52, "marker_type": "site", "color": "#ffc107", "label": "C Site"},
+                ],
+                created_at=1700000020000,
+            ),
+        ]
+
+        for s in default_strats:
+            self.insert_strat(s)
+        return len(default_strats)
+
 
 
 

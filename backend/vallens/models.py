@@ -213,3 +213,48 @@ class UtilityEvent:
         )
 
 
+@dataclass
+class PlaybookStrat:
+    """Tactical playbook strategy and annotated minimap drawing."""
+    strat_id: str
+    title: str
+    map_name: str
+    side: str = "attack"  # 'attack', 'defense', 'retake', 'default'
+    round_number: Optional[int] = None
+    match_id: Optional[str] = None
+    description: str = ""
+    drawing_data: list[dict[str, Any]] = field(default_factory=list)
+    created_at: int = 0
+
+    @property
+    def drawing_json(self) -> str:
+        return json.dumps(self.drawing_data)
+
+    def to_dict(self) -> dict[str, Any]:
+        return {
+            "strat_id": self.strat_id,
+            "title": self.title,
+            "map_name": self.map_name,
+            "side": self.side,
+            "round_number": self.round_number,
+            "match_id": self.match_id,
+            "description": self.description,
+            "drawing_data": self.drawing_data,
+            "created_at": self.created_at,
+        }
+
+    def to_tuple(self) -> tuple:
+        return (
+            self.strat_id,
+            self.title,
+            self.map_name,
+            self.side,
+            self.round_number,
+            self.match_id,
+            self.description,
+            self.drawing_json,
+            self.created_at,
+        )
+
+
+
