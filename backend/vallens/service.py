@@ -4,13 +4,15 @@ import json
 from pathlib import Path
 from typing import Any, Optional
 
+from vallens.analytics.agent_profile import AgentMatrixResult, AgentProfilingEngine
 from vallens.analytics.heatmap import HeatmapAggregationEngine, HeatmapAggregationResult
 from vallens.analytics.projection import CoordinateProjector
 from vallens.db.database import Database
 from vallens.db.repository import MatchRepository
-from vallens.models import MatchEvent, MatchMetadata, VodTag
+from vallens.models import MatchEvent, MatchMetadata, MatchPlayer, VodTag
 from vallens.riot.client import RiotApiClient
 from vallens.riot.parser import MatchParser
+
 
 
 class ValLensService:
@@ -34,12 +36,15 @@ class ValLensService:
     ) -> MatchMetadata:
         """Parse and persist a raw match JSON payload into SQLite."""
         metadata, events = self.parser.parse_match(raw_data)
+        players = self.parser.parse_players(raw_data, metadata.match_id)
         if video_filepath:
             metadata.video_filepath = video_filepath
 
         self.repo.insert_match(metadata)
         self.repo.insert_events(events)
+        self.repo.insert_match_players(players)
         return metadata
+
 
     def ingest_match_file(
         self, file_path: Path | str, video_filepath: Optional[str] = None
@@ -175,5 +180,13 @@ class ValLensService:
             event_type=event_type,
             side=side,
         )
+
+    def get_agent_matrix(
+        self, player_puuid: Optional[str] = None
+    ) -> AgentMatrixResult:
+        """Compute Agent Profiling Matrix comparing opening duels, trades, and habit flaws."""
+        engine = AgentProfilingEngine(repo=self.repo)
+        return engine.generate_matrix(player_puuid=player_puuid)
+
 
 

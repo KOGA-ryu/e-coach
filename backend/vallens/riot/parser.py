@@ -4,7 +4,8 @@ import logging
 from typing import Any, Optional
 
 from vallens.analytics.projection import CoordinateProjector
-from vallens.models import MatchEvent, MatchMetadata
+from vallens.models import MatchEvent, MatchMetadata, MatchPlayer
+
 
 logger = logging.getLogger(__name__)
 
@@ -53,7 +54,40 @@ class MatchParser:
 
         return metadata, events
 
+    def parse_players(
+        self, raw_data: dict[str, Any], match_id: Optional[str] = None
+    ) -> list[MatchPlayer]:
+        """Parse player list and agent selection from match JSON."""
+        mid = match_id or raw_data.get("matchInfo", {}).get("matchId") or raw_data.get("matchId", "")
+        raw_players = raw_data.get("players", [])
+        players: list[MatchPlayer] = []
+
+        for p in raw_players:
+            stats = p.get("stats") or {}
+            puuid = p.get("puuid", "")
+            if not puuid:
+                continue
+
+            players.append(
+                MatchPlayer(
+                    match_id=mid,
+                    player_puuid=puuid,
+                    game_name=p.get("gameName", ""),
+                    tag_line=p.get("tagLine", ""),
+                    team_id=p.get("teamId", ""),
+                    character_id=p.get("characterId", ""),
+                    score=int(stats.get("score", 0)),
+                    rounds_played=int(stats.get("roundsPlayed", 0)),
+                    kills=int(stats.get("kills", 0)),
+                    deaths=int(stats.get("deaths", 0)),
+                    assists=int(stats.get("assists", 0)),
+                )
+            )
+
+        return players
+
     def _parse_round(
+
         self,
         match_id: str,
         map_id: str,

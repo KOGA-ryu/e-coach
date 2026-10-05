@@ -10,6 +10,12 @@ from .heatmap import (
     HeatmapAggregationResult,
     SpatialCluster,
 )
+from .agent_profile import (
+    AgentMatrixResult,
+    AgentProfile,
+    AgentProfilingEngine,
+)
+
 from .projection import CoordinateProjector, MapCalibration
 from .report import CoachingReportGenerator
 
@@ -25,5 +31,9 @@ __all__ = [
     "HeatmapAggregationEngine",
     "HeatmapAggregationResult",
     "SpatialCluster",
+    "AgentProfile",
+    "AgentMatrixResult",
+    "AgentProfilingEngine",
 ]
+
 

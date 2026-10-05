@@ -40,3 +40,24 @@ CREATE INDEX IF NOT EXISTS idx_match_events_match_id ON match_events(match_id);
 CREATE INDEX IF NOT EXISTS idx_match_events_round ON match_events(match_id, round_number);
 CREATE INDEX IF NOT EXISTS idx_vod_tags_match_id ON vod_tags(match_id);
 CREATE INDEX IF NOT EXISTS idx_vod_tags_category ON vod_tags(tag_category, tag_name);
+
+-- Player agent and roster assignments per match
+CREATE TABLE IF NOT EXISTS match_players (
+    match_id TEXT NOT NULL,
+    player_puuid TEXT NOT NULL,
+    game_name TEXT,
+    tag_line TEXT,
+    team_id TEXT,
+    character_id TEXT NOT NULL, -- Agent UUID
+    score INTEGER DEFAULT 0,
+    rounds_played INTEGER DEFAULT 0,
+    kills INTEGER DEFAULT 0,
+    deaths INTEGER DEFAULT 0,
+    assists INTEGER DEFAULT 0,
+    PRIMARY KEY(match_id, player_puuid),
+    FOREIGN KEY(match_id) REFERENCES matches(match_id) ON DELETE CASCADE
+);
+
+CREATE INDEX IF NOT EXISTS idx_match_players_puuid ON match_players(player_puuid);
+CREATE INDEX IF NOT EXISTS idx_match_players_character ON match_players(character_id);
+

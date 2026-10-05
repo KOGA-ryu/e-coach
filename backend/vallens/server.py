@@ -269,6 +269,14 @@ class ValLensRequestHandler(BaseHTTPRequestHandler):
             self._send_json(result.to_dict())
             return
 
+        # Agent Profiling Matrix API
+        if path == "/api/analytics/agents":
+            puuid = query.get("player", [None])[0]
+            matrix = self.service.get_agent_matrix(player_puuid=puuid)
+            self._send_json(matrix.to_dict())
+            return
+
+
 
         # Account detection endpoint
         if path == "/api/account/detect":

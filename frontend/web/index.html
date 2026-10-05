@@ -35,9 +35,11 @@
       </div>
 
       <button id="btn-open-sync" class="btn-sync" title="Connect Riot Account">LINK ACCOUNT</button>
+      <button id="btn-open-matrix" class="btn-matrix" title="Agent Profiling Matrix">AGENT MATRIX</button>
       <a id="btn-view-report" class="btn-report" target="_blank" href="#">COACHING REPORT</a>
     </div>
   </header>
+
 
   <!-- Match Info Bar -->
   <div class="match-info-strip">
@@ -389,6 +391,55 @@
     </div>
   </div>
 
+  <!-- Agent Profiling Matrix Modal -->
+  <div class="modal-overlay" id="matrix-modal" style="display: none;">
+    <div class="modal-card matrix-modal-card">
+      <div class="modal-header">
+        <div class="modal-title-group">
+          <div class="modal-title">AGENT PROFILING & ROLE BENCHMARK MATRIX</div>
+          <div class="modal-subtitle">Cross-agent opening duels, trade efficiency, and recurring habit flaws</div>
+        </div>
+        <button id="btn-close-matrix" class="modal-close-btn">&times;</button>
+      </div>
+      <div class="modal-body matrix-modal-body">
+        <!-- Top Macro KPI Cards -->
+        <div class="matrix-kpi-grid" id="matrix-kpi-grid">
+          <!-- Populated dynamically -->
+        </div>
+
+        <!-- Agent Matrix Table -->
+        <div class="matrix-table-container">
+          <table class="matrix-table" id="matrix-table">
+            <thead>
+              <tr>
+                <th>AGENT</th>
+                <th>ROLE</th>
+                <th>MATCHES</th>
+                <th>K / D / A</th>
+                <th>K/D</th>
+                <th>OD WIN%</th>
+                <th>FIRST DEATH%</th>
+                <th>TRADE%</th>
+                <th>TOP RECURRING FLAWS</th>
+                <th>COACHING DIAGNOSIS</th>
+              </tr>
+            </thead>
+            <tbody id="matrix-table-body">
+              <!-- Populated dynamically -->
+            </tbody>
+          </table>
+        </div>
+
+        <!-- Macro Insights Section -->
+        <div class="matrix-insights-card" id="matrix-insights-card">
+          <div class="sub-header">MACRO POOL INSIGHTS & BENCHMARKS</div>
+          <div class="matrix-insights-list" id="matrix-insights-list"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
   <script src="app.js"></script>
 </body>
 </html>
+

@@ -90,7 +90,12 @@ def main() -> None:
     agg_parser.add_argument("--puuid", default=None, help="Filter by player PUUID")
     agg_parser.add_argument("--limit", type=int, default=20, help="Number of recent matches to aggregate")
 
+    # Agent Matrix command
+    agent_parser = subparsers.add_parser("agent-matrix", help="Display cross-agent performance, opening duels, and habit flaws")
+    agent_parser.add_argument("--puuid", default=None, help="Player PUUID (defaults to primary player)")
+
     args = parser.parse_args()
+
 
     db = Database(args.db)
     service = ValLensService(db=db)
@@ -296,7 +301,48 @@ def main() -> None:
             print(f"  • {insight}")
         print("=" * 70)
 
+    elif args.command == "agent-matrix":
+        matrix = service.get_agent_matrix(player_puuid=args.puuid)
+        print("=" * 88)
+        print(f"VAL-LENS AGENT PROFILING MATRIX: {matrix.player_name.upper()} ({matrix.player_puuid})")
+        print("=" * 88)
+        print(f"Total Matches: {matrix.total_matches} | Total Rounds: {matrix.total_rounds}")
+        print("-" * 88)
+        header_fmt = "{:<12} {:<12} {:<8} {:<6} {:<10} {:<8} {:<18} {:<8}"
+        print(header_fmt.format("AGENT", "ROLE", "MATCHES", "K/D", "OD WIN%", "TRADE%", "TOP RECURRING FLAW", "FLAW/RND"))
+        print("-" * 88)
+        for a in matrix.agents:
+            top_f = f"{a.top_flaws[0]['name']} ({a.top_flaws[0]['count']}x)" if a.top_flaws else "None"
+            print(header_fmt.format(
+                a.agent_name,
+                a.role,
+                str(a.matches_played),
+                f"{a.kd_ratio:.2f}",
+                f"{a.opening_duel_win_rate:.1f}%",
+                f"{a.trade_rate:.1f}%",
+                top_f,
+                f"{a.flaw_rate_per_round:.2f}",
+            ))
+
+        print("\n" + "=" * 88)
+        print("ROLE DIAGNOSIS & BENCHMARKING:")
+        for a in matrix.agents:
+            print(f"\n  [{a.agent_name.upper()}] — {a.role.upper()}")
+            print(f"  • Combat Stats: {a.kills} Kills / {a.deaths} Deaths / {a.assists} Assists | K/D: {a.kd_ratio:.2f}")
+            print(f"  • Opening Duels: {a.first_bloods} First Bloods / {a.first_deaths} First Deaths ({a.opening_duel_win_rate:.1f}% OD Win Rate)")
+            print(f"  • Trading: {a.traded_deaths} Traded Deaths / {a.untraded_deaths} Untraded ({a.trade_rate:.1f}% Trade Rate)")
+            if a.top_flaws:
+                flaw_strs = [f"'{f['name']}' (x{f['count']})" for f in a.top_flaws]
+                print(f"  • Logged Review Flaws: {', '.join(flaw_strs)}")
+            print(f"  • Coaching Diagnosis: {a.diagnosis}")
+
+        print("\n" + "=" * 88)
+        print("MACRO AGENT POOL INSIGHTS:")
+        for ins in matrix.summary_insights:
+            print(f"  • {ins}")
+        print("=" * 88)
 
 
 if __name__ == "__main__":
     main()
+

@@ -76,3 +76,35 @@ class VodTag:
             self.tag_name,
             self.author_type,
         )
+
+
+@dataclass
+class MatchPlayer:
+    """Player roster and agent selection data for a match."""
+    match_id: str
+    player_puuid: str
+    game_name: str
+    tag_line: str
+    team_id: str
+    character_id: str  # Agent UUID
+    score: int = 0
+    rounds_played: int = 0
+    kills: int = 0
+    deaths: int = 0
+    assists: int = 0
+
+    def to_tuple(self) -> tuple:
+        return (
+            self.match_id,
+            self.player_puuid,
+            self.game_name,
+            self.tag_line,
+            self.team_id,
+            self.character_id,
+            self.score,
+            self.rounds_played,
+            self.kills,
+            self.deaths,
+            self.assists,
+        )
+

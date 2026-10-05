@@ -3,7 +3,8 @@
 import json
 from typing import Any, Optional
 from vallens.db.database import Database
-from vallens.models import MatchEvent, MatchMetadata, VodTag
+from vallens.models import MatchEvent, MatchMetadata, MatchPlayer, VodTag
+
 
 
 class MatchRepository:
@@ -334,4 +335,76 @@ class MatchRepository:
             ]
 
             return events, tags, match_ids
+
+    def insert_match_players(self, players: list[MatchPlayer]) -> int:
+        """Insert or replace player participant entries for matches."""
+        if not players:
+            return 0
+        sql = """
+        INSERT OR REPLACE INTO match_players (
+            match_id, player_puuid, game_name, tag_line, team_id, character_id,
+            score, rounds_played, kills, deaths, assists
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);
+        """
+        payloads = [p.to_tuple() for p in players]
+        with self.db.connection() as conn:
+            cursor = conn.executemany(sql, payloads)
+            return cursor.rowcount
+
+    def get_match_players(self, match_id: str) -> list[MatchPlayer]:
+        """Fetch all players participating in a match."""
+        sql = """
+        SELECT match_id, player_puuid, game_name, tag_line, team_id, character_id,
+               score, rounds_played, kills, deaths, assists
+        FROM match_players
+        WHERE match_id = ?;
+        """
+        with self.db.connection() as conn:
+            rows = conn.execute(sql, (match_id,)).fetchall()
+            return [
+                MatchPlayer(
+                    match_id=r["match_id"],
+                    player_puuid=r["player_puuid"],
+                    game_name=r["game_name"],
+                    tag_line=r["tag_line"],
+                    team_id=r["team_id"],
+                    character_id=r["character_id"],
+                    score=r["score"],
+                    rounds_played=r["rounds_played"],
+                    kills=r["kills"],
+                    deaths=r["deaths"],
+                    assists=r["assists"],
+                )
+                for r in rows
+            ]
+
+    def get_player_agent_matches(
+        self, player_puuid: Optional[str] = None
+    ) -> list[dict[str, Any]]:
+        """Fetch player match history grouped by agent selection with match metadata."""
+        sql = """
+        SELECT 
+            mp.match_id,
+            mp.player_puuid,
+            mp.game_name,
+            mp.tag_line,
+            mp.team_id,
+            mp.character_id,
+            mp.score,
+            mp.rounds_played,
+            mp.kills,
+            mp.deaths,
+            mp.assists,
+            m.map_id,
+            m.timestamp as match_timestamp,
+            m.match_duration
+        FROM match_players mp
+        JOIN matches m ON mp.match_id = m.match_id
+        WHERE (? IS NULL OR mp.player_puuid = ?)
+        ORDER BY m.timestamp DESC;
+        """
+        with self.db.connection() as conn:
+            rows = conn.execute(sql, (player_puuid, player_puuid)).fetchall()
+            return [dict(r) for r in rows]
+
 

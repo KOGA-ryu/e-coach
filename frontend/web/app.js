@@ -1418,6 +1418,159 @@ function setupEventListeners() {
       }
     });
   }
+
+  // Agent Profiling Matrix Modal Handlers
+  const matrixModal = document.getElementById('matrix-modal');
+  const btnOpenMatrix = document.getElementById('btn-open-matrix');
+  const btnCloseMatrix = document.getElementById('btn-close-matrix');
+
+  if (btnOpenMatrix) {
+    btnOpenMatrix.addEventListener('click', () => {
+      matrixModal.style.display = 'flex';
+      loadAgentMatrix();
+    });
+  }
+
+  if (btnCloseMatrix) {
+    btnCloseMatrix.addEventListener('click', () => {
+      matrixModal.style.display = 'none';
+    });
+  }
+
+  if (matrixModal) {
+    matrixModal.addEventListener('click', (e) => {
+      if (e.target === matrixModal) {
+        matrixModal.style.display = 'none';
+      }
+    });
+  }
+
+  window.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape') {
+      if (matrixModal && matrixModal.style.display === 'flex') {
+        matrixModal.style.display = 'none';
+      }
+      if (syncModal && syncModal.style.display === 'flex') {
+        syncModal.style.display = 'none';
+      }
+    }
+  });
+}
+
+/**
+ * Fetch and render the cross-agent profiling matrix and role benchmarks.
+ */
+async function loadAgentMatrix() {
+  const kpiGrid = document.getElementById('matrix-kpi-grid');
+  const tbody = document.getElementById('matrix-table-body');
+  const insightsList = document.getElementById('matrix-insights-list');
+
+  if (tbody) {
+    tbody.innerHTML = `<tr><td colspan="10" style="text-align: center; color: var(--text-muted); padding: 30px;">Loading agent matrix data...</td></tr>`;
+  }
+
+  try {
+    const res = await fetch('/api/analytics/agents');
+    if (!res.ok) {
+      throw new Error(`Server returned HTTP ${res.status}`);
+    }
+    const data = await res.json();
+    const agents = data.agents || [];
+
+    // 1. Render Top Macro KPI Cards
+    if (kpiGrid) {
+      const topDuelsAgent = [...agents].sort((a, b) => (b.first_bloods - a.first_bloods) || (b.opening_duel_win_rate - a.opening_duel_win_rate))[0];
+      const highestKdAgent = [...agents].sort((a, b) => b.kd_ratio - a.kd_ratio)[0];
+      const roleCount = Object.keys(data.role_breakdown || {}).length;
+
+      kpiGrid.innerHTML = `
+        <div class="matrix-kpi-card">
+          <div class="matrix-kpi-label">TOTAL AGENTS PLAYED</div>
+          <div class="matrix-kpi-val">${agents.length} <span style="font-size:16px; font-weight:normal; color:var(--text-muted);">Agents</span></div>
+          <div class="matrix-kpi-sub">${data.total_matches || 0} Matches · ${data.total_rounds || 0} Rounds Analyzed</div>
+        </div>
+        <div class="matrix-kpi-card cyan">
+          <div class="matrix-kpi-label">TOP OPENING DUELIST</div>
+          <div class="matrix-kpi-val">${topDuelsAgent ? topDuelsAgent.agent_name : 'N/A'}</div>
+          <div class="matrix-kpi-sub">${topDuelsAgent ? `${topDuelsAgent.opening_duel_win_rate.toFixed(1)}% OD Win (${topDuelsAgent.first_bloods} First Bloods)` : 'No duels recorded'}</div>
+        </div>
+        <div class="matrix-kpi-card purple">
+          <div class="matrix-kpi-label">ROLE VERSATILITY</div>
+          <div class="matrix-kpi-val">${roleCount} / 4 <span style="font-size:16px; font-weight:normal; color:var(--text-muted);">Roles</span></div>
+          <div class="matrix-kpi-sub">${Object.keys(data.role_breakdown || {}).join(', ') || 'None'}</div>
+        </div>
+        <div class="matrix-kpi-card">
+          <div class="matrix-kpi-label">PEAK COMBAT RATING</div>
+          <div class="matrix-kpi-val" style="color: #06d6a0;">${highestKdAgent ? `${highestKdAgent.kd_ratio.toFixed(2)} KD` : 'N/A'}</div>
+          <div class="matrix-kpi-sub">${highestKdAgent ? `${highestKdAgent.agent_name} (${highestKdAgent.kills}K / ${highestKdAgent.deaths}D)` : 'No combat events'}</div>
+        </div>
+      `;
+    }
+
+    // 2. Render Agent Matrix Table Rows
+    if (tbody) {
+      if (agents.length === 0) {
+        tbody.innerHTML = `<tr><td colspan="10" style="text-align: center; color: var(--text-muted); padding: 30px;">No agent data found. Play or sync matches to populate matrix.</td></tr>`;
+      } else {
+        tbody.innerHTML = agents.map(agent => {
+          const roleClass = (agent.role || 'duelist').toLowerCase();
+          const flawsHtml = (agent.top_flaws && agent.top_flaws.length > 0)
+            ? agent.top_flaws.map(f => {
+                const name = (f.name || f.flaw_name || '').replace(/_/g, ' ');
+                return `<span class="tag-pill flaw" title="${name}: ${f.count}x (${f.percentage || 0}%)">${name} <span style="opacity:0.7">(${f.count})</span></span>`;
+              }).join('')
+            : '<span style="color: var(--text-dim); font-size: 11px;">None logged</span>';
+
+          const kdColor = agent.kd_ratio >= 1.0 ? '#06d6a0' : '#ff4655';
+          const fdColor = agent.first_death_rate > 15 ? '#ff4655' : 'var(--text-main)';
+          const tradeColor = agent.trade_rate >= 40 ? '#06d6a0' : 'var(--text-main)';
+
+          return `
+            <tr>
+              <td>
+                <div class="agent-cell">
+                  ${agent.display_icon ? `<img class="agent-thumb" src="${agent.display_icon}" alt="${agent.agent_name}" onerror="this.style.display='none'" />` : ''}
+                  <span class="agent-name-text">${agent.agent_name}</span>
+                </div>
+              </td>
+              <td><span class="role-badge ${roleClass}">${agent.role}</span></td>
+              <td><span><strong>${agent.matches_played}</strong> <span style="color:var(--text-muted); font-size:11px;">(${agent.rounds_played}r)</span></span></td>
+              <td><span>${agent.kills} / ${agent.deaths} / ${agent.assists}</span></td>
+              <td><strong style="color: ${kdColor}; font-size: 14px;">${agent.kd_ratio.toFixed(2)}</strong></td>
+              <td>
+                <div class="od-cell">
+                  <div class="od-pct-text">${agent.opening_duel_win_rate.toFixed(1)}%</div>
+                  <div class="od-bar-bg">
+                    <div class="od-bar-fill" style="width: ${Math.min(100, Math.max(0, agent.opening_duel_win_rate))}%"></div>
+                  </div>
+                  <div style="font-size: 10px; color: var(--text-dim); margin-top: 2px;">${agent.first_bloods} FB / ${agent.first_deaths} FD</div>
+                </div>
+              </td>
+              <td><span style="color: ${fdColor}; font-weight: 600;">${agent.first_death_rate.toFixed(1)}%</span></td>
+              <td><span style="color: ${tradeColor}; font-weight: 600;">${agent.trade_rate.toFixed(1)}%</span></td>
+              <td><div class="flaw-pill-group">${flawsHtml}</div></td>
+              <td><div class="diagnosis-cell">${agent.diagnosis || 'Optimal profile.'}</div></td>
+            </tr>
+          `;
+        }).join('');
+      }
+    }
+
+    // 3. Render Macro Pool Insights
+    if (insightsList) {
+      if (data.summary_insights && data.summary_insights.length > 0) {
+        insightsList.innerHTML = data.summary_insights
+          .map(ins => `<div class="matrix-insight-item">${ins}</div>`)
+          .join('');
+      } else {
+        insightsList.innerHTML = `<div class="matrix-insight-item">No macro pool insights available yet.</div>`;
+      }
+    }
+  } catch (err) {
+    if (tbody) {
+      tbody.innerHTML = `<tr><td colspan="10" style="text-align: center; color: #ff4655; padding: 25px;">Failed to load agent matrix: ${err.message}</td></tr>`;
+    }
+  }
 }
 
 // Start application
